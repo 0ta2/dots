@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -eu
+
+BREWFILE="$HOME/.Brewfile"
+BREWFILE_LOCK="$HOME/.Brewfile.lock"
+
+if ! command -v brew $>/dev/null;then
+  echo "⚠️ Homebrew is not installed. Skipping brew bundle."
+  exit 0
+fi
+
+if ! cmp -s "${BREWFILE_LOCK}" "${BREWFILE_LOCK}.old"; then
+  echo "📦 Brewfile changed. Running brew bundle..."
+  brew bundle --file="${BREWFILE}"
+  cp "${BREWFILE_LOCK}" "${BREWFILE_LOCK}.old"
+  exit 0
+else
+  echo "✅ Brewfile unchanged. Skipping brew bundle."	
+  exit 0
+fi
