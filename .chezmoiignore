@@ -1,0 +1,5 @@
+# See https://www.chezmoi.io/reference/special-files/chezmoiignore/
+
+LICENSE
+README.md
+Brewfile
