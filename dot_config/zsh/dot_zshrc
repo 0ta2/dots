@@ -1,0 +1,112 @@
+# -------------------
+# zim
+# -------------------
+# Download zimfw plugin manager if missing.
+if [[ ! -e ${ZIM_HOME}/zimfw.zsh ]]; then
+  curl -fsSL --create-dirs -o ${ZIM_HOME}/zimfw.zsh \
+      https://github.com/zimfw/zimfw/releases/latest/download/zimfw.zsh
+fi
+
+# Install missing modules and update ${ZIM_HOME}/init.zsh if missing or outdated.
+if [[ ! ${ZIM_HOME}/init.zsh -nt ${ZIM_CONFIG_FILE:-${ZDOTDIR:-${HOME}}/.zimrc} ]]; then
+  source ${ZIM_HOME}/zimfw.zsh init
+fi
+
+# Initialize modules.
+source ${ZIM_HOME}/init.zsh
+
+# -------------------
+# zsh
+# -------------------
+# `/` を単語の一部として扱わない
+# default: *?_-.[]~=/&;!#$%^(){}<>
+WORDCHARS=${WORDCHARS//[\/]}
+
+# keymap を emacs モードに設定
+bindkey -e
+
+# 重複するコマンドを追加する場合は、履歴から古いコマンドを削除
+setopt HIST_IGNORE_ALL_DUPS
+
+# 隠しファイル補完候補に表示
+setopt globdots
+
+# 補完が多い時に詰めて表示
+setopt list_packed
+
+# 補完候補一覧でファイルの種別を識別マーク表示
+setopt list_types
+
+## PATH補完時に `/` をつける
+setopt noautoremoveslash
+
+# バックグラウンドのジョブが終了したら知らせる
+setopt no_tify
+
+# 自動補完される余分なカンマなどを適宜削除してスムーズに入力できるようにする
+setopt auto_param_keys
+
+# 語の途中でもカーソル位置で補完
+setopt complete_in_word
+
+# カーソル位置は、保持したままファイル名一覧を順次その場で表示
+setopt always_last_prompt
+
+# コマンドラインでも # 以降をコメントとみなす
+setopt interactive_comments
+
+# コマンドラインの引数で --prefix= などの = 以降でも補完できるようにする
+setopt magic_equal_subst
+
+# メモリに保存される履歴の件数(保存数だけ履歴を検索できる)
+HISTSIZE=50000
+
+# HISTFILE で指定したファイルに保存される履歴の件数
+SAVEHIST=50000
+
+# -------------------
+# module
+# -------------------
+# zsh-syntax-highlighting
+# See: https://github.com/zsh-users/zsh-syntax-highlighting/blob/master/docs/highlighters.md
+ZSH_HIGHLIGHT_HIGHLIGHTERS+=(brackets cursor)
+
+# zsh-history-substring-search
+# See: https://github.com/zsh-users/zsh-history-substring-search
+bindkey '^[[A' history-substring-search-up
+bindkey '^[[B' history-substring-search-down
+#bindkey -M emacs '^P' history-substring-search-up
+#bindkey -M emacs '^N' history-substring-search-down
+
+bindkey '^P' history-substring-search-up
+bindkey '^N' history-substring-search-down
+
+# 重複する履歴を除外
+HISTORY_SUBSTRING_SEARCH_ENSURE_UNIQUE=1
+
+# terminfo
+[[ -n "$terminfo[kcuu1]" ]] || bindkey '^[[A' history-substring-search-up
+[[ -n "$terminfo[kcud1]" ]] || bindkey '^[[B' history-substring-search-down
+
+# -------------------
+# custom
+# -------------------
+# fpath
+fpath=(${ZDOTDIR}/functions $fpath)
+
+
+# 環境変数
+# less コマンドの環境変数
+# --ignore-case 検索時に大文字小文字を区別しない
+# --LONG-PROMPT 詳細なプロンプト表示
+# --RAW-CONTROL-CHARS ANSI色付けシーケンスを表示
+# --HILITE-UNREAD まだ読んでいない行をハイライト
+export LESS='--ignore-case --LONG-PROMPT --RAW-CONTROL-CHARS --HILITE-UNREAD'
+
+# alias
+alias vim="nvim"
+alias c="clear"
+
+# GNU
+alias sed="gsed"
+alias ls="gls --color=auto"
