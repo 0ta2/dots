@@ -1,3 +1,5 @@
 require("lazy").setup({
-  spec = {}
+  spec = {
+      { import = "plugins.tmux" }
+  }
 })
