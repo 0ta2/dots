@@ -20,6 +20,7 @@ cask "karabiner-elements"
 cask "deepl"
 cask "raycast"
 cask "kobo"
+brew "tmux"
 
 # terminal
 cask "ghostty"

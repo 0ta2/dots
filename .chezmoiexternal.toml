@@ -1,0 +1,4 @@
+[".config/tmux/plugins/vim-tmux-navigator"]
+    type = "git-repo"
+    url = "https://github.com/christoomey/vim-tmux-navigator.git"
+    refreshPeriod = "168h"
