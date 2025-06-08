@@ -64,6 +64,21 @@ HISTSIZE=50000
 # HISTFILE で指定したファイルに保存される履歴の件数
 SAVEHIST=50000
 
+# path=xxxx(N-/)
+#   (N-/): ディレクトリが存在する場合のみ登録
+#   パス(...): ...という条件にマッチするパスのみ残す
+#      N: NULL_GLOBオプションを設定。
+#         globがマッチしない場合は空になる（エラーを出さない）
+#      -: シンボリックリンクを辿って評価
+#      /: ディレクトリのみを対象とする
+#      .: 通常のファイルのみを対象とする
+# 基本PATH設定
+# ${path} は､大文字の PATH と紐付いている
+path=(
+  ${HOME}/.local/bin(N-/)
+  ${path}
+)
+
 # -------------------
 # module
 # -------------------
@@ -92,8 +107,9 @@ HISTORY_SUBSTRING_SEARCH_ENSURE_UNIQUE=1
 # custom
 # -------------------
 # fpath
-fpath=(${ZDOTDIR}/functions $fpath)
-
+for funcs in ${ZDOTDIR}/functions/*.zsh; do
+  source $funcs
+done
 
 # 環境変数
 # less コマンドの環境変数
@@ -102,6 +118,14 @@ fpath=(${ZDOTDIR}/functions $fpath)
 # --RAW-CONTROL-CHARS ANSI色付けシーケンスを表示
 # --HILITE-UNREAD まだ読んでいない行をハイライト
 export LESS='--ignore-case --LONG-PROMPT --RAW-CONTROL-CHARS --HILITE-UNREAD'
+
+# neovim
+export EDITOR="nvim"
+
+# tmux
+if [[ -n "${TMUX}" ]]; then
+    export FZF_DEFAULT_OPTS="--tmux"
+fi
 
 # alias
 alias vim="nvim"
