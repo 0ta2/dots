@@ -1,2 +1,5 @@
 [tools]
+ghq = "latest"
+jq = "latest"
+fzf = "latest"
 lazygit = "latest"
