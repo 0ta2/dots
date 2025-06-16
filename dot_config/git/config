@@ -1,0 +1,8 @@
+[core]
+    editor = nvim
+
+[push]
+    default = simple
+
+[fetch]
+    prune = true
