@@ -1,0 +1,27 @@
+[vars]
+source = '~/ghq/github.com/0ta2/dots'
+
+#
+# chemoi
+#
+[tasks."chezmoi:apply"]
+description = "chezmoiの反映"
+run = "chezmoi --source={{vars.source}} apply"
+
+[tasks."chezmoi:diff"]
+description = "chezmoiの差分確認"
+run = "chezmoi --source={{vars.source}} diff"
+
+[tasks."chezmoi:status"]
+description = "chezmoiのstatus確認"
+run = "chezmoi --source={{vars.source}} status"
+
+#
+# homebrew
+#
+[tasks."brew:update"]
+description = "Brewのupgrade&update"
+run = [
+    "brew upgrade",
+    "brew update"
+]
