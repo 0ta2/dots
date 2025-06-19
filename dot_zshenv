@@ -7,9 +7,3 @@ export ZDOTDIR="${XDG_CONFIG_HOME}/zsh"
 
 # zim
 export ZIM_HOME="${XDG_CACHE_HOME}/zim"
-
-# brew
-eval "$(/opt/homebrew/bin/brew shellenv)"
-
-# mise
-eval "$(mise activate zsh)"
