@@ -23,6 +23,7 @@ cask "kobo"
 brew "tmux"
 
 # terminal
+brew "starship"
 cask "ghostty"
 
 # other
