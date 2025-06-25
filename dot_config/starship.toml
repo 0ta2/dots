@@ -19,9 +19,7 @@ $java\
 $kotlin\
 $haskell\
 $python\
-[](fg:green bg:sapphire)\
-$conda\
-[](fg:sapphire bg:lavender)\
+[](fg:green bg:lavender)\
 $time\
 [ ](fg:lavender)\
 $cmd_duration\
@@ -33,6 +31,12 @@ palette = 'catppuccin_mocha'
 [os]
 disabled = false
 style = "bg:red fg:crust"
+
+[memory_usage]
+disabled = false
+threshold = -1
+symbol = ' '
+style = 'bold dimmed green'
 
 [os.symbols]
 Windows = ""
@@ -162,7 +166,7 @@ show_milliseconds = true
 format = " in $duration "
 style = "bg:lavender"
 disabled = false
-show_notifications = true
+show_notifications = false
 min_time_to_notify = 45000
 
 [palettes.catppuccin_mocha]
