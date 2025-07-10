@@ -4,6 +4,9 @@ require("lazy").setup({
       { "nvim-lua/plenary.nvim" },
 
       { import = "plugins.utils" },
+      { import = "plugins.coding" },
+      { import = "plugins.lsp" },
+      { import = "plugins.ui" },
       { import = "plugins.git" },
   }
 })
