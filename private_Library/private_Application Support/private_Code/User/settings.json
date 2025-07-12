@@ -1,0 +1,8 @@
+{
+    // Layout
+    "workbench.activityBar.location": "top",
+
+    // Font
+    "editor.fontFamily": "HackGen35",
+    "terminal.integrated.fontFamily": "HackGen Console NF"
+}
