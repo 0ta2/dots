@@ -29,6 +29,9 @@ cask "ghostty"
 # other
 brew "mas"
 
+# vscode
+vscode "MS-CEINTL.vscode-language-pack-ja"
+
 # for app store
 mas "kindle", id: 302584613
 mas "LINE", id: 539883307
