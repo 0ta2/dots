@@ -139,10 +139,6 @@ if [[ -n "${TMUX}" ]]; then
     export FZF_DEFAULT_OPTS="--tmux"
 fi
 
-# alias
-alias vim="nvim"
-alias c="clear"
-
 # GNU
 alias sed="gsed"
 alias ls="gls --color=auto"
