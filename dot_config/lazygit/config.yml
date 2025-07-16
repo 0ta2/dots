@@ -1,4 +1,109 @@
 gui:
-  language: 'ja'
-  showIcons: true
+  language: "ja"
+  nerdFontsVersion: "3"
+  showFileTree: false
+git:
+  paging:
+    # delta
+    colorArg: always
+    pager: delta --dark --paging=never
 
+#
+# custom command
+#
+customCommands:
+  - key: "<c-p>"
+    description: "削除されているリモートブランチを削除する｡"
+    context: "remotes"
+    command: "git remote prune {{.SelectedRemote.Name}}"
+    loadingText: "Pruning..."
+  - key: "u"
+    description: "stashする際に untracked のファイルを含めて stash する｡"
+    context: "files"
+    command: 'git stash save --include-untracked "{{index .PromptResponses 0}}"'
+    prompts:
+      - type: "input"
+        title: "Stash Message"
+        initialValue: "WIP"
+  # https://www.conventionalcommits.org/ja/v1.0.0-beta.4/
+  - key: "<c-k>"
+    context: "global"
+    description: "conventional commit に基づくコミットメッセージを作成する｡"
+    prompts:
+      - type: "menu"
+        key: "Type"
+        title: "Type of change"
+        options:
+          - name: "feat"
+            description: "新しい機能の追加"
+            value: "feat"
+          - name: "fix"
+            description: "バグ修正"
+            value: "fix"
+          - name: "chore"
+            description: "ソースコードやテストファイルに影響しないその他の変更"
+            value: "chore"
+          - name: "ci"
+            description: "CI の設定ファイルやスクリプトの変更"
+            value: "ci"
+          - name: "docs"
+            description: "ドキュメントのみの変更"
+            value: "docs"
+          - name: "perf"
+            description: "パフォーマンスを改善するコードの変更"
+            value: "perf"
+          - name: "refactor"
+            description: "バグ修正や機能追加ではないコードの整理"
+            value: "refactor"
+          - name: "revert"
+            description: "以前のコミットの取り消し"
+            value: "revert"
+          - name: "style"
+            description: "コードの意味に影響しない変更(フォーマットやスペースなど)"
+            value: "style"
+          - name: "test"
+            description: "テストの追加や既存テストの修正"
+            value: "test"
+      - type: "input"
+        title: "Scope"
+        key: "Scope"
+        initialValue: ""
+      - type: "menu"
+        key: "Breaking"
+        title: "Breaking change"
+        options:
+          - name: "no"
+            value: ""
+          - name: "yes"
+            value: "!"
+    command: |
+      #!/bin/bash
+
+      msgfile=$(mktemp)
+      difffile=$(mktemp)
+
+      function atexit {
+          [[ -f "${msgfile}" ]] && rm -f "${msgfile}"
+          [[ -f "${difffile}" ]] && rm -f "${difffile}"
+      }
+      trap atexit EXIT
+      trap 'rc=$?; trap - EXIT; atexit; exit $?' INT PIPE TERM
+
+      template="{{.Form.Type}}{{ if .Form.Scope }}({{ .Form.Scope }}){{ end }}{{.Form.Breaking}}: "
+      echo ${template} > "${msgfile}"
+      echo "" >> "${msgfile}"
+
+      git diff --cached > "${difffile}"
+
+      nvim -O "${msgfile}" "${difffile}" \
+          --cmd "set foldmethod=expr foldexpr=getline(v:lnum)=~'^diff'?'>1':'=' | normal! zM" \
+          --cmd 'autocmd WinEnter * if winnr("$") == 1 | q | endif'
+
+      if diff -q <(echo "${template}") <(head -n 1 "${msgfile}") >/dev/null; then
+          echo "コミットメッセージが変更されていないため､ commit を中止します"
+          exit 0
+      fi
+
+      git commit -F "${msgfile}"
+    loadingText: "エディタでコミットメッセージを編集中..."
+    output: "terminal"
