@@ -16,11 +16,18 @@ return {
         lazy = false,
         ---@type snacks.Config
         opts = {
-            picker = { enabled = true },
+            picker = {
+                enabled = true,
+            },
+            explorer = {
+                enabled = true,
+            },
         },
         keys = {
+            -- Picker
             { "<leader>ff", function() Snacks.picker.files() end, desc = "ファイル検索" },
-
+            -- Explorer
+            { "<leader>e", function() Snacks.explorer.open() end, desc = "エクスプローラーを開く" },
             -- Lazygit
             { "<leader>gl", function() Snacks.lazygit() end, desc = "Lazygitを開く" },
         },
