@@ -4,7 +4,7 @@ return {
         opts = {},
         config = function() local wk = require("which-key")
             wk.add({
-                { "<leader>f", group = "file" },
+                { "<leader>f", group = "[F]ile" },
                 { "<leader>g", group = "[G]it" },
             })
         end
