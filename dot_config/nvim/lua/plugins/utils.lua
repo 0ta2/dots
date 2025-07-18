@@ -2,10 +2,10 @@ return {
     {
         "folke/which-key.nvim",
         opts = {},
-        config = function()
-            local wk = require("which-key")
+        config = function() local wk = require("which-key")
             wk.add({
                 { "<leader>f", group = "file" },
+                { "<leader>g", group = "[G]it" },
             })
         end
     },
@@ -21,6 +21,8 @@ return {
         keys = {
             { "<leader>ff", function() Snacks.picker.files() end, desc = "ファイル検索" },
 
+            -- Lazygit
+            { "<leader>gl", function() Snacks.lazygit() end, desc = "Lazygitを開く" },
         },
     },
 }
