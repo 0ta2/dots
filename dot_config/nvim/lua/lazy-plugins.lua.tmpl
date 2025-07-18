@@ -13,6 +13,8 @@ require("lazy").setup({
       { import = "plugins.ui" },
       -- Pickerに関わるプラグイン
       { import = "plugins.picker" },
+      -- 便利ツール
+      { import = "plugins.util" },
       {{- if ne (env "WORKSTATION") "private" }}
       { import = "plugins.obsidian" },
       {{- end }}
