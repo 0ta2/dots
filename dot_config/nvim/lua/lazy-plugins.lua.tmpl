@@ -1,0 +1,17 @@
+require("lazy").setup({
+  spec = {
+      -- 様々なPluginから使われている便利ユーティリティ
+      { "nvim-lua/plenary.nvim" },
+
+      -- コーディングに関わるプラグイン
+      { import = "plugins.coding" },
+      -- エディタとしての機能強化に関わるプラグイン
+      { import = "plugins.editor" },
+      -- lspに関するプラグイン
+      { import = "plugins.lsp" },
+      -- UIを強化するプラグイン
+      { import = "plugins.ui" },
+      -- Pickerに関わるプラグイン
+      { import = "plugins.picker" },
+  }
+})

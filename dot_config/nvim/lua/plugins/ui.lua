@@ -1,10 +1,13 @@
 return {
     {
-        'nvimdev/lspsaga.nvim',
-        config = function()
-            require('lspsaga').setup({})
-        end,
+        "folke/which-key.nvim",
         opts = {},
+        config = function() local wk = require("which-key")
+            wk.add({
+                { "<leader>f", group = "[F]ile" },
+                { "<leader>g", group = "[G]it" },
+            })
+        end
     },
 
     {
