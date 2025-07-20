@@ -7,3 +7,9 @@ export ZDOTDIR="${XDG_CONFIG_HOME}/zsh"
 
 # zim
 export ZIM_HOME="${XDG_CACHE_HOME}/zim"
+
+# private
+export WORKSTATION="private"
+if [[ ${USER}  != "0ta2" ]];then
+    export WORKSTATION="work"
+fi
