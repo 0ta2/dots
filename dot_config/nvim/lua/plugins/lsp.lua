@@ -1,5 +1,7 @@
 local lsp_server = {
-    lua_ls = {}
+    lua_ls = {},
+    jsonls = {},
+    yamlls = {},
 }
 
 return {
@@ -22,5 +24,9 @@ return {
             require('lspsaga').setup({})
         end,
         opts = {},
+    },
+
+    {
+        "b0o/schemastore.nvim",
     },
 }
