@@ -17,14 +17,16 @@ return {
         },
     },
 
+    -- カーソルの移動強化
     {
         "folke/flash.nvim",
         ---@type Flash.Config
         opts = {},
         keys = {
-            { "s",     mode = { "n", "x", "o" }, function() require("flash").jump() end,              desc = "Flash" },
-            { "S",     mode = { "n", "x", "o" }, function() require("flash").treesitter() end,        desc = "Flash Treesitter" },
-       },
+            { "s", mode = { "n", "x", "o" }, function() require("flash").jump() end,       desc = "Flash" },
+            { "S", mode = { "n", "x", "o" }, function() require("flash").treesitter() end, desc = "Flash Treesitter" },
+        },
+    },
 
     -- csv を見やすく表示するためのプラグイン
     {

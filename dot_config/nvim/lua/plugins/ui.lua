@@ -2,7 +2,8 @@ return {
     {
         "folke/which-key.nvim",
         opts = {},
-        config = function() local wk = require("which-key")
+        config = function()
+            local wk = require("which-key")
             wk.add({
                 { "<leader>f", group = "[F]ile" },
                 { "<leader>g", group = "[G]it" },
