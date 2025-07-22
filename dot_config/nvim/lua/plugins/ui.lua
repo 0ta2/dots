@@ -6,6 +6,7 @@ return {
             wk.add({
                 { "<leader>f", group = "[F]ile" },
                 { "<leader>g", group = "[G]it" },
+                { "<leader>l", group = "Sp[l]it" },
             })
         end
     },

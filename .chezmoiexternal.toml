@@ -1,6 +1,6 @@
-[".config/tmux/plugins/vim-tmux-navigator"]
-    type = "git-repo"
-    url = "https://github.com/christoomey/vim-tmux-navigator.git"
+[".config/tmux/plugins/smart-splits"]
+   type = "git-repo"
+    url = "https://github.com/mrjones2014/smart-splits.nvim.git"
     refreshPeriod = "168h"
 [".config/tmux/plugins/catppuccin/tmux"]
     type = "git-repo"

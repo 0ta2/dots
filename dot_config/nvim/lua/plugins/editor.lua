@@ -25,6 +25,7 @@ return {
             { "s",     mode = { "n", "x", "o" }, function() require("flash").jump() end,              desc = "Flash" },
             { "S",     mode = { "n", "x", "o" }, function() require("flash").treesitter() end,        desc = "Flash Treesitter" },
        },
+
     -- csv を見やすく表示するためのプラグイン
     {
         "hat0uma/csvview.nvim",
@@ -53,4 +54,27 @@ return {
         cmd = { "CsvViewEnable", "CsvViewDisable", "CsvViewToggle" },
     },
 
+    {
+        'mrjones2014/smart-splits.nvim',
+        opts = {},
+        config = function()
+            -- resizing splits
+            -- Ghostty に macos-option-as-alt = true の設定が必要
+            vim.keymap.set('n', '<A-h>', require('smart-splits').resize_left)
+            vim.keymap.set('n', '<A-j>', require('smart-splits').resize_down)
+            vim.keymap.set('n', '<A-k>', require('smart-splits').resize_up)
+            vim.keymap.set('n', '<A-l>', require('smart-splits').resize_right)
+            -- moving between splits
+            vim.keymap.set('n', '<C-h>', require('smart-splits').move_cursor_left)
+            vim.keymap.set('n', '<C-j>', require('smart-splits').move_cursor_down)
+            vim.keymap.set('n', '<C-k>', require('smart-splits').move_cursor_up)
+            vim.keymap.set('n', '<C-l>', require('smart-splits').move_cursor_right)
+            vim.keymap.set('n', '<C-\\>', require('smart-splits').move_cursor_previous)
+            -- swapping buffers between weditindows
+            vim.keymap.set('n', '<leader>lh', require('smart-splits').swap_buf_left)
+            vim.keymap.set('n', '<leader>lj', require('smart-splits').swap_buf_down)
+            vim.keymap.set('n', '<leader>lk', require('smart-splits').swap_buf_up)
+            vim.keymap.set('n', '<leader>ll', require('smart-splits').swap_buf_right)
+        end
+    },
 }
