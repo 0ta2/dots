@@ -56,6 +56,8 @@ return {
         cmd = { "CsvViewEnable", "CsvViewDisable", "CsvViewToggle" },
     },
 
+    -- vimの画面分割とtmuxとのシームレスな移動
+    -- NOTE: tmuxのプラグインとしても使用している｡
     {
         'mrjones2014/smart-splits.nvim',
         opts = {},
