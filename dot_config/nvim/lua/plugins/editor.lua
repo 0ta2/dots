@@ -81,4 +81,33 @@ return {
             vim.keymap.set('n', '<leader>ll', require('smart-splits').swap_buf_right)
         end
     },
+
+    {
+        'akinsho/bufferline.nvim',
+        version = "*",
+        config = true,
+        dependencies = 'nvim-tree/nvim-web-devicons',
+        opts = {
+            options = {
+                diagnostics = "nvim_lsp",
+                diagnostics_indicator = function(count, level, diagnostics_dict, context)
+                    local s = " "
+                    for e, n in pairs(diagnostics_dict) do
+                        local sym = (e == "error" and " ")
+                            or (e == "warning" and " ")
+                            or (e == "info" and " ")
+                            or (e == "hint" and "󰌶")
+                        s = s .. n .. sym
+                    end
+                    return s
+                end,
+            },
+            highlights = {
+                error_diagnostic = { fg = "#eba0ac" },
+                warning_diagnostic = { fg = "#f9e2af" },
+                info_diagnostic = { fg = "#89b4fa" },
+                hint_diagnostic = { fg = "#209fb5" },
+            },
+        },
+    },
 }
