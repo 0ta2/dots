@@ -23,7 +23,11 @@ return {
         config = function()
             require('lspsaga').setup({})
         end,
-        opts = {},
+        opts = {
+            ui = {
+                kind = require("catppuccin.groups.integrations.lsp_saga").custom_kind(),
+            },
+        },
     },
 
     {

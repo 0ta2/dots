@@ -102,11 +102,17 @@ return {
                     return s
                 end,
             },
-            highlights = {
-                error_diagnostic = { fg = "#eba0ac" },
-                warning_diagnostic = { fg = "#f9e2af" },
-                info_diagnostic = { fg = "#89b4fa" },
-                hint_diagnostic = { fg = "#209fb5" },
+            -- NOTE: catppuccin の bufferline のカラーを微調整｡これで､タブのない空白部分が黒くではなく catppuccin のカラーで統一される｡
+            highlights = require("catppuccin.groups.integrations.bufferline").get({
+                styles = { "italic", "bold" },
+                custom = {
+                    all = {
+                        fill = { bg = "#1e1e2e" },
+                    },
+                },
+            }),
+        },
+    },
             },
         },
     },
