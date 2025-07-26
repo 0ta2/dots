@@ -113,6 +113,36 @@ return {
             }),
         },
     },
+
+    {
+        'nvim-lualine/lualine.nvim',
+        opts = {
+            options = {
+                theme = 'catppuccin',
+                section_separators = { left = '', right = '' },
+                component_separators = {},
+                extensions = {
+                    "lazy",
+                    "mason",
+                    "trouble",
+                },
+            },
+            sections = {
+                lualine_a = { "mode" },
+                lualine_b = { "branch" },
+                lualine_c = {
+                    "%=",
+                    {
+                        "diff",
+                        separator = "  |  ",
+                    },
+                    {
+                        "diagnostics"
+                    }
+                },
+                lualine_x = { "encoding", "fileformat", "filetype" },
+                lualine_y = { "progress" },
+                lualine_z = { "location" }
             },
         },
     },
