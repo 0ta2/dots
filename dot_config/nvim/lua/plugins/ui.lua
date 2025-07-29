@@ -88,5 +88,17 @@ return {
         dependencies = {
             "rcarriga/nvim-notify",
         },
-    }
+    },
+
+    {
+        'MeanderingProgrammer/render-markdown.nvim',
+        ---@module 'render-markdown'
+        ---@type render.md.UserConfig
+        opts = {
+            code = {
+                sign = false,
+                border = 'thick',
+            },
+        },
+    },
 }
