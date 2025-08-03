@@ -42,6 +42,7 @@ return {
                 which_key = true,
                 lsp_saga = true,
                 mason = true,
+                grug_far = true,
             },
         },
     },

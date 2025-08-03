@@ -159,4 +159,11 @@ return {
             },
         },
     },
+
+    -- 検索･置換
+    {
+        "MagicDuck/grug-far.nvim",
+        opts = { headerMaxWidth = 80 },
+    },
+
 }
