@@ -6,7 +6,6 @@ lazygit = "latest"
 delta = "latest"
 rg = "latest"
 node = "latest"
-stylua = "latest"
 
 # For Rust
 rust = "latest"
