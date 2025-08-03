@@ -22,7 +22,23 @@ return {
                 nerd_font_variant = 'mono'
             },
 
-            completion = { documentation = { auto_show = false } },
+            completion = {
+                documentation = { auto_show = true, auto_show_delay_ms = 500 },
+                menu = {
+                    draw = {
+                        columns = {
+                            { "label",      "label_description", gap = 1 },
+                            { "kind_icon",  "kind",              'source_id', gap = 1 },
+                            { 'source_name' },
+                        },
+                        -- NOTE: 補完候補が何から取得されたものかを表示する｡
+                        -- https://github.com/Saghen/blink.cmp/discussions/1983
+                        components = {
+                            source_name = { text = function(ctx) return ctx.item.client_name or ctx.item.source_name end },
+                        },
+                    },
+                },
+            },
 
             sources = {
                 default = { 'lsp', 'path', 'snippets', 'buffer' },
@@ -129,4 +145,6 @@ return {
             vim.keymap.set({ 'n', 'x' }, 'm', '<Plug>(matchup-%)', { desc = "カッコ閉じの移動", noremap = false })
         end
     },
+
+
 }
