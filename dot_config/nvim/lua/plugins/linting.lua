@@ -13,8 +13,6 @@ return {
         linters_by_ft = linters
     },
     config = function(_, opts)
-        local test = "aaa"
-
         local lint = require('lint')
         lint.linters_by_ft = opts.linters_by_ft
 
