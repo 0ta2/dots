@@ -36,12 +36,12 @@ return {
             highlights = {
                 enabled = true,
                 groups = {
-                    "BlinkPairsRed",
+                    "BlinkPairsYellow",
                     "BlinkPairsBlue",
                     "BlinkPairsGreen",
-                    "BlinkPairsYellow",
                     "BlinkPairsPeach",
                     "BlinkPairsLavender",
+                    "BlinkPairsRed",
                 },
                 matchparen = {
                     enabled = true,
@@ -53,12 +53,12 @@ return {
         config = function(_, opts)
             local palette = require("catppuccin.palettes").get_palette("mocha")
             local colors = {
-                Red = palette.red,
+                Yellow = palette.yellow,
                 Blue = palette.blue,
                 Green = palette.green,
-                Yellow = palette.yellow,
                 Peach = palette.peach,
                 Lavender = palette.lavender,
+                Red = palette.red,
             }
             for name, color in pairs(colors) do
                 vim.api.nvim_set_hl(0, "BlinkPairs" .. name, { fg = color })
