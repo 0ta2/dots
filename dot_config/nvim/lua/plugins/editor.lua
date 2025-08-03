@@ -8,6 +8,11 @@ return {
             explorer = {
                 enabled = true,
             },
+            lazygit = {
+                config = {
+                    os = { editPreset = "nvim-remote" },
+                },
+            },
         },
         keys = {
             -- explorer
