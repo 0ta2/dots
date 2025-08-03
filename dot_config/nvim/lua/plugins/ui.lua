@@ -27,6 +27,17 @@ return {
             dashboard = {
                 enabled = true,
                 autokeys = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                preset = {
+                    keys = {
+                        { icon = " ", key = "n", desc = "New File", action = ":ene | startinsert" },
+                        { icon = " ", key = "p", desc = "Find File", action = ":lua Snacks.picker.smart()" },
+                        { icon = " ", key = "g", desc = "Find Text", action = ":lua Snacks.picker.grep()" },
+                        { icon = "󰒲 ", key = "l", desc = "Lazy", action = ":Lazy", enabled = package.loaded.lazy ~= nil },
+                        { icon = " ", key = "m", desc = "Mason", action = ":Mason", enabled = package.loaded.lazy ~= nil },
+                        { icon = "󰊢", key = "i", desc = "LazyGit", action = ":lua Snacks.lazygit()" },
+                        { icon = " ", key = "q", desc = "Quit", action = ":qa" },
+                    },
+                },
                 sections = {
                     { section = "header" },
                     {
