@@ -43,6 +43,10 @@ return {
                 lsp_saga = true,
                 mason = true,
                 grug_far = true,
+                gitsigns = {
+                    enabled = true,
+                    transparent = false,
+                }
             },
         },
     },

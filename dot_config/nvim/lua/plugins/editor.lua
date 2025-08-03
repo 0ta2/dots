@@ -166,4 +166,8 @@ return {
         opts = { headerMaxWidth = 80 },
     },
 
+    {
+        "lewis6991/gitsigns.nvim",
+        opts = {},
+    },
 }
