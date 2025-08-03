@@ -142,3 +142,9 @@ fi
 # GNU
 alias sed="gsed"
 alias ls="gls --color=auto"
+
+# Command
+alias "vim"="nvim"
+
+# Custom
+alias "c"="clear"

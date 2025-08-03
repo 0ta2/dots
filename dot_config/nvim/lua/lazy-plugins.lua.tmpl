@@ -1,0 +1,30 @@
+require("lazy").setup({
+  spec = {
+      -- 様々なPluginから使われている便利ユーティリティ
+      { "nvim-lua/plenary.nvim" },
+      -- 様々んPluginから使われているUIのコンポーネントライブラリー
+      { "MunifTanjim/nui.nvim" },
+
+      -- colorschemeの設定
+      { import = "plugins.colorscheme" },
+      -- コーディングに関わるプラグイン
+      { import = "plugins.coding" },
+      -- エディタとしての機能強化に関わるプラグイン
+      { import = "plugins.editor" },
+      -- コードのフォーマット
+      { import = "plugins.formatting" },
+      -- コードのリンター
+      { import = "plugins.linting" },
+      -- lspに関するプラグイン
+      { import = "plugins.lsp" },
+      -- UIを強化するプラグイン
+      { import = "plugins.ui" },
+      -- Pickerに関わるプラグイン
+      { import = "plugins.picker" },
+      -- treesitter
+      { import = "plugins.treesitter" },
+      {{- if ne (env "WORKSTATION") "private" }}
+      { import = "plugins.obsidian" },
+      {{- end }}
+  }
+})

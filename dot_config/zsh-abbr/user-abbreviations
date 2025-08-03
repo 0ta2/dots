@@ -3,8 +3,3 @@
 #
 abbr git --global st='status'
 abbr git --global sw='switch'
-
-#
-# command
-abbr --regular "c"="clear"
-abbr --regular "vim"="nvim"

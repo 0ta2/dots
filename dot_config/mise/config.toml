@@ -1,6 +1,17 @@
 [tools]
+# CLI tools
 ghq = "latest"
 jq = "latest"
 fzf = "latest"
 lazygit = "latest"
-delta = "latest"
+delta = "latest" # diff の表示を見やすくしてくれるツール
+rg = "latest"
+
+# For Node.js
+node = "latest"
+
+# For Rust
+rust = "latest"
+
+# For Lua
+"cargo:selene" = "latest"

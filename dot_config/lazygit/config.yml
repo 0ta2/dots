@@ -96,8 +96,8 @@ customCommands:
       git diff --cached > "${difffile}"
 
       nvim -O "${msgfile}" "${difffile}" \
-          --cmd "set foldmethod=expr foldexpr=getline(v:lnum)=~'^diff'?'>1':'=' | normal! zM" \
-          --cmd 'autocmd WinEnter * if winnr("$") == 1 | q | endif'
+          --cmd "set foldmethod=expr | set foldexpr=getline(v:lnum)=~'^diff'?'>1':'=' | normal! zM" \
+          -c "wincmd t | buffer "${msgfile}" | lua local w=vim.api.nvim_get_current_win();vim.api.nvim_create_autocmd('WinClosed',{callback=function(ev) if tonumber(ev.match)==w then vim.cmd('qa') end end})"
 
       if diff -q <(echo "${template}") <(head -n 1 "${msgfile}") >/dev/null; then
           echo "コミットメッセージが変更されていないため､ commit を中止します"
