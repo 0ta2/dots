@@ -73,4 +73,29 @@ return {
         version = "^3.0.0",
         opts = {},
     },
+
+    -- カッコ閉じの移動を強化
+    {
+        "andymass/vim-matchup",
+        init = function()
+            vim.g.matchup_treesitter_stopline = 500
+            vim.g.matchup_treesitter_enabled = 1
+            vim.g.matchup_matchparen_offscreen = { method = "popup" }
+            require('match-up').setup({
+                treesitter = {
+                    stopline = 500
+                }
+            })
+        end,
+        ---@type matchup.Config
+        opts = {
+            treesitter = {
+                stopline = 500,
+            }
+        },
+        config = function()
+            -- %キーのデフォルト動作を<leader>%に移動
+            vim.keymap.set({ 'n', 'x' }, 'm', '<Plug>(matchup-%)', { desc = "カッコ閉じの移動", noremap = false })
+        end
+    },
 }
