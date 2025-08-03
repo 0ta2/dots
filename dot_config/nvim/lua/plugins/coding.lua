@@ -67,6 +67,7 @@ return {
         end,
     },
 
+    -- 区切り文字の追加､削除､変更
     {
         "kylechui/nvim-surround",
         version = "^3.0.0",
