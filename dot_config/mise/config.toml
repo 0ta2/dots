@@ -7,3 +7,9 @@ delta = "latest"
 rg = "latest"
 node = "latest"
 stylua = "latest"
+
+# For Rust
+rust = "latest"
+
+# For Lua
+"cargo:selene" = "latest"
