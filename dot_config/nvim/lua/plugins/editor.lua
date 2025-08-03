@@ -94,6 +94,7 @@ return {
         end
     },
 
+    -- バッファの表示
     {
         'akinsho/bufferline.nvim',
         version = "*",
@@ -125,6 +126,7 @@ return {
         },
     },
 
+    -- ステータスラインの強化
     {
         'nvim-lualine/lualine.nvim',
         opts = {

@@ -1,4 +1,4 @@
-local lsp_server = {
+local lsp_servers = {
     lua_ls = {},
     jsonls = {},
     yamlls = {},
@@ -11,7 +11,7 @@ return {
     {
         "mason-org/mason-lspconfig.nvim",
         opts = {
-            ensure_installed = vim.tbl_keys(lsp_server)
+            ensure_installed = vim.tbl_keys(lsp_servers)
         },
         dependencies = {
             {
