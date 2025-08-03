@@ -19,6 +19,7 @@ vim.keymap.set('n', '<leader>o', '<C-w>_<C-w>|', { desc = '縦横に最大化' }
 vim.keymap.set('n', '<leader>=', '<C-w>=', { desc = '縦横の幅を揃える' })
 
 vim.keymap.set('n', '<leader>t', '<Cmd>enew<CR>', { desc = '新しいバッファを作成' })
+vim.keymap.set('n', '<leader>q', '<Cmd>bp <BAR> bd! #<CR>', { desc = "バッファを閉じる" })
 
 vim.keymap.set('n', '<leader>n', '<Cmd>bnext<CR>', { desc = '次のバッファへ移動' })
 vim.keymap.set('n', '<leader>p', '<Cmd>bprevious<CR>', { desc = '前のバッファへ移動' })
