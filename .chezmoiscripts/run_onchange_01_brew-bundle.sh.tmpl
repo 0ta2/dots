@@ -2,16 +2,18 @@
 
 set -eu
 
-{{ if eq .chezmoi.username "0ta2" }}
-
 # Brewfileのhash値を入れることで、Brewfileの変更時のみ本スクリプトを実行できるようにする。
 # Brewfile hash: {{ include "Brewfile" | sha256sum }}
 
-echo "🍺 Brewfile has changed, running brew bundle..."
-brew bundle --file={{ joinPath .chezmoi.sourceDir "Brewfile" | quote }}
-
+{{ if eq .chezmoi.username "0ta2" }}
+BREWFILE={{ joinPath .chezmoi.sourceDir "Brewfile" | quote }}
 {{ else }}
-
-echo "🤔 未知のユーザーです。処理をスキップします"
-
+BREWFILE=${HOME}/.Brewfile
 {{ end }}
+
+if [[ -f "$BREWFILE" ]]; then
+    echo "🍺 Brewfile has changed, running brew bundle..."
+    brew bundle --cleanup --file="$BREWFILE"
+else
+    echo "🌀 No Brewfile found, skipping brew bundle"
+fi
