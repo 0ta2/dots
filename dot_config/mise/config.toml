@@ -6,6 +6,7 @@ fzf = "latest"
 lazygit = "latest"
 delta = "latest" # diff の表示を見やすくしてくれるツール
 rg = "latest"
+coreutils = "latest" # macOSは､BSD版なので､GNU版のほうが使い慣れているため｡
 
 # For Go
 go = "latest"
