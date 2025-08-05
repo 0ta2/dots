@@ -4,6 +4,14 @@ source = '~/ghq/github.com/0ta2/dots'
 #
 # chemoi
 #
+[tasks."chezmoi:add"]
+description = "chezmoi管理下に置くファイルを追加"
+run = "chezmoi --source={{vars.source}} add"
+
+[tasks."chezmoi:template"]
+description = "chezmoiに管理下に置くファイルをテンプレートとして管理する"
+run = "chezmoi --source={{vars.source}} chattr template"
+
 [tasks."chezmoi:apply"]
 description = "chezmoiの反映"
 run = "chezmoi --source={{vars.source}} apply"
