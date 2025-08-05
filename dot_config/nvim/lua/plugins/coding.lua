@@ -146,5 +146,19 @@ return {
         end
     },
 
-
+    -- go
+    {
+        "olexsmir/gopher.nvim",
+        opts = {
+            commands = {
+                gomodifytags = vim.fs.joinpath(vim.fn.stdpath("data"), "mason", "bin", "gomodifytags"),
+                gotests = vim.fs.joinpath(vim.fn.stdpath("data"), "mason", "bin", "gotests"),
+                impl = vim.fs.joinpath(vim.fn.stdpath("data"), "mason", "bin", "impl"),
+                iferr = vim.fs.joinpath(vim.fn.stdpath("data"), "mason", "bin", "iferr"),
+            },
+        },
+        config = function(_, opts)
+            require("gopher").setup(opts)
+        end
+    },
 }

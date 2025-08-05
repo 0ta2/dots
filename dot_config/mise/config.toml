@@ -7,6 +7,9 @@ lazygit = "latest"
 delta = "latest" # diff の表示を見やすくしてくれるツール
 rg = "latest"
 
+# For Go
+go = "latest"
+
 # For Node.js
 node = "latest"
 

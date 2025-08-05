@@ -1,11 +1,22 @@
 local lsp_servers = {
+    gopls = {},
     lua_ls = {},
     jsonls = {},
     yamlls = {},
 }
 local formatters = {
-    stylua = {},
+    "stylua",
 }
+local go_tools = {
+    -- NOTE: gopher.nvim で使用
+    "gomodifytags",
+    "gotests",
+    "impl",
+    "iferr",
+}
+
+local tools = vim.list_extend({}, formatters)
+vim.list_extend(tools, go_tools)
 
 return {
     {
@@ -17,7 +28,7 @@ return {
             {
                 "mason-org/mason.nvim",
                 opts = {
-                    ensure_installed = formatters
+                    ensure_installed = tools
                 },
                 config = function(_, opts)
                     require("mason").setup(opts)
