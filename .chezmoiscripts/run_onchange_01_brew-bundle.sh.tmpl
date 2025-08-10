@@ -8,7 +8,7 @@ set -eu
 {{ if eq .chezmoi.username "0ta2" }}
 BREWFILE={{ joinPath .chezmoi.sourceDir "Brewfile" | quote }}
 {{ else }}
-BREWFILE=${HOME}/.Brewfile
+BREWFILE=${HOME}/Brewfile
 {{ end }}
 
 if [[ -f "$BREWFILE" ]]; then
