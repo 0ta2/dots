@@ -15,7 +15,7 @@ cask "1password"
 cask "heptabase"
 cask "readdle-spark"
 cask "reader" # Readwise Reader
-cask "docker"
+cask "docker-desktop"
 cask "karabiner-elements"
 cask "deepl"
 cask "raycast"
