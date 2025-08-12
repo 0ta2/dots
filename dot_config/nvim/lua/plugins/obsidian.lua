@@ -4,6 +4,12 @@ return {
     ---@module 'obsidian'
     ---@type obsidian.config
     opts = {
-        workspaces = {},
+        legacy_commands = false,
+        workspaces = {
+            {
+                name = "work",
+                path = vim.env.OBSIDIAN_PATH,
+            },
+        },
     },
 }

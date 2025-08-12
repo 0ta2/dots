@@ -24,7 +24,7 @@ require("lazy").setup({
       -- treesitter
       { import = "plugins.treesitter" },
       -- ai
-      { import = "plugins.ai" }
+      { import = "plugins.ai" },
       {{- if ne (env "WORKSTATION") "private" }}
       { import = "plugins.obsidian" },
       {{- end }}
