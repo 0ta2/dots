@@ -2,7 +2,9 @@
 cask "font-hackgen-nerd"
 
 # cli
+brew "tmux"
 brew "mise"
+brew "bat"
 
 # editor
 brew "neovim"
@@ -20,7 +22,6 @@ cask "karabiner-elements"
 cask "deepl"
 cask "raycast"
 cask "kobo"
-brew "tmux"
 
 # terminal
 brew "starship"
