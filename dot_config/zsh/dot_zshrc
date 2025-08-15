@@ -11,6 +11,13 @@ eval "$(mise activate zsh)"
 eval "$(starship init zsh)"
 
 #
+# 環境固有の設定
+#
+if [ -f ~/.zshrc.dev ]; then
+    source ~/.zshrc.dev
+fi
+
+#
 # zim
 #
 # Download zimfw plugin manager if missing.

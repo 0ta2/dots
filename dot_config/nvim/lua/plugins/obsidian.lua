@@ -7,7 +7,7 @@ return {
         legacy_commands = false,
         workspaces = {
             {
-                name = "work",
+                name = "public",
                 path = vim.env.OBSIDIAN_PATH,
             },
         },
