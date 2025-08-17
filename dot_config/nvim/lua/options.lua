@@ -10,7 +10,7 @@ vim.o.showmode = false
 -- NeovimとOSのクリップボードを同期
 -- 起動時間が長くなるのを避けるため、設定は UiEnter イベントの後に実行する。
 vim.schedule(function()
-  vim.o.clipboard = 'unnamedplus'
+    vim.o.clipboard = 'unnamedplus'
 end)
 
 -- 折り返した行でもインデントを維持
