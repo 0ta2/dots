@@ -22,6 +22,17 @@ return {
         },
     },
 
+    -- Git のバッファ統合
+    {
+        "lewis6991/gitsigns.nvim",
+        opts = {},
+    },
+
+    {
+        "sindrets/diffview.nvim",
+        opts = {},
+    },
+
     -- カーソルの移動強化
     {
         "folke/flash.nvim",
@@ -168,11 +179,5 @@ return {
     {
         "MagicDuck/grug-far.nvim",
         opts = { headerMaxWidth = 80 },
-    },
-
-    -- Git のバッファ統合
-    {
-        "lewis6991/gitsigns.nvim",
-        opts = {},
     },
 }
