@@ -24,7 +24,6 @@ cask "raycast"
 cask "kobo"
 cask "claude"
 cask "chatgpt"
-brew "tmux"
 
 # terminal
 brew "starship"
