@@ -130,7 +130,7 @@ return {
                 end,
             },
             -- NOTE: catppuccin の bufferline のカラーを微調整｡これで､タブのない空白部分が黒くではなく catppuccin のカラーで統一される｡
-            highlights = require("catppuccin.groups.integrations.bufferline").get({
+            highlights = require("catppuccin.groups.integrations.bufferline").get_theme({
                 styles = { "italic", "bold" },
                 custom = {
                     all = {
