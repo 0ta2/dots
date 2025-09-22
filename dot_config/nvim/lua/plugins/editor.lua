@@ -18,7 +18,7 @@ return {
             -- explorer
             { "<leader>e", function() Snacks.explorer.open() end, desc = "エクスプローラーを開く" },
             -- lazygit
-            { "<leader>gl", function() Snacks.lazygit() end, desc = "Lazygitを開く" },
+            { "<leader>l", function() Snacks.lazygit() end, desc = "Lazygitを開く" },
         },
     },
 
