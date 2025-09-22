@@ -8,6 +8,8 @@ delta = "latest" # diff の表示を見やすくしてくれるツール
 rg = "latest"
 coreutils = "latest" # macOSは､BSD版なので､GNU版のほうが使い慣れているため｡
 gh = "latest" # GitHub CLI
+awscli = "latest"
+gcloud = "latest"
 
 # For Go
 go = "latest"
@@ -22,6 +24,7 @@ rust = "latest"
 "cargo:selene" = "latest"
 
 # For Python
+python = "latest"
 uv = "latest"
 poetry = "latest"
 
