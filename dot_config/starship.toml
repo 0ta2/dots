@@ -19,6 +19,7 @@ $java\
 $kotlin\
 $haskell\
 $python\
+$kubernetes\
 [](fg:green bg:lavender)\
 $time\
 [ ](fg:lavender)\
@@ -137,6 +138,11 @@ symbol = ""
 style = "bg:sapphire"
 format = '[[ $symbol( $context) ](fg:crust bg:sapphire)]($style)'
 
+
+[kubernetes]
+symbol = "☸"
+disabled = false
+format = '[[ $symbol( $context( \($namespace\))) ](fg:crust bg:green)]($style)'
 
 [time]
 disabled = false
