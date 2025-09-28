@@ -8,8 +8,12 @@ export ZDOTDIR="${XDG_CONFIG_HOME}/zsh"
 # zim
 export ZIM_HOME="${XDG_CACHE_HOME}/zim"
 
+{{ if eq .chezmoi.username "0ta2" }}
 # private
 export WORKSTATION="private"
-if [[ ${USER}  != "0ta2" ]];then
-    export WORKSTATION="public"
-fi
+export BREWFILE={{ joinPath .chezmoi.sourceDir "Brewfile" | quote }}
+{{ else }}
+# public
+export WORKSTATION="public"
+export BREWFILE=${HOME}/Brewfile
+{{ end }}
