@@ -1,5 +1,6 @@
 [vars]
 source = '~/ghq/github.com/0ta2/dots'
+brewfile = "${BREWFILE}"
 
 #
 # chemoi
@@ -32,4 +33,10 @@ description = "Brewのupgrade&update"
 run = [
     "brew upgrade",
     "brew update"
+]
+
+[tasks."brew:sync"]
+description = "Brewのsync"
+run = [
+    "brew bundle --cleanup --file={{vars.brewfile}}",
 ]
