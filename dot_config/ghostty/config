@@ -1,5 +1,5 @@
 # theme
-theme = IR_Black
+theme = "IR Black"
 
 # font
 font-family = "HackGen35 Console NF"

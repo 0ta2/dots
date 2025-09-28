@@ -22,6 +22,17 @@ return {
         },
     },
 
+    -- Git のバッファ統合
+    {
+        "lewis6991/gitsigns.nvim",
+        opts = {},
+    },
+
+    {
+        "sindrets/diffview.nvim",
+        opts = {},
+    },
+
     -- カーソルの移動強化
     {
         "folke/flash.nvim",
@@ -119,7 +130,7 @@ return {
                 end,
             },
             -- NOTE: catppuccin の bufferline のカラーを微調整｡これで､タブのない空白部分が黒くではなく catppuccin のカラーで統一される｡
-            highlights = require("catppuccin.groups.integrations.bufferline").get({
+            highlights = require("catppuccin.special.bufferline").get_theme({
                 styles = { "italic", "bold" },
                 custom = {
                     all = {
@@ -168,11 +179,5 @@ return {
     {
         "MagicDuck/grug-far.nvim",
         opts = { headerMaxWidth = 80 },
-    },
-
-    -- Git のバッファ統合
-    {
-        "lewis6991/gitsigns.nvim",
-        opts = {},
     },
 }
