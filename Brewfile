@@ -5,6 +5,7 @@ cask "font-hackgen-nerd"
 brew "tmux"
 brew "mise"
 brew "bat"
+brew "fd"
 
 # editor
 brew "neovim"
