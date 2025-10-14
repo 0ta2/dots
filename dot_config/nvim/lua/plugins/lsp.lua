@@ -3,6 +3,7 @@ local lsp_servers = {
     lua_ls = {},
     jsonls = {},
     yamlls = {},
+    copilot = {},
 }
 local formatters = {
     "stylua",
