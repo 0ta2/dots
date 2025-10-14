@@ -16,9 +16,50 @@ return {
         ---@module 'blink.cmp'
         ---@type blink.cmp.Config
         opts = {
-            keymap = { preset = 'super-tab' },
+            keymap = {
+                ['<C-space>'] = { 'show', 'show_documentation', 'hide_documentation' },
+                ['<C-e>'] = { 'hide', 'fallback' },
 
-            appearance = {
+                ['<Tab>'] = {
+                    function(cmp)
+                        if cmp.snippet_active() then
+                            return cmp.accept()
+                        else
+                            return cmp.select_and_accept()
+                        end
+                    end,
+                    'snippet_forward',
+                    'fallback'
+                },
+                ['<S-Tab>'] = { 'snippet_backward', 'fallback' },
+
+                ['<Up>'] = { 'select_prev', 'fallback' },
+                ['<Down>'] = { 'select_next', 'fallback' },
+                ['<C-p>'] = { 'select_prev', 'fallback_to_mappings' },
+                ['<C-n>'] = { 'select_next', 'fallback_to_mappings' },
+
+                ['<C-b>'] = { 'scroll_documentation_up', 'fallback' },
+                ['<C-f>'] = { 'scroll_documentation_down', 'fallback' },
+
+
+                -- signature設定
+                ['<C-u>'] = { 'scroll_signature_up', 'fallback' },
+                ['<C-d>'] = { 'scroll_signature_down', 'fallback' },
+                ['<C-k>'] = { 'show_signature', 'hide_signature', 'fallback' },
+
+                -- ["<Tab>"] = {
+                --     "snippet_forward",
+                --     function() -- sidekick next edit suggestion
+                --         return require("sidekick").nes_jump_or_apply()
+                --     end,
+                --     -- function() -- if you are using Neovim's native inline completions
+                --         -- return vim.lsp.inline_completion.get()
+                --     -- end,
+                --     "fallback",
+                -- },
+            },
+
+           appearance = {
                 nerd_font_variant = 'mono'
             },
 
@@ -38,6 +79,12 @@ return {
                         },
                     },
                 },
+                list = {
+                    selection = {
+                        preselect = true,
+                        auto_insert = true,
+                    },
+                },
             },
 
             sources = {
@@ -53,7 +100,11 @@ return {
 
             fuzzy = { implementation = "prefer_rust_with_warning" },
 
-            snippets = { preset = 'luasnip' },
+            snippets = {
+                preset = 'luasnip'
+            },
+
+            signature = { enabled = true }
         },
         opts_extend = { "sources.default" }
     },
