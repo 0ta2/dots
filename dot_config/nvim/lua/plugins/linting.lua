@@ -8,7 +8,6 @@ return {
         events = {
             "BufWritePost",
             "BufReadPost",
-            "InsertLeave"
         },
         linters_by_ft = linters
     },
