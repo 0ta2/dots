@@ -1,40 +1,92 @@
 return {
     {
-        "yetone/avante.nvim",
-        build = "make",
-        version = false,
-        ---@module 'avante'
-        ---@type avante.Config
+        "folke/sidekick.nvim",
         opts = {
-            ---@alias Provider "claude" | "openai" | "azure" | "gemini" | "cohere" | "copilot" | string
-            ---@type Provider
-            provider = "copilot",
-            ---@alias Mode "agentic" | "legacy"
-            ---@type Mode
-            mode = "agentic",
-            auto_suggestions_provider = "copilot",
-        },
-        dependencies = {
-            "nvim-lua/plenary.nvim",
-            "MunifTanjim/nui.nvim",
-            "folke/snacks.nvim",
-            "nvim-tree/nvim-web-devicons",
-            {
-                "HakonHarnes/img-clip.nvim",
-                opts = {
-                    default = {
-                        embed_image_as_base64 = false,
-                        prompt_for_file_name = false,
-                        drag_and_drop = {
-                            insert_mode = true,
-                        },
-                    },
+            cli = {
+                ---@class sidekick.cli.Mux
+                ---@field backend? "tmux"|"zellij" Multiplexer backend to persist CLI sessions
+                mux = {
+                    backend = "tmux",
+                    enabled = true,
+                },
+                ---@type table<string, sidekick.Prompt|string|fun(ctx:sidekick.context.ctx):(string?)>
+                prompts = {
+                    changes         = "Can you review my changes?",
+                    diagnostics     = "Can you help me fix the diagnostics in {file}?\n{diagnostics}",
+                    diagnostics_all = "Can you help me fix these diagnostics?\n{diagnostics_all}",
+                    document        = "Add documentation to {function|line}",
+                    explain         = "Explain {this}",
+                    fix             = "Can you fix {this}?",
+                    optimize        = "How can {this} be optimized?",
+                    review          = "Can you review {file} for any issues or improvements?",
+                    tests           = "Can you write tests for {this}?",
+                    -- simple context prompts
+                    buffers         = "{buffers}",
+                    file            = "{file}",
+                    line            = "{line}",
+                    position        = "{position}",
+                    quickfix        = "{quickfix}",
+                    selection       = "{selection}",
+                    ["function"]    = "{function}",
+                    class           = "{class}",
                 },
             },
-            opts = {
-                file_selector = {
-                    provider = "snacks",
-                },
+        },
+        keys = {
+            {
+                "<tab>",
+                function()
+                    if not require("sidekick").nes_jump_or_apply() then
+                        return "<Tab>"
+                    end
+                end,
+                expr = true,
+                desc = "Goto/Apply Next Edit Suggestion",
+            },
+            {
+                "<leader>aa",
+                function()
+                    require("sidekick.cli").toggle({ filter = { installed = true } })
+                end,
+                desc = "Sidekick Toggle CLI",
+            },
+            {
+                "<leader>ad",
+                function()
+                    require("sidekick.cli").close()
+                end,
+                desc = "CLIのセッションを閉じる",
+            },
+            {
+                "<leader>at",
+                function()
+                    require("sidekick.cli").send({ msg = "{this}" })
+                end,
+                mode = { "x", "n" },
+                desc = "現在のブロックを Sidekick に連携する",
+            },
+            {
+                "<leader>af",
+                function()
+                    require("sidekick.cli").send({ msg = "{file}" })
+                end,
+                desc = "現在のファイルを Sidekeick に連携する",
+            },
+            {
+                "<leader>av",
+                function()
+                    require("sidekick.cli").send({ msg = "{selection}" })
+                end,
+                mode = { "x" },
+                desc = "選択している範囲を Sidekick に連携する",
+            },
+            {
+                "<leader>ap",
+                function()
+                    require("sidekick.cli").prompt()
+                end,
+                mode = { "n", "x" },
+                desc = "Sidekick の Prompt を選択",
             },
         },
     },

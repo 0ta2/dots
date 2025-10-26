@@ -38,5 +38,5 @@ run = [
 [tasks."brew:sync"]
 description = "Brewのsync"
 run = [
-    "brew bundle --cleanup --file={{vars.brewfile}}",
+    "brew bundle --cleanup --force --file={{vars.brewfile}}",
 ]
