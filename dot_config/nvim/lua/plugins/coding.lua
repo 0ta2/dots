@@ -48,7 +48,7 @@ return {
                 ['<C-k>'] = { 'show_signature', 'hide_signature', 'fallback' },
             },
 
-           appearance = {
+            appearance = {
                 nerd_font_variant = 'mono'
             },
 
