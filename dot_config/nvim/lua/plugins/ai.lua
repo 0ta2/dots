@@ -44,12 +44,11 @@ return {
                 desc = "Goto/Apply Next Edit Suggestion",
             },
             {
-                "<c-.>",
+                "<leader>aa",
                 function()
                     require("sidekick.cli").toggle({ filter = { installed = true } })
                 end,
-                desc = "Sidekick Toggle",
-                mode = { "n", "t", "i", "x" },
+                desc = "Sidekick Toggle CLI",
             },
             {
                 "<leader>ad",
