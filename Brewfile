@@ -14,6 +14,7 @@ cask "visual-studio-code"
 # application
 cask "google-chrome"
 cask "google-japanese-ime"
+cask "azooKey"
 cask "1password"
 cask "heptabase"
 cask "readdle-spark"
