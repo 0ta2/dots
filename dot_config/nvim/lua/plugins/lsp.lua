@@ -70,7 +70,7 @@ return {
             vim.keymap.set('n', 'gi', '<cmd>Lspsaga finder imp<CR>', { desc = "実装箇所へ移動" })
             vim.keymap.set('n', 'ga', '<cmd>Lspsaga code_action<CR>', { desc = "コードアクションの実行" })
             vim.keymap.set('n', 'gk', '<cmd>Lspsaga hover_doc<CR>', { desc = "ホバー" })
-            vim.keymap.set('n', 'rn', '<cmd>Lspsaga rename<CR>', { desc = "リネーム" })
+            vim.keymap.set('n', 'grn', '<cmd>Lspsaga rename<CR>', { desc = "リネーム" })
         end,
         opts = {
             ui = {
