@@ -1,1 +1,2 @@
-gemini-cli
+npm:@google/gemini-cli
+npm:@openai/codex
