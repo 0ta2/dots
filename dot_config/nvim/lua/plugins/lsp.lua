@@ -4,6 +4,7 @@ local lsp_servers = {
 	jsonls = {},
 	yamlls = {},
 	copilot = {},
+	pyright = {},
 }
 local formatters = {
 	"stylua",
