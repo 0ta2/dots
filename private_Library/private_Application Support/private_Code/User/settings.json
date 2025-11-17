@@ -1,8 +1,23 @@
 {
     // Layout
     "workbench.activityBar.location": "top",
-
     // Font
     "editor.fontFamily": "HackGen35",
     "terminal.integrated.fontFamily": "HackGen Console NF"
+    // Go
+    "go.lintTool": "golangci-lint",
+    "go.lintFlags": [
+        "--path-mode=abs",
+        "--fast-only"
+    ],
+    "go.formatTool": "custom",
+    "go.alternateTools": {
+        "customFormatter": "golangci-lint"
+    },
+    "go.formatFlags": [
+        "fmt",
+        "--stdin"
+    ],
+    // 自動保存
+    "files.autoSave": "onFocusChange"
 }
