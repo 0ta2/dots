@@ -1,6 +1,6 @@
 return {
 	{
-		"folke/whicj-key.nvim",
+		"folke/which-key.nvim",
 		opts = {},
 		config = function()
 			local wk = require("which-key")
