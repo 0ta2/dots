@@ -5,3 +5,6 @@ README.md
 Brewfile
 mise.toml
 selene.toml
+{{- if ne (env "WORKSTATION") "private" }}
+./private_Library/private_Application Support/private_Code/User/
+{{- end }}
