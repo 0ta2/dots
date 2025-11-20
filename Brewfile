@@ -12,8 +12,8 @@ brew "neovim"
 cask "visual-studio-code"
 
 # application
+cask "chatgpt-atlas"
 cask "google-chrome"
-cask "google-japanese-ime"
 cask "azooKey"
 cask "1password"
 cask "heptabase"
@@ -21,7 +21,6 @@ cask "readdle-spark"
 cask "reader" # Readwise Reader
 cask "docker-desktop"
 cask "karabiner-elements"
-cask "deepl"
 cask "raycast"
 cask "kobo"
 cask "claude"
@@ -38,6 +37,5 @@ brew "mas"
 vscode "MS-CEINTL.vscode-language-pack-ja"
 
 # for app store
-mas "kindle", id: 302584613
-mas "LINE", id: 539883307
-mas "Pixelmator Pro", id: 1289583905
+#mas "LINE", id: 539883307
+#mas "Pixelmator Pro", id: 1289583905
