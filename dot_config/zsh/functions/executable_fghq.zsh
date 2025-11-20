@@ -3,7 +3,6 @@ fghq() {
     selected_dir=$(
         ghq list -p | fzf \
             --query="${LBUFFER}" \
-            --select-1 --exit-0
     ) || true
 
     [[ -z "${selected_dir}" ]] && { zle reset-prompt; return 0 }
