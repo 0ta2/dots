@@ -132,11 +132,12 @@ done
 
 # 環境変数
 # less コマンドの環境変数
+# --quit-if-one-screen 表示するときに1ページに収まるのであれば、less を起動しない
 # --ignore-case 検索時に大文字小文字を区別しない
 # --LONG-PROMPT 詳細なプロンプト表示
 # --RAW-CONTROL-CHARS ANSI色付けシーケンスを表示
 # --HILITE-UNREAD まだ読んでいない行をハイライト
-export LESS='--ignore-case --LONG-PROMPT --RAW-CONTROL-CHARS --HILITE-UNREAD'
+export LESS='--quit-if-one-screen --ignore-case --LONG-PROMPT --RAW-CONTROL-CHARS --HILITE-UNREAD'
 
 # neovim
 export EDITOR="nvim"
