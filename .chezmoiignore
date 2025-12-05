@@ -5,6 +5,6 @@ README.md
 Brewfile
 mise.toml
 selene.toml
-{{- if ne (env "WORKSTATION") "private" }}
+{{- if eq .chezmoi.username "0ta2" }}
 ./private_Library/private_Application Support/private_Code/User/
 {{- end }}
