@@ -145,4 +145,9 @@ return {
 			},
 		},
 	},
+
+	{
+		"esmuellert/vscode-diff.nvim",
+		opts = {},
+	},
 }
