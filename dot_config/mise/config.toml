@@ -16,6 +16,7 @@ go = "latest"
 
 # For Node.js
 node = "latest"
+"npm:@github/copilot" = "latest"
 
 # For Rust
 rust = "latest"

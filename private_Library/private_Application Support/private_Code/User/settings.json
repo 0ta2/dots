@@ -3,7 +3,15 @@
     "workbench.activityBar.location": "top",
     // Font
     "editor.fontFamily": "HackGen35",
-    "terminal.integrated.fontFamily": "HackGen Console NF"
+    "terminal.integrated.fontFamily": "HackGen Console NF",
+    // Github Copilot
+    "github.copilot.nextEditSuggestions.enabled": true,
+    // Editor
+    "editor.minimap.enabled": false,
+    // Files
+    "files.autoSave": "onFocusChange",
+    // Workbench
+    "workbench.activityBar.location": "top",
     // Go
     "go.lintTool": "golangci-lint",
     "go.lintFlags": [
@@ -18,6 +26,107 @@
         "fmt",
         "--stdin"
     ],
-    // 自動保存
-    "files.autoSave": "onFocusChange"
+    // Vim
+    // OSのクリップボードと同期する
+    "vim.useSystemClipboard": true,
+    // Keymapの設定
+    // ノーマルモードのキー割り当て
+    "vim.normalModeKeyBindings": [
+        // H/L で行頭・行末へ移動
+        {
+            "before": [
+                "H"
+            ],
+            "after": [
+                "^"
+            ]
+        },
+        {
+            "before": [
+                "L"
+            ],
+            "after": [
+                "$"
+            ]
+        },
+        // j/k で表示行（折り返し考慮）移動
+        {
+            "before": [
+                "j"
+            ],
+            "after": [
+                "g",
+                "j"
+            ]
+        },
+        {
+            "before": [
+                "k"
+            ],
+            "after": [
+                "g",
+                "k"
+            ]
+        },
+        // x/s で削除した時はクリップボードを汚さない（ブラックホールレジスタを使用）
+        {
+            "before": [
+                "x"
+            ],
+            "after": [
+                "\"",
+                "_",
+                "x"
+            ]
+        },
+        {
+            "before": [
+                "s"
+            ],
+            "after": [
+                "\"",
+                "_",
+                "s"
+            ]
+        }
+    ],
+    // ビジュアルモードのキー割り当て
+    "vim.visualModeKeyBindings": [
+        // H/L で行頭・行末へ移動
+        {
+            "before": [
+                "H"
+            ],
+            "after": [
+                "^"
+            ]
+        },
+        {
+            "before": [
+                "L"
+            ],
+            "after": [
+                "$"
+            ]
+        },
+        // j/k で表示行（折り返し考慮）移動
+        {
+            "before": [
+                "j"
+            ],
+            "after": [
+                "g",
+                "j"
+            ]
+        },
+        {
+            "before": [
+                "k"
+            ],
+            "after": [
+                "g",
+                "k"
+            ]
+        }
+    ]
 }
