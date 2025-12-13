@@ -16,7 +16,7 @@ ta() {
                 tmux attach-session -t "=${name}"
             fi
         else
-            exec tmux new-session -s "${name}"
+            tmux new-session -s "${name}"
         fi
     else
         if [[ -n "${TMUX-}" ]]; then
