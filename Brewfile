@@ -6,6 +6,7 @@ brew "tmux"
 brew "mise"
 brew "bat"
 brew "fd"
+brew "gsed"
 
 # editor
 brew "neovim"
