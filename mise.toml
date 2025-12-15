@@ -40,3 +40,6 @@ description = "Brewのsync"
 run = [
     "brew bundle --cleanup --force --file={{vars.brewfile}}",
 ]
+
+[tools]
+ghq = "latest"

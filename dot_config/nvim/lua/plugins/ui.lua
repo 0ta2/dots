@@ -124,6 +124,7 @@ return {
 		dependencies = { "kevinhwang91/promise-async" },
 		config = function()
 			vim.o.foldcolumn = "1"
+			-- 起動時に開いた状態にするために 99 を設定
 			vim.o.foldlevel = 99
 			vim.o.foldlevelstart = 99
 			vim.o.foldenable = true
@@ -144,5 +145,10 @@ return {
 				border = "thick",
 			},
 		},
+	},
+
+	{
+		"esmuellert/vscode-diff.nvim",
+		opts = {},
 	},
 }

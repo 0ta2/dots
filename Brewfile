@@ -6,6 +6,7 @@ brew "tmux"
 brew "mise"
 brew "bat"
 brew "fd"
+brew "gsed"
 
 # editor
 brew "neovim"
@@ -37,5 +38,5 @@ brew "mas"
 vscode "MS-CEINTL.vscode-language-pack-ja"
 
 # for app store
-#mas "LINE", id: 539883307
-#mas "Pixelmator Pro", id: 1289583905
+mas "LINE", id: 539883307
+mas "Pixelmator Pro", id: 1289583905
