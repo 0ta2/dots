@@ -10,8 +10,6 @@
     "editor.minimap.enabled": false,
     // Files
     "files.autoSave": "onFocusChange",
-    // Workbench
-    "workbench.activityBar.location": "top",
     // Go
     "go.lintTool": "golangci-lint",
     "go.lintFlags": [
