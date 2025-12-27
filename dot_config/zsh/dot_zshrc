@@ -37,6 +37,8 @@ source ${ZIM_HOME}/init.zsh
 #
 # zsh
 #
+eval "$(gh completion --shell zsh)"
+
 # `/` を単語の一部として扱わない
 # default: *?_-.[]~=/&;!#$%^(){}<>
 WORDCHARS=${WORDCHARS//[\/]}

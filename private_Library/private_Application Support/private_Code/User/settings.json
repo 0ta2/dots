@@ -10,17 +10,15 @@
     "editor.minimap.enabled": false,
     // Files
     "files.autoSave": "onFocusChange",
-    // Workbench
-    "workbench.activityBar.location": "top",
     // Go
-    "go.lintTool": "golangci-lint",
+    "go.lintTool": "golangci-lint-v2",
     "go.lintFlags": [
         "--path-mode=abs",
         "--fast-only"
     ],
     "go.formatTool": "custom",
     "go.alternateTools": {
-        "customFormatter": "golangci-lint"
+        "customFormatter":  "golangci-lint-v2"
     },
     "go.formatFlags": [
         "fmt",
@@ -68,25 +66,29 @@
                 "k"
             ]
         },
-        // x/s で削除した時はクリップボードを汚さない（ブラックホールレジスタを使用）
+        // ; と: を入れ替える
         {
             "before": [
-                "x"
+                ";"
             ],
             "after": [
-                "\"",
-                "_",
-                "x"
+                ":"
             ]
         },
         {
             "before": [
-                "s"
+                ":"
             ],
-            "after": [
-                "\"",
-                "_",
-                "s"
+            "commands": [
+                "workbench.action.showCommands"
+            ]
+        },
+        {
+            "before": [
+                "<C-p>"
+            ],
+            "commands": [
+                "workbench.action.quickOpen"
             ]
         }
     ],

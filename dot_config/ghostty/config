@@ -3,7 +3,12 @@ theme = "IR Black"
 
 # font
 font-family = "HackGen35 Console NF"
+window-title-font-family = "HackGen35 Console NF"
+background-opacity = 0.60
 font-size = 15
 
 # macOS
 macos-option-as-alt = true
+
+# 閉じる際に確認ダイアログを出すかどうか
+confirm-close-surface = false

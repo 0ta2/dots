@@ -1,7 +1,7 @@
 return {
     {
-        'saghen/blink.cmp',
-        version = '1.*',
+        "saghen/blink.cmp",
+        version = "1.*",
 
         dependencies = {
             "L3MON4D3/LuaSnip",
@@ -10,17 +10,17 @@ return {
             build = "make install_jsregexp",
             config = function()
                 require("luasnip.loaders.from_vscode").lazy_load()
-            end
+            end,
         },
 
         ---@module 'blink.cmp'
         ---@type blink.cmp.Config
         opts = {
             keymap = {
-                ['<C-space>'] = { 'show', 'show_documentation', 'hide_documentation' },
-                ['<C-e>'] = { 'hide', 'fallback' },
+                ["<C-space>"] = { "show", "show_documentation", "hide_documentation" },
+                ["<C-e>"] = { "hide", "fallback" },
 
-                ['<Tab>'] = {
+                ["<Tab>"] = {
                     function(cmp)
                         if cmp.snippet_active() then
                             return cmp.accept()
@@ -28,28 +28,27 @@ return {
                             return cmp.select_and_accept()
                         end
                     end,
-                    'snippet_forward',
-                    'fallback'
+                    "snippet_forward",
+                    "fallback",
                 },
-                ['<S-Tab>'] = { 'snippet_backward', 'fallback' },
+                ["<S-Tab>"] = { "snippet_backward", "fallback" },
 
-                ['<Up>'] = { 'select_prev', 'fallback' },
-                ['<Down>'] = { 'select_next', 'fallback' },
-                ['<C-p>'] = { 'select_prev', 'fallback_to_mappings' },
-                ['<C-n>'] = { 'select_next', 'fallback_to_mappings' },
+                ["<Up>"] = { "select_prev", "fallback" },
+                ["<Down>"] = { "select_next", "fallback" },
+                ["<C-p>"] = { "select_prev", "fallback_to_mappings" },
+                ["<C-n>"] = { "select_next", "fallback_to_mappings" },
 
-                ['<C-b>'] = { 'scroll_documentation_up', 'fallback' },
-                ['<C-f>'] = { 'scroll_documentation_down', 'fallback' },
-
+                ["<C-b>"] = { "scroll_documentation_up", "fallback" },
+                ["<C-f>"] = { "scroll_documentation_down", "fallback" },
 
                 -- signature設定
-                ['<C-u>'] = { 'scroll_signature_up', 'fallback' },
-                ['<C-d>'] = { 'scroll_signature_down', 'fallback' },
-                ['<C-k>'] = { 'show_signature', 'hide_signature', 'fallback' },
+                ["<C-u>"] = { "scroll_signature_up", "fallback" },
+                ["<C-d>"] = { "scroll_signature_down", "fallback" },
+                ["<C-k>"] = { "show_signature", "hide_signature", "fallback" },
             },
 
             appearance = {
-                nerd_font_variant = 'mono'
+                nerd_font_variant = "mono",
             },
 
             completion = {
@@ -58,13 +57,17 @@ return {
                     draw = {
                         columns = {
                             { "label",      "label_description", gap = 1 },
-                            { "kind_icon",  "kind",              'source_id', gap = 1 },
-                            { 'source_name' },
+                            { "kind_icon",  "kind",              "source_id", gap = 1 },
+                            { "source_name" },
                         },
                         -- NOTE: 補完候補が何から取得されたものかを表示する｡
                         -- https://github.com/Saghen/blink.cmp/discussions/1983
                         components = {
-                            source_name = { text = function(ctx) return ctx.item.client_name or ctx.item.source_name end },
+                            source_name = {
+                                text = function(ctx)
+                                    return ctx.item.client_name or ctx.item.source_name
+                                end,
+                            },
                         },
                     },
                 },
@@ -77,7 +80,7 @@ return {
             },
 
             sources = {
-                default = { 'lsp', 'path', 'snippets', 'buffer' },
+                default = { "lsp", "path", "snippets", "buffer" },
                 providers = {
                     lazydev = {
                         name = "LazyDev",
@@ -88,37 +91,24 @@ return {
             },
 
             cmdline = {
-                keymap = {
-                    ['<Tab>'] = { 'show_and_insert_or_accept_single', 'select_next' },
-                    ['<S-Tab>'] = { 'show_and_insert_or_accept_single', 'select_prev' },
-
-                    ['<C-space>'] = { 'show', 'fallback' },
-
-                    ['<C-n>'] = { 'select_next', 'fallback' },
-                    ['<C-p>'] = { 'select_prev', 'fallback' },
-                    ['<Right>'] = { 'select_next', 'fallback' },
-                    ['<Left>'] = { 'select_prev', 'fallback' },
-
-                    ['<C-y>'] = { 'select_and_accept', 'fallback' },
-                    ['<C-e>'] = { 'cancel', 'fallback' },
-                },
+                keymap = { preset = "inherit" },
                 completion = {
                     menu = {
-                        auto_show = true
+                        auto_show = true,
                     },
-                    ghost_text = { enabled = true }
+                    ghost_text = { enabled = true },
                 },
             },
 
             fuzzy = { implementation = "prefer_rust_with_warning" },
 
             snippets = {
-                preset = 'luasnip'
+                preset = "luasnip",
             },
 
-            signature = { enabled = true }
+            signature = { enabled = true },
         },
-        opts_extend = { "sources.default" }
+        opts_extend = { "sources.default" },
     },
 
     -- lualsの高速なセットアップのためのプラグイン
@@ -130,13 +120,13 @@ return {
                 { path = "snacks.nvim",        words = { "Snacks" } },
                 { path = "lazy.nvim",          words = { "LazyVim" } },
             },
-        }
+        },
     },
 
     {
-        'saghen/blink.pairs',
-        version = '*',
-        dependencies = 'saghen/blink.download',
+        "saghen/blink.pairs",
+        version = "*",
+        dependencies = "saghen/blink.download",
         opts = {
             mappings = {
                 enabled = true,
@@ -155,7 +145,7 @@ return {
                 },
                 matchparen = {
                     enabled = true,
-                    group = 'MatchParen',
+                    group = "MatchParen",
                 },
             },
             debug = false,
@@ -191,22 +181,27 @@ return {
             vim.g.matchup_treesitter_stopline = 500
             vim.g.matchup_treesitter_enabled = 1
             vim.g.matchup_matchparen_offscreen = { method = "popup" }
-            require('match-up').setup({
+            require("match-up").setup({
                 treesitter = {
-                    stopline = 500
-                }
+                    stopline = 500,
+                },
             })
         end,
         ---@type matchup.Config
         opts = {
             treesitter = {
                 stopline = 500,
-            }
+            },
         },
         config = function()
             -- %キーのデフォルト動作を<leader>%に移動
-            vim.keymap.set({ 'n', 'x' }, 'm', '<Plug>(matchup-%)', { desc = "カッコ閉じの移動", noremap = false })
-        end
+            vim.keymap.set(
+                { "n", "x" },
+                "m",
+                "<Plug>(matchup-%)",
+                { desc = "カッコ閉じの移動", noremap = false }
+            )
+        end,
     },
 
     -- go
@@ -222,6 +217,6 @@ return {
         },
         config = function(_, opts)
             require("gopher").setup(opts)
-        end
+        end,
     },
 }
