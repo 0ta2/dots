@@ -37,6 +37,34 @@ return {
                 end,
                 desc = "ピッカーのピッカー",
             },
+            {
+                "<leader>gi",
+                function()
+                    Snacks.picker.gh_issue()
+                end,
+                desc = "GitHub Issues 一覧(Openのみ)",
+            },
+            {
+                "<leader>gI",
+                function()
+                    Snacks.picker.gh_issue({ state = "all" })
+                end,
+                desc = "GitHub Issues 一覧(all)",
+            },
+            {
+                "<leader>gp",
+                function()
+                    Snacks.picker.gh_pr()
+                end,
+                desc = "GitHub Pull Requests 一覧(Openのみ)",
+            },
+            {
+                "<leader>gP",
+                function()
+                    Snacks.picker.gh_pr({ state = "all" })
+                end,
+                desc = "GitHub Pull Requests 一覧(all)",
+            },
         },
     },
 }
