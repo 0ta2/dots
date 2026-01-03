@@ -1,8 +1,5 @@
 #!/usr/bin/env zsh
 #
-exec > /tmp/tsm.log 2>&1
-set -x
-
 sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null | sort)
 
 result=$(echo "$sessions" | \
