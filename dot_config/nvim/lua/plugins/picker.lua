@@ -16,31 +16,55 @@ return {
         },
         keys = {
             -- Picker
-            { "<c-p>", function() Snacks.picker.smart() end, desc = "ファイルのスマート検索(buffers, recent, files)" },
-            { "<c-g>", function() Snacks.picker.grep() end, desc = "文字列検索" },
-            { "<leader>c", function() Snacks.picker.pickers() end, desc = "ピッカーのピッカー" },
+            {
+                "<c-p>",
+                function()
+                    Snacks.picker.smart()
+                end,
+                desc = "ファイルのスマート検索(buffers, recent, files)",
+            },
+            {
+                "<c-g>",
+                function()
+                    Snacks.picker.grep()
+                end,
+                desc = "文字列検索",
+            },
+            {
+                "<leader>c",
+                function()
+                    Snacks.picker.pickers()
+                end,
+                desc = "ピッカーのピッカー",
+            },
+            {
+                "<leader>gi",
+                function()
+                    Snacks.picker.gh_issue()
+                end,
+                desc = "GitHub Issues 一覧(Openのみ)",
+            },
+            {
+                "<leader>gI",
+                function()
+                    Snacks.picker.gh_issue({ state = "all" })
+                end,
+                desc = "GitHub Issues 一覧(all)",
+            },
+            {
+                "<leader>gp",
+                function()
+                    Snacks.picker.gh_pr()
+                end,
+                desc = "GitHub Pull Requests 一覧(Openのみ)",
+            },
+            {
+                "<leader>gP",
+                function()
+                    Snacks.picker.gh_pr({ state = "all" })
+                end,
+                desc = "GitHub Pull Requests 一覧(all)",
+            },
         },
     },
-
-    -- {
-    --     "ibhagwan/fzf-lua",
-    --     opts = {},
-    --     keys = {
-    --         {
-    --             "<c-p>",
-    --             function()
-    --                 require("fzf-lua").combine({ pickers = { "buffers", "oldfiles", "files" } })
-    --             end,
-    --             desc = "ファイルのスマート検索(oldfiles,files,buffers)",
-    --         },
-    --         {
-    --             "<c-g>",
-    --             function ()
-    --                 FzfLua.live_grep()
-    --             end,
-    --             desc = "文字列検索"
-    --         },
-    --         { "<leader>c", "<cmd>FzfLua builtin<cr>", desc = "ピッカーのピッカー" },
-    --     }
-    -- },
 }
