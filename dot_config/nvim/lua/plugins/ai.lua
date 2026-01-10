@@ -93,7 +93,7 @@ return {
     },
 
     {
-        "folke/sidekick.nvim",
+        "olimorris/codecompanion.nvim",
         opts = {
             opts = {},
         },

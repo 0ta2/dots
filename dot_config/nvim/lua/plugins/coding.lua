@@ -88,6 +88,9 @@ return {
                         score_offset = 100,
                     },
                 },
+                per_filetype = {
+                    codecompanion = { "codecompanion" },
+                },
             },
 
             cmdline = {
