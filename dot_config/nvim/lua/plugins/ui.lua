@@ -19,6 +19,16 @@ return {
     {
         "folke/snacks.nvim",
         priority = 1000,
+        keys = {
+            {
+                "<leader>q",
+                function()
+                    Snacks.bufdelete()
+                end,
+                desc = "バッファを閉じる（レイアウト保持）",
+            },
+        },
+
         opts = {
             dashboard = {
                 enabled = true,
