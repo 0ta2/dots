@@ -180,4 +180,13 @@ return {
         "MagicDuck/grug-far.nvim",
         opts = { headerMaxWidth = 80 },
     },
+
+    {
+        -- 使わなくなったバッファを自動的に閉じる
+	    "chrisgrieser/nvim-early-retirement",
+        opts = {
+            -- 5分たったバッファを自動的に閉じる
+            retirementAgeMins = 5,
+        }
+    },
 }
