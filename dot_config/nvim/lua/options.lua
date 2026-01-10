@@ -2,7 +2,7 @@
 vim.o.number = true
 
 -- マウスモードを有効化
-vim.o.mouse = 'a'
+vim.o.mouse = "a"
 
 -- モードを非表示
 vim.o.showmode = false
@@ -10,7 +10,7 @@ vim.o.showmode = false
 -- NeovimとOSのクリップボードを同期
 -- 起動時間が長くなるのを避けるため、設定は UiEnter イベントの後に実行する。
 vim.schedule(function()
-    vim.o.clipboard = 'unnamedplus'
+    vim.o.clipboard = "unnamedplus"
 end)
 
 -- 折り返した行でもインデントを維持
@@ -26,8 +26,7 @@ vim.o.ignorecase = true
 vim.o.smartcase = true
 
 -- デフォルトで signcolumn を表示したままにする
-vim.o.signcolumn = 'yes'
-
+vim.o.signcolumn = "yes"
 
 -- カーソル停止後に反応するまでの更新時間を短くする
 vim.o.updatetime = 250
@@ -41,10 +40,18 @@ vim.o.splitbelow = true
 -- Neovim がエディタ内で特定の空白文字をどのように表示するかを設定する。
 -- `vim.opt` は､テーブルとのやり取りを便利に行うためのインターフェースを提供する｡
 vim.o.list = true
-vim.opt.listchars = { tab = '» ', trail = '·', nbsp = '␣' }
+vim.opt.listchars = { tab = "» ", trail = "·", nbsp = "␣" }
+
+-- statusline を非表示にする
+vim.opt.laststatus = 0
+vim.opt.statusline = "─"
+vim.opt.fillchars:append({ stl = "─", stlnc = "─" })
+
+-- cmdline を非表示にする
+vim.opt.cmdheight = 0
 
 -- 入力中に置換の内容をライブでプレビューする
-vim.o.inccommand = 'split'
+vim.o.inccommand = "split"
 
 -- カーソルがある行を表示する
 vim.o.cursorline = true
@@ -65,7 +72,6 @@ vim.o.shiftwidth = 4
 -- 挿入・削除時の幅
 vim.o.softtabstop = 4
 
-
 -- diagnostic
 vim.diagnostic.config({
     virtual_text = {
@@ -75,9 +81,9 @@ vim.diagnostic.config({
         prefix = function(diagnostic)
             local icons = {
                 [vim.diagnostic.severity.ERROR] = "✘",
-                [vim.diagnostic.severity.WARN]  = "▲",
-                [vim.diagnostic.severity.INFO]  = "",
-                [vim.diagnostic.severity.HINT]  = "",
+                [vim.diagnostic.severity.WARN] = "▲",
+                [vim.diagnostic.severity.INFO] = "",
+                [vim.diagnostic.severity.HINT] = "",
             }
             return icons[diagnostic.severity]
         end,
@@ -87,9 +93,9 @@ vim.diagnostic.config({
     signs = {
         text = {
             [vim.diagnostic.severity.ERROR] = "✘",
-            [vim.diagnostic.severity.WARN]  = "▲",
-            [vim.diagnostic.severity.INFO]  = "",
-            [vim.diagnostic.severity.HINT]  = "",
+            [vim.diagnostic.severity.WARN] = "▲",
+            [vim.diagnostic.severity.INFO] = "",
+            [vim.diagnostic.severity.HINT] = "",
         },
     },
 

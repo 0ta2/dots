@@ -12,3 +12,10 @@
 
 [include]
     path = ~/.include.conf
+
+# nvim の plugin を使う
+# ref: https://github.com/esmuellert/codediff.nvim?tab=readme-ov-file#git-merge-tool
+[merge]
+        tool = codediff
+[mergetool "codediff"]
+        cmd = nvim "$MERGED" -c "CodeDiff merge \"$MERGED\""

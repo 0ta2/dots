@@ -2,8 +2,10 @@ require("lazy").setup({
   spec = {
       -- 様々なPluginから使われている便利ユーティリティ
       { "nvim-lua/plenary.nvim" },
-      -- 様々んPluginから使われているUIのコンポーネントライブラリー
+      -- 様々なPluginから使われているUIのコンポーネントライブラリー
       { "MunifTanjim/nui.nvim" },
+      -- 様々なプラグインから使わているアイコン
+      { "nvim-tree/nvim-web-devicons" },
 
       -- colorschemeの設定
       { import = "plugins.colorscheme" },
@@ -25,6 +27,7 @@ require("lazy").setup({
       { import = "plugins.treesitter" },
       -- ai
       { import = "plugins.ai" },
+      { import = "plugins.test" }
       {{- if ne (env "WORKSTATION") "private" }}
       { import = "plugins.obsidian" },
       {{- end }}

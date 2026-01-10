@@ -17,13 +17,18 @@ return {
     },
 
     {
-        "echasnovski/mini.icons",
-        version = "*",
-    },
-
-    {
         "folke/snacks.nvim",
         priority = 1000,
+        keys = {
+            {
+                "<leader>q",
+                function()
+                    Snacks.bufdelete()
+                end,
+                desc = "バッファを閉じる（レイアウト保持）",
+            },
+        },
+
         opts = {
             dashboard = {
                 enabled = true,
@@ -122,7 +127,114 @@ return {
     },
 
     {
-        "esmuellert/vscode-diff.nvim",
+        "esmuellert/codediff.nvim",
         opts = {},
+    },
+
+    {
+        -- 右上にファイル名やGitの変更差分、Diagnosticsの情報を表示
+        "b0o/incline.nvim",
+        config = function()
+            local devicons = require("nvim-web-devicons")
+            require("incline").setup({
+                render = function(props)
+                    local filename = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(props.buf), ":t")
+                    if filename == "" then
+                        filename = "[No Name]"
+                    end
+                    local ft_icon, ft_color = devicons.get_icon_color(filename)
+
+                    local function get_git_diff()
+                        local icons = { removed = "", changed = "", added = "" }
+                        local signs = vim.b[props.buf].gitsigns_status_dict
+                        local labels = {}
+                        if signs == nil then
+                            return labels
+                        end
+                        for name, icon in pairs(icons) do
+                            if tonumber(signs[name]) and signs[name] > 0 then
+                                table.insert(labels, { icon .. signs[name] .. " ", group = "Diff" .. name })
+                            end
+                        end
+                        if #labels > 0 then
+                            table.insert(labels, { "┊ " })
+                        end
+                        return labels
+                    end
+
+                    local function get_diagnostic_label()
+                        local icons = { error = "", warn = "", info = "", hint = "" }
+                        local label = {}
+
+                        for severity, icon in pairs(icons) do
+                            local n = #vim.diagnostic.get(
+                                props.buf,
+                                { severity = vim.diagnostic.severity[string.upper(severity)] }
+                            )
+                            if n > 0 then
+                                table.insert(label, { icon .. n .. " ", group = "DiagnosticSign" .. severity })
+                            end
+                        end
+                        if #label > 0 then
+                            table.insert(label, { "┊ " })
+                        end
+                        return label
+                    end
+
+                    return {
+                        { get_diagnostic_label() },
+                        { get_git_diff() },
+                        {
+                            (ft_icon or "") .. " ",
+                            guifg = ft_color,
+                            guibg = "none",
+                        },
+                        { filename .. " ", gui = vim.bo[props.buf].modified and "bold,italic" or "bold" },
+                    }
+                end,
+            })
+        end,
+    },
+
+    {
+        -- vimモードを色で表示する
+        "mvllow/modes.nvim",
+        opts = {
+            colors = {
+                bg = "", -- Optional bg param, defaults to Normal hl group
+                copy = "#f5c359",
+                delete = "#c75c6a",
+                change = "#c75c6a", -- Optional param, defaults to delete
+                format = "#c79585",
+                insert = "#78ccc5",
+                replace = "#245361",
+                select = "#9745be", -- Optional param, defaults to visual
+                visual = "#9745be",
+            },
+
+            line_opacity = 0.4,
+        },
+    },
+
+    {
+        -- 今カレントのファイル以外を暗くする
+        "tadaa/vimade",
+        opts = {
+            recipe = { "default", { animate = true } },
+            fadelevel = 0.5,
+        },
+    },
+
+    {
+        "Owen-Dechow/videre.nvim",
+        dependencies = {
+            "Owen-Dechow/graph_view_yaml_parser",
+            "Owen-Dechow/graph_view_toml_parser",
+            "a-usr/xml2lua.nvim",
+        },
+        opts = {
+            round_units = true,
+            simple_statusline = true,
+        },
     },
 }
