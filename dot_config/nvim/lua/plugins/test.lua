@@ -28,4 +28,10 @@ return {
             require("neotest").setup(opts)
         end,
     },
+
+    {
+        "YuminosukeSato/gogentest",
+        config = function()
+        end
+    },
 }
