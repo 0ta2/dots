@@ -214,4 +214,17 @@ return {
             fadelevel = 0.5,
         },
     },
+
+    {
+        "Owen-Dechow/videre.nvim",
+        dependencies = {
+            "Owen-Dechow/graph_view_yaml_parser",
+            "Owen-Dechow/graph_view_toml_parser",
+            "a-usr/xml2lua.nvim",
+        },
+        opts = {
+            round_units = true,
+            simple_statusline = true,
+        },
+    },
 }
