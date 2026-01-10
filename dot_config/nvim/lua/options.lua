@@ -42,6 +42,13 @@ vim.o.splitbelow = true
 vim.o.list = true
 vim.opt.listchars = { tab = "» ", trail = "·", nbsp = "␣" }
 
+-- statusline を非表示にする
+vim.opt.laststatus = 0
+vim.opt.statusline = "─"
+vim.opt.fillchars:append({ stl = "─", stlnc = "─" })
+
+-- cmdline を非表示にする
+vim.opt.cmdheight = 0
 
 -- 入力中に置換の内容をライブでプレビューする
 vim.o.inccommand = "split"
