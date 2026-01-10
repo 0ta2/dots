@@ -210,4 +210,13 @@ return {
             line_opacity = 0.4,
         },
     },
+
+    {
+        -- 今カレントのファイル以外を暗くする
+        "tadaa/vimade",
+        opts = {
+            recipe = { "default", { animate = true } },
+            fadelevel = 0.5,
+        },
+    },
 }
