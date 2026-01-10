@@ -110,70 +110,70 @@ return {
     },
 
     -- バッファの表示
-    {
-        'akinsho/bufferline.nvim',
-        version = "*",
-        dependencies = 'nvim-tree/nvim-web-devicons',
-        opts = {
-            options = {
-                diagnostics = "nvim_lsp",
-                diagnostics_indicator = function(count, level, diagnostics_dict, context)
-                    local s = " "
-                    for e, n in pairs(diagnostics_dict) do
-                        local sym = (e == "error" and " ")
-                            or (e == "warning" and " ")
-                            or (e == "info" and " ")
-                            or (e == "hint" and "󰌶")
-                        s = s .. n .. sym
-                    end
-                    return s
-                end,
-            },
-            -- NOTE: catppuccin の bufferline のカラーを微調整｡これで､タブのない空白部分が黒くではなく catppuccin のカラーで統一される｡
-            highlights = require("catppuccin.special.bufferline").get_theme({
-                styles = { "italic", "bold" },
-                custom = {
-                    all = {
-                        fill = { bg = "#1e1e2e" },
-                    },
-                },
-            }),
-        },
-    },
+    -- {
+    --     'akinsho/bufferline.nvim',
+    --     version = "*",
+    --     dependencies = 'nvim-tree/nvim-web-devicons',
+    --     opts = {
+    --         options = {
+    --             diagnostics = "nvim_lsp",
+    --             diagnostics_indicator = function(count, level, diagnostics_dict, context)
+    --                 local s = " "
+    --                 for e, n in pairs(diagnostics_dict) do
+    --                     local sym = (e == "error" and " ")
+    --                         or (e == "warning" and " ")
+    --                         or (e == "info" and " ")
+    --                         or (e == "hint" and "󰌶")
+    --                     s = s .. n .. sym
+    --                 end
+    --                 return s
+    --             end,
+    --         },
+    --         -- NOTE: catppuccin の bufferline のカラーを微調整｡これで､タブのない空白部分が黒くではなく catppuccin のカラーで統一される｡
+    --         highlights = require("catppuccin.special.bufferline").get_theme({
+    --             styles = { "italic", "bold" },
+    --             custom = {
+    --                 all = {
+    --                     fill = { bg = "#1e1e2e" },
+    --                 },
+    --             },
+    --         }),
+    --     },
+    -- },
 
     -- ステータスラインの強化
-    {
-        'nvim-lualine/lualine.nvim',
-        opts = {
-            options = {
-                theme = 'catppuccin',
-                section_separators = { left = '', right = '' },
-                component_separators = {},
-                extensions = {
-                    "lazy",
-                    "mason",
-                    "trouble",
-                },
-            },
-            sections = {
-                lualine_a = { "mode" },
-                lualine_b = { "branch" },
-                lualine_c = {
-                    "%=",
-                    {
-                        "diff",
-                        separator = "  |  ",
-                    },
-                    {
-                        "diagnostics"
-                    }
-                },
-                lualine_x = { "encoding", "fileformat", "filetype" },
-                lualine_y = { "progress" },
-                lualine_z = { "location" }
-            },
-        },
-    },
+    -- {
+    --     'nvim-lualine/lualine.nvim',
+    --     opts = {
+    --         options = {
+    --             theme = 'catppuccin',
+    --             section_separators = { left = '', right = '' },
+    --             component_separators = {},
+    --             extensions = {
+    --                 "lazy",
+    --                 "mason",
+    --                 "trouble",
+    --             },
+    --         },
+    --         sections = {
+    --             lualine_a = { "mode" },
+    --             lualine_b = { "branch" },
+    --             lualine_c = {
+    --                 "%=",
+    --                 {
+    --                     "diff",
+    --                     separator = "  |  ",
+    --                 },
+    --                 {
+    --                     "diagnostics"
+    --                 }
+    --             },
+    --             lualine_x = { "encoding", "fileformat", "filetype" },
+    --             lualine_y = { "progress" },
+    --             lualine_z = { "location" }
+    --         },
+    --     },
+    -- },
 
     -- 検索･置換
     {
