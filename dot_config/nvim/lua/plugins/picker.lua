@@ -31,6 +31,13 @@ return {
                 desc = "文字列検索",
             },
             {
+                "<c-j>",
+                function()
+                Snacks.picker.jumps()
+                end,
+                desc = "jump履歴の移動",
+            },
+            {
                 "<leader>c",
                 function()
                     Snacks.picker.pickers()
