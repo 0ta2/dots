@@ -12,6 +12,11 @@ git:
 # custom command
 #
 customCommands:
+  - key: "b"
+    command: "git branch --merged | grep -vE '^[*]|master$|main$|develop$' | xargs -I % git branch -d %"
+    context: "localBranches"
+    loadingText: "Pruning..."
+    description: "prune local branches that have been merged to master"
   - key: "<c-p>"
     description: "削除されているリモートブランチを削除する｡"
     context: "remotes"
