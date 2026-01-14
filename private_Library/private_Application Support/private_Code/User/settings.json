@@ -1,6 +1,7 @@
 {
     // Layout
     "workbench.activityBar.location": "top",
+    "workbench.tree.indent": 20,
     // Font
     "editor.fontFamily": "HackGen35",
     "terminal.integrated.fontFamily": "HackGen Console NF",
@@ -13,12 +14,11 @@
     // Go
     "go.lintTool": "golangci-lint-v2",
     "go.lintFlags": [
-        "--path-mode=abs",
-        "--fast-only"
+        "--path-mode=abs"
     ],
     "go.formatTool": "custom",
     "go.alternateTools": {
-        "customFormatter":  "golangci-lint-v2"
+        "customFormatter": "golangci-lint-v2"
     },
     "go.formatFlags": [
         "fmt",
