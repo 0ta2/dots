@@ -13,10 +13,15 @@ gcloud = "latest"
 
 # For Go
 go = "latest"
+"go:github.com/go-delve/delve/cmd/dlv" = { version = "latest" }
+
 
 # For Node.js
 node = "latest"
 "npm:@github/copilot" = "latest"
+"npm:@google/gemini-cli" = "latest"
+"npm:@anthropic-ai/claude-code" = "latest"
+"npm:ccusage" = "latest"
 
 # For Rust
 rust = "latest"
