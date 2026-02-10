@@ -95,10 +95,18 @@ return {
     {
         "olimorris/codecompanion.nvim",
         opts = {
-            opts = {},
+            opts = {
+                language = "Japanese",
+                display = {
+                    actiion_palette = {
+                        provider = "snacks",
+                    },
+                },
+            },
         },
     },
 
+    {
     {
         "zbirenbaum/copilot.lua",
         opts = {},
