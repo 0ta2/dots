@@ -1,3 +1,6 @@
+[settings]
+env_shell_expand = true
+
 [vars]
 source = '~/ghq/github.com/0ta2/dots'
 brewfile = "${BREWFILE}"
