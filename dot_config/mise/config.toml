@@ -23,6 +23,7 @@ node = "latest"
 "npm:@anthropic-ai/claude-code" = "latest"
 "npm:@zed-industries/claude-code-acp" = "latest"
 "npm:ccusage" = "latest"
+"npm:tree-sitter-cli" = "latest"
 
 # For Rust
 rust = "latest"
