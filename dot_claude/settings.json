@@ -16,5 +16,29 @@
             "Bash(git rebase:*)",
             "Bash(curl:*)"
         ]
+    },
+    "hooks": {
+        "Stop": [
+            {
+                "matcher": "",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "terminal-notifier -title 'Claude Code' -message 'タスクが完了しました' -appIcon ~/.claude/claude-icon.png -sound Ping"
+                    }
+                ]
+            }
+        ],
+        "Notification": [
+            {
+                "matcher": "",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "terminal-notifier -title 'Claude Code' -message '入力待ちです' -appIcon ~/.claude/claude-icon.png -sound Ping"
+                    }
+                ]
+            }
+        ]
     }
 }
