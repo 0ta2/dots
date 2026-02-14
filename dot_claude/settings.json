@@ -16,5 +16,28 @@
             "Bash(git rebase:*)",
             "Bash(curl:*)"
         ]
-    }
-}
+    },
+    "hooks": {
+    "Stop": [
+        {
+            "matcher": "",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "~/.local/bin/claude-notify 'タスクが完了しました'"
+                }
+            ]
+        }
+    ],
+    "Notification": [
+        {
+            "matcher": "",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "~/.local/bin/claude-notify '入力待ちです'"
+                }
+            ]
+        }
+    ]
+}}

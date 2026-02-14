@@ -7,6 +7,7 @@ brew "mise"
 brew "bat"
 brew "fd"
 brew "gsed"
+brew "terminal-notifier"
 
 # editor
 brew "neovim"
