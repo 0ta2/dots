@@ -16,20 +16,20 @@ return {
         },
         keys = {
             -- Picker
-            {
-                "<c-p>",
-                function()
-                    Snacks.picker.smart()
-                end,
-                desc = "ファイルのスマート検索(buffers, recent, files)",
-            },
-            {
-                "<c-g>",
-                function()
-                    Snacks.picker.grep()
-                end,
-                desc = "文字列検索",
-            },
+            -- {
+            --     "<c-p>",
+            --     function()
+            --         Snacks.picker.smart()
+            --     end,
+            --     desc = "ファイルのスマート検索(buffers, recent, files)",
+            -- },
+            -- {
+            --     "<c-g>",
+            --     function()
+            --         Snacks.picker.grep()
+            --     end,
+            --     desc = "文字列検索",
+            -- },
             {
                 "<c-j>",
                 function()
@@ -73,5 +73,16 @@ return {
                 desc = "GitHub Pull Requests 一覧(all)",
             },
         },
+    },
+
+    {
+        "2kabhishek/seeker.nvim",
+        dependencies = { "folke/snacks.nvim" },
+        cmd = { "Seeker" },
+        keys = {
+            { "<c-p>", ":Seeker files<CR>", desc = "seeker の Files 検索" },
+            { "<c-g>", ":Seeker grep<CR>",  desc = "seeker の Grep 検索" },
+        },
+        opts = {},
     },
 }
