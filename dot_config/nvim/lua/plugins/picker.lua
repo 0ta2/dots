@@ -31,9 +31,9 @@ return {
             --     desc = "文字列検索",
             -- },
             {
-                "<c-j>",
+                "<leader>j",
                 function()
-                Snacks.picker.jumps()
+                    Snacks.picker.jumps()
                 end,
                 desc = "jump履歴の移動",
             },
