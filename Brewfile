@@ -11,6 +11,7 @@ brew "gsed"
 # editor
 brew "neovim"
 cask "visual-studio-code"
+cask "zed"
 
 # application
 cask "chatgpt-atlas"
