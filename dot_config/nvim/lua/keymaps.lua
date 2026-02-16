@@ -25,3 +25,7 @@ vim.keymap.set('n', '<leader>p', '<Cmd>bprevious<CR>', { desc = '前のバッフ
 
 vim.keymap.set('n', 'x', '"_x', { desc = 'xで削除した際にレジスタに入らないようにする' })
 vim.keymap.set('n', 's', '"_s', { desc = 'sで削除した際にレジスタに入らないようにする' })
+
+vim.keymap.set('c', '<C-p>', '<Up>', { desc = 'コマンドラインで前の履歴' })
+vim.keymap.set('c', '<C-n>', '<Down>', { desc = 'コマンドラインで次の履歴' })
+

@@ -119,6 +119,9 @@ return {
         ---@module 'render-markdown'
         ---@type render.md.UserConfig
         opts = {
+            file_types = {
+                "AgenticChat"
+            },
             code = {
                 sign = false,
                 border = "thick",

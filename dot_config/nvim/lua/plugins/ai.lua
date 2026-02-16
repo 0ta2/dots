@@ -95,12 +95,40 @@ return {
     {
         "olimorris/codecompanion.nvim",
         opts = {
-            opts = {},
+            opts = {
+                language = "Japanese",
+                display = {
+                    actiion_palette = {
+                        provider = "snacks",
+                    },
+                },
+            },
+        },
+    },
+
+    {
+        "carlos-algms/agentic.nvim",
+        opts = {
+            provider = "claude-acp",
         },
     },
 
     {
         "zbirenbaum/copilot.lua",
-        opts = {},
+        opts = {
+            -- Override should_attach to allow copilot in AgenticInput buffers
+            -- AgenticInput uses buftype = "nofile" which copilot.lua rejects by default
+            should_attach = function(bufnr, bufname)
+                local filetype = vim.bo[bufnr].filetype
+
+                if filetype == "AgenticInput" then
+                    return true
+                end
+
+                -- Delegate to default behavior for all other buffers
+                local default_should_attach = require("copilot.config.should_attach").default
+                return default_should_attach(bufnr, bufname)
+            end,
+        },
     },
 }

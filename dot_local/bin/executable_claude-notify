@@ -1,0 +1,19 @@
+#!/bin/bash
+
+INPUT=$(cat)
+
+# Stop hookの無限ループ防止
+STOP_HOOK_ACTIVE=$(echo "$INPUT" | jq -r '.stop_hook_active')
+if [ "$STOP_HOOK_ACTIVE" = "true" ]; then
+    exit 0
+fi
+
+PROJECT_NAME=$(basename "$PWD")
+MESSAGE="${1:-Claude Code からの通知}"
+
+terminal-notifier \
+    -title "Claude Code" \
+    -subtitle "$PROJECT_NAME" \
+    -message "$MESSAGE" \
+    -sound Ping \
+    -group "claude-code"

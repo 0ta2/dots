@@ -7,10 +7,12 @@ brew "mise"
 brew "bat"
 brew "fd"
 brew "gsed"
+brew "terminal-notifier"
 
 # editor
 brew "neovim"
 cask "visual-studio-code"
+cask "zed"
 
 # application
 cask "chatgpt-atlas"
