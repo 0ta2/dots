@@ -1,0 +1,19 @@
+[
+    {
+        "context": "VimControl && !menu",
+        "bindings": {
+            "shift-h": "vim::FirstNonWhitespace",
+            "shift-l": "vim::EndOfLine",
+            "j": "vim::Down",
+            "k": "vim::Up",
+            ";": "command_palette::Toggle",
+            ":": "vim::RepeatFind"
+        }
+    },
+    {
+        "context": "vim_mode == normal && !menu",
+        "bindings": {
+            "ctrl-p": "file_finder::Toggle"
+        }
+    }
+]
