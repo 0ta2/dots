@@ -2,7 +2,14 @@
     "$schema": "https://json.schemastore.org/claude-code-settings.json",
     "language": "japanese",
     "permissions": {
-        "allow": [],
+        "allow": [
+            "Bash(curl:http://localhost*)",
+            {{- if hasKey . "claudeAllowDomains" }}
+            {{- range .claudeAllowDomains }},
+            "Bash(curl:{{ . }})"
+            {{- end }}
+            {{- end }}
+        ],
         "deny": [
             "Read(./.env)",
             "Read(./.env.*)",
@@ -13,8 +20,7 @@
         "ask": [
             "Bash(git push:*)",
             "Bash(git merge:*)",
-            "Bash(git rebase:*)",
-            "Bash(curl:*)"
+            "Bash(git rebase:*)"
         ]
     },
     "hooks": {
