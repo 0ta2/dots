@@ -3,7 +3,7 @@
     "language": "japanese",
     "permissions": {
         "allow": [
-            "Bash(curl:http://localhost*)",
+            "Bash(curl:http://localhost*)"
             {{- if hasKey . "claudeAllowDomains" }}
             {{- range .claudeAllowDomains }},
             "Bash(curl:{{ . }})"
