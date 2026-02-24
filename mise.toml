@@ -31,17 +31,19 @@ run = "chezmoi --source={{vars.source}} status"
 #
 # homebrew
 #
-[tasks."brew:update"]
-description = "Brewのupgrade&update"
-run = [
-    "brew upgrade",
-    "brew update"
-]
-
 [tasks."brew:sync"]
 description = "Brewのsync"
 run = [
     "brew bundle --cleanup --force --file={{vars.brewfile}}",
+]
+
+
+[tasks."update"]
+description = "Brew と mise のupgrade & update"
+run = [
+    "brew upgrade",
+    "brew update",
+    "mise upgrade"
 ]
 
 [tools]

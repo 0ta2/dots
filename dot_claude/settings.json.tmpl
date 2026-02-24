@@ -1,0 +1,67 @@
+{
+    "$schema": "https://json.schemastore.org/claude-code-settings.json",
+    "language": "japanese",
+    "vim": true,
+    "statusLine": {
+        "type": "command",
+        "command": "bash ~/.claude/statusline-command.sh"
+    },
+    "permissions": {
+        "allow": [
+            "Bash(curl:http://localhost*)",
+            "Bash(gh pr view:*)",
+            "Bash(gh pr list:*)",
+            "Bash(gh pr diff:*)",
+            "Bash(gh pr checks:*)",
+            "Bash(gh issue view:*)",
+            "Bash(gh issue list:*)",
+            "Bash(gh repo view:*)",
+            "Bash(gh run view:*)",
+            "Bash(gh run list:*)",
+            "Bash(gh api:*)"
+            {{- if hasKey . "claudeAllowDomains" }}
+            {{- range .claudeAllowDomains }},
+            "Bash(curl:{{ . }})"
+            {{- end }}
+            {{- end }}
+        ],
+        "deny": [
+            "Read(./.env)",
+            "Read(./.env.*)",
+            "Read(./secrets/**)",
+            "Bash(rm -rf:*)",
+            "Bash(sudo:*)",
+            "Bash(gh pr merge:*)",
+            "Bash(gh repo delete:*)"
+        ],
+        "ask": [
+            "Bash(git push:*)",
+            "Bash(git merge:*)",
+            "Bash(git rebase:*)"
+        ]
+    },
+    "hooks": {
+        "Stop": [
+            {
+                "matcher": "",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "~/.local/bin/claude-notify 'タスクが完了しました'"
+                    }
+                ]
+            }
+        ],
+        "Notification": [
+            {
+                "matcher": "",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "~/.local/bin/claude-notify '入力待ちです'"
+                    }
+                ]
+            }
+        ]
+    }
+}
