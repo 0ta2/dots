@@ -11,3 +11,6 @@ macos-option-as-alt = true
 
 # 閉じる際に確認ダイアログを出すかどうか
 confirm-close-surface = false
+
+# 非表示･非表示をショートカットで実施
+keybind = global:alt+space=toggle_visibility
