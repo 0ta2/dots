@@ -15,5 +15,4 @@ terminal-notifier \
     -title "Claude Code" \
     -subtitle "$PROJECT_NAME" \
     -message "$MESSAGE" \
-    -sound Ping \
-    -group "claude-code"
+    -sound Ping
