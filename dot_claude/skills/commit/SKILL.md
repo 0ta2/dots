@@ -29,6 +29,7 @@ allowed-tools: Bash(git status), Bash(git diff*), Bash(git log*), Bash(git add*)
 | `feat`     | 新機能を追加した                             |
 | `fix`      | バグを修正した                               |
 | `refactor` | リファクタリングした（機能変更なし）         |
+| `revert`   | 以前のコミットを取り消した                   |
 | `style`    | コードの見た目を変更した（ロジック変更なし） |
 | `docs`     | ドキュメントを追加・更新した                 |
 | `test`     | テストを追加・修正した                       |
