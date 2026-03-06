@@ -3,7 +3,8 @@
     "language": "japanese",
     "vim": true,
     "enabledPlugins": {
-        "lua-lsp@claude-plugins-official": true
+        "lua-lsp@claude-plugins-official": true,
+        "gopls-lsp@claude-plugins-official": true
     },
     "statusLine": {
         "type": "command",
@@ -21,7 +22,8 @@
             "Bash(gh repo view:*)",
             "Bash(gh run view:*)",
             "Bash(gh run list:*)",
-            "Bash(gh api:*)"
+            "Bash(gh api:*)",
+            "Bash(go test*)"
             {{- if hasKey . "claudeAllowDomains" }}
             {{- range .claudeAllowDomains }},
             "Bash(curl:{{ . }})"
