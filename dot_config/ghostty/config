@@ -1,9 +1,9 @@
 # theme
-theme = "IR Black"
+theme = kanagawa-paper-ink
 
 # font
-font-family = "HackGen35 Console NF"
-window-title-font-family = "HackGen35 Console NF"
+font-family = "Moralerspace Neon HW"
+window-title-font-family = "Moralerspace Neon HW"
 font-size = 15
 
 # macOS
@@ -13,4 +13,8 @@ macos-option-as-alt = true
 confirm-close-surface = false
 
 # 非表示･非表示をショートカットで実施
-keybind = global:alt+space=toggle_visibility
+# NOTE: Karabiner-Elements で、f19をカスタマイズしている。
+keybind = global:f19=toggle_visibility
+
+# 背景の透過
+background-opacity = 0.95

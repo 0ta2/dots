@@ -1,5 +1,6 @@
 # font
 cask "font-hackgen-nerd"
+cask "font-moralerspace"
 
 # cli
 brew "tmux"
