@@ -8,13 +8,13 @@ return {
         priority = 1000,
         config = function(_, opts)
             require("catppuccin").setup(opts)
-            vim.cmd([[colorscheme catppuccin-mocha]])
+            -- vim.cmd([[colorscheme catppuccin-mocha]])
         end,
         opts = {
             transparent_background = true,
             integrations = {
                 blink_cmp = {
-                    style = 'bordered',
+                    style = "bordered",
                 },
                 native_lsp = {
                     enabled = true,
@@ -48,8 +48,21 @@ return {
                 gitsigns = {
                     enabled = true,
                     transparent = false,
-                }
+                },
             },
+        },
+    },
+
+    {
+        "thesimonho/kanagawa-paper.nvim",
+        lazy = false,
+        priority = 1000,
+        config = function(_, opts)
+            require("kanagawa-paper").setup(opts)
+            vim.cmd([[colorscheme kanagawa-paper-ink]])
+        end,
+        opts = {
+            transparent = true,
         },
     },
 }
