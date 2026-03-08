@@ -173,8 +173,8 @@ EOF
 
 ```
 ✅ feat(nvim): telescope のキーバインドを追加
-✅ fix: ghostty のフォントサイズ設定を修正
-✅ chore: Brewfile に ripgrep を追加
+✅ fix(ghostty): ghostty のフォントサイズ設定を修正
+✅ chore(brew): Brewfile に ripgrep を追加
 ❌ 設定を更新した（何を更新したか不明）
 ❌ fix: 修正（内容が不明）
 ❌ Various changes and improvements（英語・曖昧）
