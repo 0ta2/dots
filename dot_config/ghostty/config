@@ -15,6 +15,9 @@ confirm-close-surface = false
 # 非表示･非表示をショートカットで実施
 # NOTE: Karabiner-Elements で、f19をカスタマイズしている。
 keybind = global:f19=toggle_visibility
+# NOTE: claude cli + sidekik.nvim で行改ができなくなる問題の対応
+# ref: https://github.com/anthropics/claude-code/issues/1282
+keybind = shift+enter=text:\x1b\r
 
 # 背景の透過
 background-opacity = 0.95
