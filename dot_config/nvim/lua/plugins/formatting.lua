@@ -5,6 +5,7 @@ return {
 			formatters_by_ft = {
 				lua = { "stylua" },
 				go = { "golangci-lint", "goimports", "gofmt" },
+				markdown = { "prettierd" },
 			},
 			default_format_opts = {
 				lsp_format = "fallback",
@@ -19,7 +20,9 @@ return {
 			vim.o.formatexpr = "v:lua.require'conform'.formatexpr()"
 		end,
 
-		config = function()
+		config = function(_, opts)
+			require("conform").setup(opts)
+
 			vim.keymap.set("n", "<leader>f", function()
 				require("conform").format({
 					lsp_format = "fallback",
