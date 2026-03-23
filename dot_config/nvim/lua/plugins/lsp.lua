@@ -10,6 +10,7 @@ local lsp_servers = {
 local formatters = {
     "stylua",
     "shfmt",
+    "prettierd",
 }
 local go_tools = {
     -- NOTE: gopher.nvim で使用
