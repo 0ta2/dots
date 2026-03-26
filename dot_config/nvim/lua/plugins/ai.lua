@@ -9,6 +9,17 @@ return {
                     backend = "tmux",
                     enabled = true,
                 },
+                win = {
+                    layout = "right",
+                    config = function(terminal)
+                        local screen_width = vim.o.columns
+                        if screen_width > 200 then
+                            terminal.opts.split = { width = 150, height = 0 }
+                        else
+                            terminal.opts.split = { width = 80, height = 0 }
+                        end
+                    end,
+                },
                 ---@type table<string, sidekick.Prompt|string|fun(ctx:sidekick.context.ctx):(string?)>
                 prompts = {
                     changes = "変更内容をレビューしてください。",
