@@ -5,7 +5,16 @@
     "voiceEnabled": true,
     "enabledPlugins": {
         "lua-lsp@claude-plugins-official": true,
-        "gopls-lsp@claude-plugins-official": true
+        "gopls-lsp@claude-plugins-official": true,
+        "example-skills@anthropic-agent-skills": true
+    },
+    "extraKnownMarketplaces": {
+        "anthropic-agent-skills": {
+            "source": {
+                "source": "github",
+                "repo": "anthropics/skills"
+            }
+        }
     },
     "statusLine": {
         "type": "command",
