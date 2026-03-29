@@ -32,7 +32,7 @@ untracked = "?"
 staged = "+"
 deleted = "✘"
 conflicted = "!"
-stashed = "$"
+stashed = "\\$"
 
 [cmd_duration]
 show_milliseconds = true
