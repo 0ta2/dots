@@ -47,9 +47,6 @@ vim.opt.laststatus = 0
 vim.opt.statusline = "─"
 vim.opt.fillchars:append({ stl = "─", stlnc = "─" })
 
--- cmdline を非表示にする
-vim.opt.cmdheight = 0
-
 -- 入力中に置換の内容をライブでプレビューする
 vim.o.inccommand = "split"
 

@@ -217,6 +217,10 @@ return {
 
 			line_opacity = 0.4,
 		},
+		config = function(_, opts)
+			require("modes").setup(opts)
+			vim.o.cmdheight = 0
+		end,
 	},
 
 	{
