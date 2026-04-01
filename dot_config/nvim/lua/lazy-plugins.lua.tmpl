@@ -28,8 +28,10 @@ require("lazy").setup({
       -- ai
       { import = "plugins.ai" },
       { import = "plugins.test" },
+      -- APIクライアント（HTTP/gRPC）
+      { import = "plugins.api" },
       {{- if ne (env "WORKSTATION") "private" }}
-      { import = "plugins.obsidian" },
+      { import = "plugins.iwe" },
       {{- end }}
   }
 })

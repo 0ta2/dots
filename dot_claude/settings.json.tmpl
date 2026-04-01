@@ -23,6 +23,7 @@
     "permissions": {
         "allow": [
             "Bash(curl:http://localhost*)",
+            "Bash(base64:*)",
             "Bash(gh pr view:*)",
             "Bash(gh pr list:*)",
             "Bash(gh pr diff:*)",
@@ -33,6 +34,7 @@
             "Bash(gh run view:*)",
             "Bash(gh run list:*)",
             "Bash(gh api:*)",
+            "Bash(gh search:*)",
             "Bash(go test*)"
             {{- if hasKey . "claudeAllowDomains" }}
             {{- range .claudeAllowDomains }},
