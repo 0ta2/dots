@@ -1,12 +1,11 @@
 "$schema" = 'https://starship.rs/config-schema.json'
 
 format = """
+$time\
 $directory\
 $git_branch\
 $git_status\
 $cmd_duration\
-$fill\
-$time\
 $line_break\
 $character"""
 
@@ -55,9 +54,6 @@ vimcmd_symbol = '[❮](bold fg:oni_violet)'
 vimcmd_replace_one_symbol = '[❮](bold fg:sakura_pink)'
 vimcmd_replace_symbol = '[❮](bold fg:sakura_pink)'
 vimcmd_visual_symbol = '[❮](bold fg:carp_yellow)'
-
-[fill]
-symbol = " "
 
 [time]
 disabled = false
