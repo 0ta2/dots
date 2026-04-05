@@ -1,7 +1,7 @@
 -- リーダーキーを `<space>` に設定
 -- 詳しくは、 `:help mapleader` を参照
-vim.g.mapleader = ' '
-vim.g.maplocalleader = ' '
+vim.g.mapleader = " "
+vim.g.maplocalleader = " "
 
 -- ターミナルでNerd Fontがインストールされ、選択されている場合はtrueに設定
 vim.g.have_nerd_font = false
