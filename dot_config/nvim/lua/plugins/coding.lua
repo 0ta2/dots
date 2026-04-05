@@ -53,6 +53,9 @@ return {
 
             completion = {
                 documentation = { auto_show = true, auto_show_delay_ms = 500 },
+                accept = {
+                    auto_brackets = { enabled = false },
+                },
                 menu = {
                     draw = {
                         columns = {
@@ -134,7 +137,9 @@ return {
             mappings = {
                 enabled = true,
                 disabled_filetypes = {},
-                pairs = {},
+                pairs = {
+                    ["["] = { { "[", "]", when = function() return false end } },
+                },
             },
             highlights = {
                 enabled = true,
