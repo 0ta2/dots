@@ -15,6 +15,35 @@ return {
 			},
 		},
 		keys = {
+			-- LSP
+			{
+				"gd",
+				function()
+					Snacks.picker.lsp_definitions()
+				end,
+				desc = "定義箇所に移動",
+			},
+			{
+				"gD",
+				function()
+					Snacks.picker.lsp_declarations()
+				end,
+				desc = "宣言へ移動",
+			},
+			{
+				"gr",
+				function()
+					Snacks.picker.lsp_references()
+				end,
+				desc = "参照箇所に移動",
+			},
+			{
+				"gi",
+				function()
+					Snacks.picker.lsp_implementations()
+				end,
+				desc = "実装箇所へ移動",
+			},
 			-- Picker
 			-- {
 			--     "<c-p>",

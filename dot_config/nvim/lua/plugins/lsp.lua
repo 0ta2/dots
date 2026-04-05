@@ -58,30 +58,55 @@ return {
 					end)
 				end,
 			},
-			{ "neovim/nvim-lspconfig" },
+			{
+				"neovim/nvim-lspconfig",
+				keys = {
+					{
+						"ga",
+						function()
+							vim.lsp.buf.code_action()
+						end,
+						desc = "コードアクションの実行",
+					},
+					{
+						"gk",
+						function()
+							vim.lsp.buf.hover()
+						end,
+						desc = "ホバー",
+					},
+					{
+						"grn",
+						function()
+							vim.lsp.buf.rename()
+						end,
+						desc = "リネーム",
+					},
+				},
+			},
 		},
 	},
 
 	-- LSPのUI拡張
-	{
-		"nvimdev/lspsaga.nvim",
-		config = function()
-			require("lspsaga").setup({})
-			vim.keymap.set("n", "gd", "<cmd>Lspsaga goto_definition<CR>", { desc = "定義箇所に移動" })
-			vim.keymap.set("n", "gp", "<cmd>Lspsaga peek_definition<CR>", { desc = "定義箇所に表示" })
-			vim.keymap.set("n", "gD", "<cmd>Lspsaga finder def<CR>", { desc = "宣言へ移動" })
-			vim.keymap.set("n", "gr", "<cmd>Lspsaga finder ref<CR>", { desc = "参照箇所に移動" })
-			vim.keymap.set("n", "gi", "<cmd>Lspsaga finder imp<CR>", { desc = "実装箇所へ移動" })
-			vim.keymap.set("n", "ga", "<cmd>Lspsaga code_action<CR>", { desc = "コードアクションの実行" })
-			vim.keymap.set("n", "gk", "<cmd>Lspsaga hover_doc<CR>", { desc = "ホバー" })
-			vim.keymap.set("n", "grn", "<cmd>Lspsaga rename<CR>", { desc = "リネーム" })
-		end,
-		opts = {
-			ui = {
-				kind = require("catppuccin.groups.integrations.lsp_saga").custom_kind(),
-			},
-		},
-	},
+	-- {
+	-- 	"nvimdev/lspsaga.nvim",
+	-- 	config = function()
+	-- 		require("lspsaga").setup({})
+	-- 		vim.keymap.set("n", "gd", "<cmd>Lspsaga goto_definition<CR>", { desc = "定義箇所に移動" })
+	-- 		vim.keymap.set("n", "gp", "<cmd>Lspsaga peek_definition<CR>", { desc = "定義箇所に表示" })
+	-- 		vim.keymap.set("n", "gD", "<cmd>Lspsaga finder def<CR>", { desc = "宣言へ移動" })
+	-- 		vim.keymap.set("n", "gr", "<cmd>Lspsaga finder ref<CR>", { desc = "参照箇所に移動" })
+	-- 		vim.keymap.set("n", "gi", "<cmd>Lspsaga finder imp<CR>", { desc = "実装箇所へ移動" })
+	-- 		vim.keymap.set("n", "ga", "<cmd>Lspsaga code_action<CR>", { desc = "コードアクションの実行" })
+	-- 		vim.keymap.set("n", "gk", "<cmd>Lspsaga hover_doc<CR>", { desc = "ホバー" })
+	-- 		vim.keymap.set("n", "grn", "<cmd>Lspsaga rename<CR>", { desc = "リネーム" })
+	-- 	end,
+	-- 	opts = {
+	-- 		ui = {
+	-- 			kind = require("catppuccin.groups.integrations.lsp_saga").custom_kind(),
+	-- 		},
+	-- 	},
+	-- },
 
 	{
 		"b0o/schemastore.nvim",
