@@ -11,7 +11,11 @@ return {
 						filename_first = true,
 					},
 				},
-				hidden = true,
+				sources = {
+					files = {
+						hidden = true,
+					},
+				},
 			},
 		},
 		keys = {
