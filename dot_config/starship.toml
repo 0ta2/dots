@@ -5,6 +5,7 @@ $directory\
 $git_branch\
 $git_status\
 $cmd_duration\
+$time\
 $line_break\
 $character"""
 
@@ -53,6 +54,12 @@ vimcmd_symbol = '[❮](bold fg:oni_violet)'
 vimcmd_replace_one_symbol = '[❮](bold fg:sakura_pink)'
 vimcmd_replace_symbol = '[❮](bold fg:sakura_pink)'
 vimcmd_visual_symbol = '[❮](bold fg:carp_yellow)'
+
+[time]
+disabled = false
+format = '[$time]($style)'
+style = "fg:fuji_gray"
+time_format = " %H:%M"
 
 [palettes.kanagawa_ink]
 oni_violet = "#957FB8"
