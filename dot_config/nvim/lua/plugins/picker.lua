@@ -15,6 +15,9 @@ return {
 					files = {
 						hidden = true,
 					},
+					explorer = {
+						hidden = true,
+					},
 				},
 			},
 		},
@@ -103,6 +106,24 @@ return {
 					Snacks.picker.gh_pr({ state = "all" })
 				end,
 				desc = "GitHub Pull Requests 一覧(all)",
+			},
+			{
+				"<leader>ft",
+				function()
+					Snacks.picker.pick({
+						title = "Filetypes",
+						items = vim.tbl_map(function(ft)
+							return { text = ft }
+						end, vim.fn.getcompletion("", "filetype")),
+						format = "text",
+						confirm = function(picker, item)
+							picker:close()
+							vim.schedule(function()
+								vim.bo.filetype = item.text
+							end)
+						end,
+					})
+				end,
 			},
 		},
 	},
