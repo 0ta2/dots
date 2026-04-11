@@ -35,7 +35,12 @@
             "Bash(gh run list:*)",
             "Bash(gh api:*)",
             "Bash(gh search:*)",
-            "Bash(go test*)"
+            "Bash(go test*)",
+            "Bash(git status:*)",
+            "Bash(git diff:*)",
+            "Bash(git log:*)",
+            "Bash(git branch:*)",
+            "Bash(git show:*)"
             {{- if hasKey . "claudeAllowDomains" }}
             {{- range .claudeAllowDomains }},
             "Bash(curl:{{ . }})"
