@@ -3,6 +3,7 @@
     "language": "japanese",
     "vim": true,
     "voiceEnabled": true,
+    "effortLevel": "high",
     "enabledPlugins": {
         "lua-lsp@claude-plugins-official": true,
         "gopls-lsp@claude-plugins-official": true,
@@ -61,6 +62,12 @@
             "Bash(git merge:*)",
             "Bash(git rebase:*)"
         ]
+    },
+    "env": {
+        "CLAUDE_CODE_DISABLE_1M_CONTEXT": "1",
+        "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1",
+        "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1",
+        "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"
     },
     "hooks": {
         "Stop": [
