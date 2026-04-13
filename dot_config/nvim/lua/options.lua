@@ -1,4 +1,3 @@
--- 行番号を表示
 vim.o.number = true
 
 -- マウスモードを有効化
@@ -68,6 +67,13 @@ vim.o.tabstop = 4
 vim.o.shiftwidth = 4
 -- 挿入・削除時の幅
 vim.o.softtabstop = 4
+
+-- Neovim内のバッファ切り替え時に保存
+vim.o.autowriteall = true
+vim.api.nvim_create_autocmd({ "BufLeave", "FocusLost" }, {
+	pattern = "*",
+	command = "silent! wall",
+})
 
 -- diagnostic
 vim.diagnostic.config({

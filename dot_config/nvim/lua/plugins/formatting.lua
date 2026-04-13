@@ -10,10 +10,6 @@ return {
 			default_format_opts = {
 				lsp_format = "fallback",
 			},
-			format_on_save = {
-				lsp_format = "fallback",
-				timeout_ms = 500,
-			},
 		},
 
 		init = function()
@@ -22,6 +18,13 @@ return {
 
 		config = function(_, opts)
 			require("conform").setup(opts)
+
+			vim.api.nvim_create_autocmd({ "BufWritePre", "BufLeave", "FocusLost" }, {
+				pattern = "*",
+				callback = function(args)
+					require("conform").format({ bufnr = args.buf })
+				end,
+			})
 
 			vim.keymap.set("n", "<leader>f", function()
 				require("conform").format({

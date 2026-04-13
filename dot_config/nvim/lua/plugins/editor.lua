@@ -234,6 +234,7 @@ return {
 		opts = {
 			-- 5分たったバッファを自動的に閉じる
 			retirementAgeMins = 5,
+			minimumBufferNum = 5,
 		},
 	},
 }
