@@ -248,3 +248,11 @@ require("videre").setup({
     round_units = true,
     simple_statusline = true,
 })
+
+--
+-- ダッシュボード
+--
+vim.pack.add({
+    { src = "https://github.com/nvim-mini/mini.starter" }
+})
+require('mini.starter').setup()
