@@ -253,6 +253,6 @@ require("videre").setup({
 -- ダッシュボード
 --
 vim.pack.add({
-    { src = "https://github.com/nvim-mini/mini.starter" }
+    { src = "https://github.com/goolord/alpha-nvim" }
 })
-require('mini.starter').setup()
+require('alpha').setup(require('alpha.themes.dashboard').config)
