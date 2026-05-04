@@ -25,6 +25,7 @@ node = "latest"
 "npm:@zed-industries/claude-code-acp" = "latest"
 "npm:ccusage" = "latest"
 "npm:tree-sitter-cli" = "latest"
+"npm:@fsouza/prettierd" = "latest"
 
 # For Rust
 rust = "latest"
