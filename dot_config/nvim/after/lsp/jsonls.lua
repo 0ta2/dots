@@ -1,12 +1,8 @@
 return {
     settings = {
         json = {
-            schemas = require('schemastore').json.schemas {
-                select = {
-                    "package.json"
-                },
-            },
+            schemas = require('schemastore').json.schemas(),
+            validate = { enable = true },
         },
-        validate = { enable = true },
     },
 }

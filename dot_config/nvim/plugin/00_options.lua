@@ -1,3 +1,4 @@
+-- 行番号を表示する
 vim.o.number = true
 
 -- マウスモードを有効化
@@ -9,7 +10,7 @@ vim.o.showmode = false
 -- NeovimとOSのクリップボードを同期
 -- 起動時間が長くなるのを避けるため、設定は UiEnter イベントの後に実行する。
 vim.schedule(function()
-	vim.o.clipboard = "unnamedplus"
+    vim.o.clipboard = "unnamedplus"
 end)
 
 -- 折り返した行でもインデントを維持
@@ -71,38 +72,49 @@ vim.o.softtabstop = 4
 -- Neovim内のバッファ切り替え時に保存
 vim.o.autowriteall = true
 vim.api.nvim_create_autocmd({ "BufLeave", "FocusLost" }, {
-	pattern = "*",
-	command = "silent! wall",
+    pattern = "*",
+    command = "silent! wall",
 })
 
 -- diagnostic
 vim.diagnostic.config({
-	virtual_text = {
-		spacing = 4,
-		-- ここで記号を一致させる。例: ERROR=✘、WARN=▲、INFO=、HINT=
-		-- prefix を false にして消すこともできる
-		prefix = function(diagnostic)
-			local icons = {
-				[vim.diagnostic.severity.ERROR] = "✘",
-				[vim.diagnostic.severity.WARN] = "▲",
-				[vim.diagnostic.severity.INFO] = "",
-				[vim.diagnostic.severity.HINT] = "",
-			}
-			return icons[diagnostic.severity]
-		end,
-		severity = { min = vim.diagnostic.severity.HINT },
-	},
+    virtual_text = {
+        spacing = 4,
+        -- ここで記号を一致させる。例: ERROR=✘、WARN=▲、INFO=、HINT=
+        -- prefix を false にして消すこともできる
+        prefix = function(diagnostic)
+            local icons = {
+                [vim.diagnostic.severity.ERROR] = "✘",
+                [vim.diagnostic.severity.WARN] = "▲",
+                [vim.diagnostic.severity.INFO] = "",
+                [vim.diagnostic.severity.HINT] = "",
+            }
+            return icons[diagnostic.severity]
+        end,
+        severity = { min = vim.diagnostic.severity.HINT },
+    },
 
-	signs = {
-		text = {
-			[vim.diagnostic.severity.ERROR] = "✘",
-			[vim.diagnostic.severity.WARN] = "▲",
-			[vim.diagnostic.severity.INFO] = "",
-			[vim.diagnostic.severity.HINT] = "",
-		},
-	},
+    signs = {
+        text = {
+            [vim.diagnostic.severity.ERROR] = "✘",
+            [vim.diagnostic.severity.WARN] = "▲",
+            [vim.diagnostic.severity.INFO] = "",
+            [vim.diagnostic.severity.HINT] = "",
+        },
+    },
 
-	underline = true,
-	update_in_insert = false,
-	severity_sort = true,
+    underline = true,
+    update_in_insert = false,
+    severity_sort = true,
 })
+
+-- 折りたたみUI
+vim.o.foldenable = true
+vim.o.foldlevel = 99
+vim.o.foldmethod = "expr"
+vim.o.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+vim.o.foldtext = ""
+vim.opt.foldcolumn = "1"
+vim.opt.fillchars:append({ fold = " " })
+
+vim.o.cmdheight = 0

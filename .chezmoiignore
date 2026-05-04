@@ -6,3 +6,4 @@ CLAUDE.md
 Brewfile
 mise.toml
 selene.toml
+dot_config/nvim
