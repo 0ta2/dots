@@ -3,6 +3,7 @@ cask "font-hackgen-nerd"
 cask "font-moralerspace"
 
 # cli
+brew "git"
 brew "tmux"
 brew "mise"
 brew "bat"

@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
+    if [[ "$remote_ref" =~ ^refs/heads/(main|master)$ ]]; then
+        echo "error: push to '$remote_ref' is not allowed" >&2
+        exit 1
+    fi
+done
+exit 0

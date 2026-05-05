@@ -19,3 +19,7 @@
         tool = codediff
 [mergetool "codediff"]
         cmd = nvim "$MERGED" -c "CodeDiff merge \"$MERGED\""
+
+[hook "no-push-main"]
+    event = pre-push
+    command = ~/.local/bin/git-no-push-main
