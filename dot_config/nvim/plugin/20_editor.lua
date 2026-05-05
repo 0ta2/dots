@@ -132,6 +132,7 @@ require('blink.indent').setup({})
 vim.pack.add({
     { src = "https://github.com/lewis6991/gitsigns.nvim" },
     { src = "https://github.com/esmuellert/codediff.nvim" },
+    { src = "https://github.com/linrongbin16/gitlinker.nvim" }
 })
 
 require('gitsigns').setup()
@@ -143,6 +144,7 @@ require("codediff").setup({
         discard_hunk = "<leader>hr",
     }
 })
+require('gitlinker').setup()
 
 --
 -- カーソル移動強化
