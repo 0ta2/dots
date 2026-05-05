@@ -11,8 +11,16 @@ fi
 PROJECT_NAME=$(basename "$PWD")
 MESSAGE="${1:-Claude Code からの通知}"
 
+if [ -n "$TMUX" ] && [ -n "$TMUX_PANE" ]; then
+    PANE_ID="$TMUX_PANE"
+    EXECUTE_CMD="/usr/bin/osascript -e 'tell application \"Ghostty\" to activate' && /opt/homebrew/bin/tmux switch-client -t ${PANE_ID}"
+else
+    EXECUTE_CMD="/usr/bin/osascript -e 'tell application \"Ghostty\" to activate'"
+fi
+
 terminal-notifier \
     -title "Claude Code" \
     -subtitle "$PROJECT_NAME" \
     -message "$MESSAGE" \
-    -sound Ping
+    -sound Ping \
+    -execute "$EXECUTE_CMD"
