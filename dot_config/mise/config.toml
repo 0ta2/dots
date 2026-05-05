@@ -15,6 +15,7 @@ act = "latest"
 # For Go
 go = "latest"
 "go:github.com/go-delve/delve/cmd/dlv" = { version = "latest" }
+"github:k1LoW/roots" = "latest"
 
 
 # For Node.js
