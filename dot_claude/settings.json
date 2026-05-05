@@ -42,7 +42,8 @@
             "Bash(git diff:*)",
             "Bash(git log:*)",
             "Bash(git branch:*)",
-            "Bash(git show:*)"
+            "Bash(git show:*)",
+            "Bash(rtk:*)"
         ],
         "deny": [
             "Read(./.env)",
