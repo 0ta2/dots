@@ -65,7 +65,6 @@ vim.keymap.set("n", "<Leader>fc", "<Cmd>FzfLua<CR>", { desc = "ピッカー検�
 vim.keymap.set("n", "<Leader>fl", "<Cmd>FzfLua lgrep_curbuf<CR>", { desc = "ライン検索" })
 vim.keymap.set("n", "<Leader>fj", "<Cmd>FzfLua jumps<CR>", { desc = "jumpの検索" })
 vim.keymap.set("n", "<Leader>ft", "<Cmd>FzfLua filetypes<CR>", { desc = "ファイルタイプの検索" })
-vim.keymap.set("n", "<Leader>fa", "<Cmd>FzfLua<CR>", { desc = "ピッカーのピッカー" })
 vim.keymap.set("n", "<C-g>", "<Cmd>FzfLua live_grep_native<CR>", { desc = "文字列検索" })
 vim.keymap.set("n", "<C-p>", "<Cmd>FzfLua global<CR>", { desc = "ファイル検索" })
 
