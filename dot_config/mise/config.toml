@@ -29,6 +29,7 @@ node = "latest"
 
 # For Rust
 rust = "latest"
+"github:rtk-ai/rtk" = "latest"
 
 # For Lua
 "cargo:selene" = "latest"

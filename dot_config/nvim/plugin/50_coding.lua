@@ -69,7 +69,7 @@ end, { desc = "Format buffer (conform.nvim)" })
 -- リンター
 --
 vim.pack.add({
-    { src = "ussenegger/nvim-lint" },
+    { src = "https://github.com/mfussenegger/nvim-lint" },
 })
 
 local lint         = require("lint")
