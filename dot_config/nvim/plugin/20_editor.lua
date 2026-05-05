@@ -148,13 +148,13 @@ require("codediff").setup({
 -- カーソル移動強化
 --
 vim.pack.add({
-    { src = "https://codeberg.org/andyg/leap.nvim" },
+    { src = "https://github.com/nvim-mini/mini.jump2d" },
 })
-
-require("leap").setup({})
-
-vim.keymap.set({ "n", "x", "o" }, "s", "<Plug>(leap)")
-vim.keymap.set("n", "S", "<Plug>(leap-from-window)")
+require("mini.jump2d").setup({
+    mappings = {
+        start_jumping = "s",
+    },
+})
 
 --
 -- ウィンドウ管理
