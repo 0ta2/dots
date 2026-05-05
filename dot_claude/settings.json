@@ -43,11 +43,6 @@
             "Bash(git log:*)",
             "Bash(git branch:*)",
             "Bash(git show:*)"
-            {{- if hasKey . "claudeAllowDomains" }}
-            {{- range .claudeAllowDomains }},
-            "Bash(curl:{{ . }})"
-            {{- end }}
-            {{- end }}
         ],
         "deny": [
             "Read(./.env)",
@@ -89,6 +84,17 @@
                     {
                         "type": "command",
                         "command": "~/.local/bin/claude-notify '入力待ちです'"
+                    }
+                ]
+            }
+        ],
+        "PreToolUse": [
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "rtk hook claude"
                     }
                 ]
             }
