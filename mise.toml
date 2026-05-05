@@ -46,5 +46,18 @@ run = [
     "mise upgrade"
 ]
 
-[tools]
-ghq = "latest"
+[tasks."skill:install"]
+description = "スキルのインストール"
+run = """
+for agent in github-copilot claude-code codex gemini-cli; do
+    gh skill install anthropics/skills skill-creator --scope user --agent $agent
+    gh skill install heptameta/heptabase-cli-skills heptabase-cli --scope user --agent $agent
+done
+"""
+
+[tasks."skill:update"]
+description = "スキルの更新"
+run = [
+    "gh skill update",
+]
+

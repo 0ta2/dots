@@ -7,16 +7,7 @@
     "enabledPlugins": {
         "lua-lsp@claude-plugins-official": true,
         "gopls-lsp@claude-plugins-official": true,
-        "pyright-lsp@claude-plugins-official": true,
-        "example-skills@anthropic-agent-skills": true
-    },
-    "extraKnownMarketplaces": {
-        "anthropic-agent-skills": {
-            "source": {
-                "source": "github",
-                "repo": "anthropics/skills"
-            }
-        }
+        "pyright-lsp@claude-plugins-official": true
     },
     "statusLine": {
         "type": "command",
