@@ -4,3 +4,6 @@ std = "neovim"
 mixed_table="allow"
 global_usage = "deny"
 unused_variable = "deny"
+
+[globals]
+MiniIcons
