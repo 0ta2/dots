@@ -1,6 +1,6 @@
 return {
     languages = {
-        go         = { treesitter = "go", lsp = "gopls", mason = "gopls" },
+        go         = { treesitter = "go", lsp = "gopls", mason = "gopls", linter = "golangci-lint" },
         lua        = { treesitter = "lua", lsp = "lua_ls", mason = "lua-language-server" },
         rust       = { treesitter = "rust", lsp = "rust_analyzer", mason = "rust-analyzer" },
         python     = { treesitter = "python", lsp = "pyright", mason = "pyright" },
