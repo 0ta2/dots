@@ -90,6 +90,15 @@
             "commands": [
                 "workbench.action.quickOpen"
             ]
+        },
+        {
+            "before": [
+                "g",
+                "q"
+            ],
+            "commands": [
+                "editor.action.formatDocument"
+            ]
         }
     ],
     // ビジュアルモードのキー割り当て
