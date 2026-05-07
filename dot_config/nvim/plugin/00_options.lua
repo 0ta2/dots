@@ -116,11 +116,11 @@ vim.o.foldexpr = "v:lua.vim.treesitter.foldexpr()"
 vim.o.foldtext = ""
 vim.opt.foldcolumn = "1"
 vim.opt.fillchars:append({
-    fold      = " ",
-    foldopen  = "▾",
+    fold = " ",
+    foldopen = "▾",
     foldclose = "▸",
     foldinner = " ",
-    foldsep   = " ",
+    foldsep = " ",
 })
 
 vim.o.cmdheight = 0

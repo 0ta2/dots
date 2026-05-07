@@ -9,28 +9,28 @@ vim.pack.add({
 
 ---@module 'blink.cmp'
 ---@type blink.cmp.Config
-local cmp = require('blink.cmp')
+local cmp = require("blink.cmp")
 cmp.build():wait(60000)
 cmp.setup({
     cmdline = { enabled = true },
     completion = {
-        keyword = { range = 'full' },
-        accept = { auto_brackets = { enabled = false }, },
+        keyword = { range = "full" },
+        accept = { auto_brackets = { enabled = false } },
         list = { selection = { preselect = false, auto_insert = true } },
         menu = {
             draw = {
                 columns = {
-                    { "label",     "label_description", gap = 1 },
-                    { "kind_icon", "kind" }
+                    { "label", "label_description", gap = 1 },
+                    { "kind_icon", "kind" },
                 },
             },
         },
         documentation = { auto_show = true, auto_show_delay_ms = 500 },
         ghost_text = { enabled = true },
     },
-    keymap = { preset = 'super-tab' },
-    sources = { default = { 'lsp', 'path', 'snippets', 'buffer' } },
-    snippets = { preset = 'default' },
+    keymap = { preset = "super-tab" },
+    sources = { default = { "lsp", "path", "snippets", "buffer" } },
+    snippets = { preset = "default" },
     signature = { enabled = true },
 })
 
@@ -72,7 +72,7 @@ vim.pack.add({
     { src = "https://github.com/mfussenegger/nvim-lint" },
 })
 
-local lint         = require("lint")
+local lint = require("lint")
 lint.linters_by_ft = {
     lua = { "selene" },
     go = { "golangci-lint" },

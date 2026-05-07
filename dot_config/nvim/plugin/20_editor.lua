@@ -13,7 +13,7 @@ vim.g.canola = {
     },
     columns = canola_columns.detail,
     keymaps = {
-        h = { callback = "actions.parent", mode = "n", },
+        h = { callback = "actions.parent", mode = "n" },
         l = { callback = "actions.select", mode = "n" },
         ["gd"] = {
             desc = "Toggle file detail view",
@@ -42,11 +42,11 @@ vim.g.canola = {
 }
 vim.g.canola_git = {
     show = { untracked = true, ignored = false },
-    format = 'compact',
+    format = "compact",
 }
 vim.g.canola_trash = {}
 vim.pack.add({
-    { src = "https://github.com/barrettruth/canola.nvim",      version = "canola" },
+    { src = "https://github.com/barrettruth/canola.nvim", version = "canola" },
     { src = "https://github.com/barrettruth/canola-collection" },
 })
 vim.keymap.set("n", "<Leader>e", "<Cmd>Canola<CR>", { desc = "ファイルツリーを開く" })
@@ -75,8 +75,8 @@ vim.pack.add({
     { src = "https://github.com/kylechui/nvim-surround" },
     { src = "https://github.com/andymass/vim-matchup" },
     { src = "https://github.com/saghen/blink.download" },
-    { src = 'https://github.com/saghen/blink.indent' },
-    { src = "https://github.com/saghen/blink.pairs",    version = vim.version.range(">=0") },
+    { src = "https://github.com/saghen/blink.indent" },
+    { src = "https://github.com/saghen/blink.pairs", version = vim.version.range(">=0") },
 })
 
 require("nvim-surround").setup({})
@@ -88,12 +88,12 @@ vim.keymap.set({ "n", "x" }, "m", "<Plug>(matchup-%)", { desc = "対応括弧へ
 -- kanagawa-paper に合わせた括弧レインボーカラー
 local p = require("kanagawa-paper.colors").setup().palette
 local blink_pairs_colors = {
-    Yellow   = p.carpYellow,
-    Blue     = p.crystalBlue,
-    Green    = p.springGreen,
-    Peach    = p.surimiOrange,
+    Yellow = p.carpYellow,
+    Blue = p.crystalBlue,
+    Green = p.springGreen,
+    Peach = p.surimiOrange,
     Lavender = p.oniViolet,
-    Red      = p.waveRed,
+    Red = p.waveRed,
 }
 for name, color in pairs(blink_pairs_colors) do
     vim.api.nvim_set_hl(0, "BlinkPairs" .. name, { fg = color })
@@ -106,7 +106,13 @@ require("blink.pairs").setup({
         enabled = true,
         disabled_filetypes = {},
         pairs = {
-            ["["] = { { "[", "]", when = function() return false end } },
+            ["["] = { {
+                "[",
+                "]",
+                when = function()
+                    return false
+                end,
+            } },
         },
     },
     highlights = {
@@ -124,7 +130,7 @@ require("blink.pairs").setup({
     debug = false,
 })
 
-require('blink.indent').setup({})
+require("blink.indent").setup({})
 
 --
 -- Git
@@ -132,19 +138,19 @@ require('blink.indent').setup({})
 vim.pack.add({
     { src = "https://github.com/lewis6991/gitsigns.nvim" },
     { src = "https://github.com/esmuellert/codediff.nvim" },
-    { src = "https://github.com/linrongbin16/gitlinker.nvim" }
+    { src = "https://github.com/linrongbin16/gitlinker.nvim" },
 })
 
-require('gitsigns').setup()
+require("gitsigns").setup()
 require("codediff").setup({
     keymaps = {
         toggle_stage = "-",
         stage_hunk = "<leader>hs",
         unstage_hunk = "<leader>hu",
         discard_hunk = "<leader>hr",
-    }
+    },
 })
-require('gitlinker').setup()
+require("gitlinker").setup()
 
 --
 -- カーソル移動強化
@@ -191,8 +197,8 @@ vim.pack.add({
     { src = "https://github.com/MagicDuck/grug-far.nvim" },
 })
 require("grug-far").setup({
-    windowCreationCommand = 'topleft vsplit',
-    headerMaxWidth = 80
+    windowCreationCommand = "topleft vsplit",
+    headerMaxWidth = 80,
 })
 
 --

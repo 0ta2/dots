@@ -1,5 +1,5 @@
-if vim.loop.os_get_passwd().username == '0ta2' then
-    vim.cmd.packadd('iwano.nvim-local')
+if vim.loop.os_get_passwd().username == "0ta2" then
+    vim.cmd.packadd("iwano.nvim-local")
 else
     vim.pack.add({
         "https://github.com/0ta2/iwano.nvim",

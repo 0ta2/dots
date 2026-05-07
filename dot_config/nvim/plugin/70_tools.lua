@@ -12,7 +12,7 @@ vim.api.nvim_create_autocmd("FileType", {
             return
         end
         vim.treesitter.start(args.buf)
-    end
+    end,
 })
 vim.pack.add({
     "https://github.com/mistweaverco/kulala.nvim",
