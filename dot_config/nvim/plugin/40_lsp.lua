@@ -45,6 +45,9 @@ if _ok then
         if v.linter then
             table.insert(mason_packages, v.linter)
         end
+        if v.formatter then
+            table.insert(mason_packages, v.formatter)
+        end
     end
     vim.schedule(function()
         for _, name in ipairs(mason_packages) do
