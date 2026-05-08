@@ -102,5 +102,11 @@ vim.api.nvim_create_autocmd("LspAttach", {
             "<Cmd>FzfLua lsp_implementations<CR>",
             vim.tbl_extend("force", opts, { desc = "実装へ移動" })
         )
+        vim.keymap.set(
+            "n",
+            "gx",
+            vim.lsp.codelens.run,
+            vim.tbl_extend("force", opts, { desc = "コードレンズの実行" })
+        )
     end,
 })
