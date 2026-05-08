@@ -44,7 +44,7 @@ vim.pack.add({
 require("conform").setup({
     formatters_by_ft = {
         lua = { "stylua" },
-        go = { "golangci-lint", "goimports", "gofmt" },
+        go = { "golangcilint", "goimports", "gofmt" },
         markdown = { "prettierd" },
     },
     default_format_opts = {
@@ -65,11 +65,12 @@ end, { desc = "Format buffer (conform.nvim)" })
 vim.pack.add({
     { src = "https://github.com/mfussenegger/nvim-lint" },
 })
-
+-- NOTE: masonでインストールされたものを参照できるようにするためPATHを追加
+vim.env.PATH = vim.fn.stdpath("data") .. "/mason/bin:" .. vim.env.PATH
 local lint = require("lint")
 lint.linters_by_ft = {
     lua = { "selene" },
-    go = { "golangci-lint" },
+    go = { "golangcilint" },
     rust = { "clippy" },
 }
 
