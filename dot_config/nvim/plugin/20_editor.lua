@@ -59,7 +59,13 @@ vim.pack.add({
 })
 
 local fzf = require("fzf-lua")
-fzf.setup({})
+fzf.setup({
+    lsp = {
+        jump1 = true,
+        ignore_current_line = true,
+        includeDeclaration = false,
+    },
+})
 fzf.register_ui_select()
 vim.keymap.set("n", "<Leader>fc", "<Cmd>FzfLua<CR>", { desc = "ピッカー検索" })
 vim.keymap.set("n", "<Leader>fl", "<Cmd>FzfLua lgrep_curbuf<CR>", { desc = "ライン検索" })
