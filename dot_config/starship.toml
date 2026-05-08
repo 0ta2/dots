@@ -61,6 +61,17 @@ format = '[$time]($style)'
 style = "fg:fuji_gray"
 time_format = " %H:%M"
 
+[memory_usage]
+disabled = false
+threshold = -1
+format = "$symbol [${ram}]($style)"
+style = "fg:crystal_blue"
+
+[kubernetes]
+disabled = false
+format = '[$symbol$context:$namespace]($style) '
+style = "fg:carp_yellow"
+
 [palettes.kanagawa_ink]
 oni_violet = "#957FB8"
 crystal_blue = "#7E9CD8"
