@@ -3,7 +3,7 @@ return {
         Lua = {
             diagnostics = {
                 enable = true,
-            }
-        }
-    }
+            },
+        },
+    },
 }

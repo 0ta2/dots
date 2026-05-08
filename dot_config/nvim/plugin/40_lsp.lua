@@ -42,6 +42,12 @@ if _ok then
         elseif v.lsp then
             table.insert(mason_packages, v.lsp)
         end
+        if v.linter then
+            table.insert(mason_packages, v.linter)
+        end
+        if v.formatter then
+            table.insert(mason_packages, v.formatter)
+        end
     end
     vim.schedule(function()
         for _, name in ipairs(mason_packages) do
@@ -64,13 +70,43 @@ vim.api.nvim_create_autocmd("LspAttach", {
     group = vim.api.nvim_create_augroup("LspKeymaps", { clear = true }),
     callback = function(ev)
         local opts = { buffer = ev.buf }
-        vim.keymap.set("n", "ga", vim.lsp.buf.code_action, vim.tbl_extend("force", opts, { desc = "コードアクションの実行" }))
+        vim.keymap.set(
+            "n",
+            "ga",
+            vim.lsp.buf.code_action,
+            vim.tbl_extend("force", opts, { desc = "コードアクションの実行" })
+        )
         vim.keymap.set("n", "gk", vim.lsp.buf.hover, vim.tbl_extend("force", opts, { desc = "ホバー" }))
         vim.keymap.set("n", "gR", vim.lsp.buf.rename, vim.tbl_extend("force", opts, { desc = "リネーム" }))
-        vim.keymap.set("n", "gd", "<Cmd>FzfLua lsp_definitions<CR>", vim.tbl_extend("force", opts, { desc = "定義へ移動" }))
-        vim.keymap.set("n", "gD", "<Cmd>FzfLua lsp_declarations<CR>", vim.tbl_extend("force", opts, { desc = "宣言へ移動" }))
-        vim.keymap.set("n", "gr", "<Cmd>FzfLua lsp_references<CR>", vim.tbl_extend("force", opts, { desc = "参照一覧" }))
-        vim.keymap.set("n", "gi", "<Cmd>FzfLua lsp_implementations<CR>",
-            vim.tbl_extend("force", opts, { desc = "実装へ移動" }))
+        vim.keymap.set(
+            "n",
+            "gd",
+            "<Cmd>FzfLua lsp_definitions<CR>",
+            vim.tbl_extend("force", opts, { desc = "定義へ移動" })
+        )
+        vim.keymap.set(
+            "n",
+            "gD",
+            "<Cmd>FzfLua lsp_declarations<CR>",
+            vim.tbl_extend("force", opts, { desc = "宣言へ移動" })
+        )
+        vim.keymap.set(
+            "n",
+            "gr",
+            "<Cmd>FzfLua lsp_references<CR>",
+            vim.tbl_extend("force", opts, { desc = "参照一覧" })
+        )
+        vim.keymap.set(
+            "n",
+            "gi",
+            "<Cmd>FzfLua lsp_implementations<CR>",
+            vim.tbl_extend("force", opts, { desc = "実装へ移動" })
+        )
+        vim.keymap.set(
+            "n",
+            "gx",
+            vim.lsp.codelens.run,
+            vim.tbl_extend("force", opts, { desc = "コードレンズの実行" })
+        )
     end,
 })

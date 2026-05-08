@@ -2,30 +2,30 @@
 -- キーバインドヘルプ
 --
 vim.pack.add({
-    { src = "https://github.com/nvim-mini/mini.clue" }
+    { src = "https://github.com/nvim-mini/mini.clue" },
 })
-local miniclue = require('mini.clue')
+local miniclue = require("mini.clue")
 miniclue.setup({
     triggers = {
         -- Leader triggers
-        { mode = { 'n', 'x' }, keys = '<Leader>' },
+        { mode = { "n", "x" }, keys = "<Leader>" },
         -- `[` and `]` keys
-        { mode = 'n',          keys = '[' },
-        { mode = 'n',          keys = ']' },
+        { mode = "n", keys = "[" },
+        { mode = "n", keys = "]" },
         -- Built-in completion
-        { mode = 'i',          keys = '<C-x>' },
+        { mode = "i", keys = "<C-x>" },
         -- Marks
-        { mode = { 'n', 'x' }, keys = "'" },
-        { mode = { 'n', 'x' }, keys = '`' },
+        { mode = { "n", "x" }, keys = "'" },
+        { mode = { "n", "x" }, keys = "`" },
         -- Registers
-        { mode = { 'n', 'x' }, keys = '"' },
-        { mode = { 'i', 'c' }, keys = '<C-r>' },
+        { mode = { "n", "x" }, keys = '"' },
+        { mode = { "i", "c" }, keys = "<C-r>" },
         -- Window commands
-        { mode = 'n',          keys = '<C-w>' },
+        { mode = "n", keys = "<C-w>" },
         -- `z` key
-        { mode = { 'n', 'x' }, keys = 'z' },
+        { mode = { "n", "x" }, keys = "z" },
         -- `g` key
-        { mode = { 'n', 'x' }, keys = 'g' },
+        { mode = { "n", "x" }, keys = "g" },
     },
 
     clues = {
@@ -36,20 +36,19 @@ miniclue.setup({
         miniclue.gen_clues.windows(),
         miniclue.gen_clues.g(),
         miniclue.gen_clues.z(),
-        { mode = { 'n', 'x' }, keys = '<Leader>h', desc = "diffcode" },
-        { mode = { 'n', 'x' }, keys = '<Leader>f', desc = "fzf-lua" },
-
+        { mode = { "n", "x" }, keys = "<Leader>h", desc = "diffcode" },
+        { mode = { "n", "x" }, keys = "<Leader>f", desc = "fzf-lua" },
     },
     window = {
         delay = 500,
-    }
+    },
 })
-vim.api.nvim_create_autocmd('FileType', {
-    pattern = 'codediff',
+vim.api.nvim_create_autocmd("FileType", {
+    pattern = "codediff",
     callback = function()
         vim.schedule(function()
             pcall(function()
-                require('mini.clue').set_buffer_triggers()
+                require("mini.clue").set_buffer_triggers()
             end)
         end)
     end,
@@ -64,28 +63,28 @@ vim.pack.add({
 require("smear_cursor").setup({
     msg = {
         targets = {
-            default       = 'cmd',
-            error         = 'msg',
-            list_cmd      = 'pager',
-            search_count  = 'cmd',
-            return_prompt = 'cmd',
+            default = "cmd",
+            error = "msg",
+            list_cmd = "pager",
+            search_count = "cmd",
+            return_prompt = "cmd",
         },
-    }
+    },
 })
 
 --
 -- UI 強化（コマンドライン/通知）
 --
-require('vim._core.ui2').enable({
+require("vim._core.ui2").enable({
     enable = true,
     msg = {
         ---@type 'cmd'|'msg' Default message target, either in the
         ---cmdline or in a separate ephemeral message window.
         ---@type string|table<string, 'cmd'|'msg'|'pager'> Default message target
         ---or table mapping |ui-messages| kinds and triggers to a target.
-        targets = 'cmd',
+        targets = "cmd",
         cmd = {
-            height = 1
+            height = 1,
         },
         dialog = {
             height = 0.5,
@@ -100,7 +99,7 @@ require('vim._core.ui2').enable({
     },
 })
 vim.pack.add({
-    { src = "https://github.com/rachartier/tiny-cmdline.nvim" }
+    { src = "https://github.com/rachartier/tiny-cmdline.nvim" },
 })
 require("tiny-cmdline").setup({
     width = {
@@ -125,17 +124,16 @@ vim.pack.add({
     { src = "https://github.com/nvimdev/lspsaga.nvim" },
 })
 require("tiny-code-action").setup({
-    picker = { "fzf-lua" }
+    picker = { "fzf-lua" },
 })
-require('lspsaga').setup({
+require("lspsaga").setup({
     lightbulb = {
         virtual_text = false,
     },
     ui = {
-        code_action = '󰌶',
-    }
+        code_action = "󰌶",
+    },
 })
-
 
 --
 -- Markdown レンダリング
@@ -145,14 +143,14 @@ vim.pack.add({
 })
 require("render-markdown").setup({
     file_types = { "markdown" },
-    heading = { position = 'inline' },
+    heading = { position = "inline" },
     code = {
         sign = false,
         border = "thick",
     },
     pipe_table = {
         enabled = false,
-    }
+    },
 })
 
 local p = (require("kanagawa-paper.colors").setup() or {}).palette or {}
@@ -165,15 +163,15 @@ vim.pack.add({
 })
 require("modes").setup({
     colors = {
-        bg      = "",
-        copy    = p.carpYellow,
-        delete  = p.peachRed,
-        change  = p.peachRed,
-        format  = p.surimiOrange,
-        insert  = p.waveAqua2,
+        bg = "",
+        copy = p.carpYellow,
+        delete = p.peachRed,
+        change = p.peachRed,
+        format = p.surimiOrange,
+        insert = p.waveAqua2,
         replace = p.waveBlue2,
-        select  = p.oniViolet,
-        visual  = p.oniViolet,
+        select = p.oniViolet,
+        visual = p.oniViolet,
     },
     line_opacity = 0.4,
 })
@@ -227,12 +225,12 @@ end, { desc = "バッファを閉じる（レイアウト保持）" })
 -- パンくず表示
 --
 vim.pack.add({
-    { src = 'https://github.com/Bekaboo/dropbar.nvim' },
+    { src = "https://github.com/Bekaboo/dropbar.nvim" },
 })
-require('dropbar').setup()
-vim.api.nvim_set_hl(0, 'DropBarIconUISeparator', { fg = p.crystalBlue, bold = true })
-vim.api.nvim_set_hl(0, 'DropBarIconKindDefault', { fg = p.carpYellow })
-vim.api.nvim_set_hl(0, 'WinBar', { fg = p.fujiWhite })
+require("dropbar").setup()
+vim.api.nvim_set_hl(0, "DropBarIconUISeparator", { fg = p.crystalBlue, bold = true })
+vim.api.nvim_set_hl(0, "DropBarIconKindDefault", { fg = p.carpYellow })
+vim.api.nvim_set_hl(0, "WinBar", { fg = p.fujiWhite })
 
 --
 -- データビジュアライゼーション
@@ -253,11 +251,11 @@ require("videre").setup({
 -- ダッシュボード
 --
 vim.pack.add({
-    { src = "https://github.com/goolord/alpha-nvim" }
+    { src = "https://github.com/goolord/alpha-nvim" },
 })
 
-local alpha = require('alpha')
-local dashboard = require('alpha.themes.dashboard')
+local alpha = require("alpha")
+local dashboard = require("alpha.themes.dashboard")
 dashboard.section.header.val = {
     [[                               __                ]],
     [[  ___     ___    ___   __  __ /\_\    ___ ___    ]],
