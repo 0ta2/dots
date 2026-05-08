@@ -11,6 +11,6 @@ require("iwano").setup({
         lazygit = { cmd = { "lazygit" } },
     },
 })
-vim.keymap.set("n", "<c-k>", function()
+vim.keymap.set("n", "<Leader>k", function()
     require("iwano").toggle("lazygit")
 end)
