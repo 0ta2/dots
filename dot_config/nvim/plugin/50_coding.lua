@@ -52,12 +52,6 @@ require("conform").setup({
     },
 })
 vim.o.formatexpr = "v:lua.require'conform'.formatexpr()"
-vim.api.nvim_create_autocmd({ "BufWritePre", "BufLeave", "FocusLost" }, {
-    pattern = "*",
-    callback = function(args)
-        require("conform").format({ bufnr = args.buf })
-    end,
-})
 vim.keymap.set("n", "gq", function()
     require("conform").format({
         lsp_format = "fallback",
