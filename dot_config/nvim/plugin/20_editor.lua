@@ -13,8 +13,6 @@ vim.g.canola = {
     },
     columns = canola_columns.detail,
     keymaps = {
-        h = { callback = "actions.parent", mode = "n" },
-        l = { callback = "actions.select", mode = "n" },
         ["gd"] = {
             desc = "Toggle file detail view",
             callback = function()
