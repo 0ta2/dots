@@ -28,7 +28,6 @@ cask "docker-desktop"
 cask "karabiner-elements"
 cask "raycast"
 cask "kobo"
-cask "claude"
 cask "chatgpt"
 
 # terminal

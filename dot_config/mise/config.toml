@@ -11,6 +11,7 @@ gh = "latest" # GitHub CLI
 awscli = "latest"
 gcloud = "latest"
 act = "latest"
+claude = "latest"
 
 # For Go
 go = "latest"
