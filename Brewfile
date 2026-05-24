@@ -39,6 +39,7 @@ brew "mas"
 
 # vscode
 vscode "MS-CEINTL.vscode-language-pack-ja"
+vscode "vscodevim.vim"
 
 # for app store
 mas "LINE", id: 539883307
