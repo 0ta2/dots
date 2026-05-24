@@ -6,14 +6,15 @@
             "shift-l": "vim::EndOfLine",
             "j": "vim::Down",
             "k": "vim::Up",
-            ";": "command_palette::Toggle",
-            ":": "vim::RepeatFind"
+            ":": "command_palette::Toggle"
         }
     },
     {
         "context": "vim_mode == normal && !menu",
         "bindings": {
-            "ctrl-p": "file_finder::Toggle"
+            "ctrl-p": "file_finder::Toggle",
+            ";": "vim::CountCommand",
+            "g q": "editor::Format"
         }
     }
 ]
