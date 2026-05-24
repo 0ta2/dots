@@ -12,6 +12,7 @@ awscli = "latest"
 gcloud = "latest"
 act = "latest"
 claude = "latest"
+bun = "latest"
 
 # For Go
 go = "latest"
