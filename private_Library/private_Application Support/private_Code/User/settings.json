@@ -3,8 +3,8 @@
     "workbench.activityBar.location": "top",
     "workbench.tree.indent": 20,
     // Font
-    "editor.fontFamily": "HackGen35",
-    "terminal.integrated.fontFamily": "HackGen Console NF",
+    "editor.fontFamily": "Moralerspace Neon",
+    "terminal.integrated.fontFamily": "Moralerspace Neon",
     // Github Copilot
     "github.copilot.nextEditSuggestions.enabled": true,
     // Editor

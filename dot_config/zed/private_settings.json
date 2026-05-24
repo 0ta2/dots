@@ -2,7 +2,7 @@
     "session": {
         "trust_all_worktrees": true
     },
-    "buffer_font_family": "HackGen35",
+    "buffer_font_family": "Moralerspace Neo",
     "vim_mode": true,
     "ui_font_size": 16,
     "buffer_font_size": 15,
