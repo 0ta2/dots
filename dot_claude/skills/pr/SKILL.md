@@ -52,13 +52,14 @@ allowed-tools: Bash(git status), Bash(git log*), Bash(git diff*), Bash(git branc
 5. `gh pr create` コマンドで PR を作成する
    - タイトルは後述のルールに従って生成する
    - 本文は HEREDOC を使って渡す
+   - `--draft` フラグを付けてドラフト PR として作成する
 
 ### テンプレートがある場合
 
 テンプレートの内容に従って各セクションを埋める:
 
 ```bash
-gh pr create --title "タイトル" --body "$(cat <<'EOF'
+gh pr create --draft --title "タイトル" --body "$(cat <<'EOF'
 <!-- テンプレートの内容に従って記載 -->
 EOF
 )"
@@ -67,7 +68,7 @@ EOF
 ### テンプレートがない場合（デフォルトフォーマット）
 
 ```bash
-gh pr create --title "タイトル" --body "$(cat <<'EOF'
+gh pr create --draft --title "タイトル" --body "$(cat <<'EOF'
 ## 変更内容
 
 - 変更点1
@@ -186,5 +187,6 @@ EOF
 
 - PR のベースブランチはリポジトリのデフォルトブランチ（通常 `main` または `master`）を使用する
 - コミット履歴から変更の全体像を把握した上で PR タイトル・本文を作成・更新する
+- PR はドラフトとして作成する（`--draft` フラグを使用）
 - push は明示的に依頼がない限り確認してから実施する
 - `--force` push は使わない
