@@ -1,7 +1,7 @@
 fghq() {
     local selected_dir 
     selected_dir=$(
-        ghq list -p | roots | fzf \
+        ghq list -p | fzf \
             --query="${LBUFFER}" \
     ) || true
 
