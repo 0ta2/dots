@@ -29,6 +29,7 @@ cask "karabiner-elements"
 cask "raycast"
 cask "kobo"
 cask "chatgpt"
+cask "claude"
 
 # terminal
 brew "starship"
