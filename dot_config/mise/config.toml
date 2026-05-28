@@ -18,6 +18,7 @@ bun = "latest"
 go = "latest"
 "go:github.com/go-delve/delve/cmd/dlv" = { version = "latest" }
 "github:k1LoW/roots" = "latest"
+"github:d-kuro/gwq" = "latest"
 
 
 # For Node.js
