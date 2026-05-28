@@ -11,11 +11,14 @@ gh = "latest" # GitHub CLI
 awscli = "latest"
 gcloud = "latest"
 act = "latest"
+claude = "latest"
+bun = "latest"
 
 # For Go
 go = "latest"
 "go:github.com/go-delve/delve/cmd/dlv" = { version = "latest" }
 "github:k1LoW/roots" = "latest"
+"github:d-kuro/gwq" = "latest"
 
 
 # For Node.js

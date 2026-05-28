@@ -135,24 +135,6 @@ require("lspsaga").setup({
     },
 })
 
---
--- Markdown レンダリング
---
-vim.pack.add({
-    { src = "https://github.com/MeanderingProgrammer/render-markdown.nvim" },
-})
-require("render-markdown").setup({
-    file_types = { "markdown" },
-    heading = { position = "inline" },
-    code = {
-        sign = false,
-        border = "thick",
-    },
-    pipe_table = {
-        enabled = false,
-    },
-})
-
 local p = (require("kanagawa-paper.colors").setup() or {}).palette or {}
 
 --

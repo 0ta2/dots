@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+dir=${1:-$(pwd)}
+if git -C "$dir" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+    basename "$(git -C "$dir" rev-parse --show-toplevel)"
+else
+    basename "$dir"
+fi

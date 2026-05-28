@@ -28,8 +28,8 @@ cask "docker-desktop"
 cask "karabiner-elements"
 cask "raycast"
 cask "kobo"
-cask "claude"
 cask "chatgpt"
+cask "claude"
 
 # terminal
 brew "starship"
@@ -40,6 +40,7 @@ brew "mas"
 
 # vscode
 vscode "MS-CEINTL.vscode-language-pack-ja"
+vscode "vscodevim.vim"
 
 # for app store
 mas "LINE", id: 539883307

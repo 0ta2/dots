@@ -164,3 +164,6 @@ alias "vim"="nvim"
 
 # Custom
 alias "c"="clear"
+
+# gwq
+source <(gwq completion zsh)

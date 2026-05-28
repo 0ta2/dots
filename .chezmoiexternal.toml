@@ -10,11 +10,11 @@
     type = "git-repo"
     url = "https://github.com/tmux-plugins/tmux-cpu.git"
     refreshPeriod = "168h"
-[".config/tmux/plugins/tmux-plugins/tmux-battery"]
-    type = "git-repo"
-    url = "https://github.com/tmux-plugins/tmux-battery.git"
-    refreshPeriod = "168h"
 [".config/tmux/plugins/tmux-plugins/tmux-fzf"]
     type = "git-repo"
     url = "https://github.com/sainnhe/tmux-fzf.git"
+    refreshPeriod = "168h"
+[".config/tmux/plugins/eduwass/tmux-palette"]
+    type = "git-repo"
+    url = "https://github.com/eduwass/tmux-palette.git"
     refreshPeriod = "168h"
