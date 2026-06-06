@@ -152,7 +152,7 @@ export EDITOR="nvim"
 
 # tmux
 if [[ -n "${TMUX}" ]]; then
-    export FZF_DEFAULT_OPTS="--tmux"
+    export FZF_DEFAULT_OPTS="--tmux center,80%,70%"
 fi
 
 # GNU

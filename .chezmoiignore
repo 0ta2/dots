@@ -7,3 +7,7 @@ Brewfile
 mise.toml
 selene.toml
 dot_config/nvim
+{{ if ne .chezmoi.hostname "0ta2" }}
+.claude/skills
+{{ end }}
+
