@@ -48,3 +48,13 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- -b $HOME/.local/bin init --source=~/ghq/
     - 軌跡の速さを一番早く
     - タップでクリック にチェック
 
+## Neovim ローカル開発プラグインのリンク作成
+
+`iwano.nvim` / `amanoukihashi.nvim` をローカルのリポジトリから読み込むため、下記のシンボリックリンクを作成する:
+
+```bash
+mkdir -p ~/.local/share/nvim/site/pack/mine/opt
+ln -s ~/ghq/github.com/0ta2/iwano.nvim ~/.local/share/nvim/site/pack/mine/opt/iwano.nvim-local
+ln -s ~/ghq/github.com/0ta2/amanoukihashi.nvim ~/.local/share/nvim/site/pack/mine/opt/amanoukihashi.nvim-local
+```
+

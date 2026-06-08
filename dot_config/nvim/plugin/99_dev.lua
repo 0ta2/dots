@@ -1,10 +1,4 @@
-if vim.loop.os_get_passwd().username == "0ta2" then
-    vim.cmd.packadd("iwano.nvim-local")
-else
-    vim.pack.add({
-        "https://github.com/0ta2/iwano.nvim",
-    })
-end
+vim.cmd.packadd("iwano.nvim-local")
 
 require("iwano").setup({
     tools = {
@@ -15,20 +9,17 @@ vim.keymap.set("n", "<Leader>k", function()
     require("iwano").toggle("lazygit")
 end)
 
-if vim.loop.os_get_passwd().username == "0ta2" then
-    vim.cmd.packadd("amanoukihashi.nvim-local")
-else
-    vim.pack.add({
-        { src = "https://github.com/0ta2/amanoukihashi.nvim", version = "feat/phase0" },
-    })
-end
+vim.cmd.packadd("amanoukihashi.nvim-local")
 require("amanoukihashi").setup({
     default_cmd = { "claude" },
     layout = "split",
+    split = {
+        width = vim.o.columns > 200 and 150 or 80,
+    },
 })
-vim.keymap.set({ "n", "t" }, "<leader>ca", function()
-    require("amanoukihashi").toggle("main")
-end, { desc = "Claude Code: main セッション" })
-vim.keymap.set({ "n", "t" }, "<leader>cb", function()
-    require("amanoukihashi").toggle("feat")
-end, { desc = "Claude Code: feat セッション" })
+vim.keymap.set({ "n", "t", "i", "x" }, "<c-.>", function()
+    require("amanoukihashi").toggle()
+end, { desc = "Claude Code: セッションをトグル" })
+vim.keymap.set("n", "<leader>af", "<Cmd>AmanoukihashiInsert @{file}<CR>", { desc = "amanoukihashi: 現在ファイルのパスを挿入" })
+vim.keymap.set("v", "<leader>as", ":AmanoukihashiInsert {selection}<CR>", { desc = "amanoukihashi: ビジュアル選択テキストを挿入" })
+vim.keymap.set("n", "<leader>al", "<Cmd>AmanoukihashiList<CR>", { desc = "amanoukihashi: セッション一覧" })
