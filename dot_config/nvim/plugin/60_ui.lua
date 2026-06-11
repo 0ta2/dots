@@ -224,10 +224,7 @@ vim.pack.add({
     { src = "https://github.com/Owen-Dechow/videre.nvim" },
 })
 
-require("videre").setup({
-    round_units = true,
-    simple_statusline = true,
-})
+require("videre").setup({})
 
 --
 -- ダッシュボード

@@ -3,7 +3,6 @@
     "language": "japanese",
     "vim": true,
     "voiceEnabled": true,
-    "effortLevel": "high",
     "enabledPlugins": {
         "lua-lsp@claude-plugins-official": true,
         "gopls-lsp@claude-plugins-official": true,
@@ -41,16 +40,16 @@
             "Read(./.env)",
             "Read(./.env.*)",
             "Read(./secrets/**)",
-            "Bash(rm -rf:*)",
-            "Bash(sudo:*)",
-            "Bash(gh pr merge:*)",
-            "Bash(gh repo delete:*)"
+            "Bash(sudo:*)"
         ],
         "ask": [
             "Bash(git push:*)",
             "Bash(git merge:*)",
             "Bash(git rebase:*)"
         ]
+    },
+    "env": {
+        "CLAUDE_CODE_NO_FLICKER": "1"
     },
     "hooks": {
         "Stop": [

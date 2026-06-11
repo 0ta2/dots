@@ -13,7 +13,7 @@ BREWFILE=${HOME}/Brewfile
 
 if [[ -f "$BREWFILE" ]]; then
     echo "🍺 Brewfile has changed, running brew bundle..."
-    brew bundle --cleanup --file="$BREWFILE"
+    brew bundle --force-cleanup --file="$BREWFILE"
 else
     echo "🌀 No Brewfile found, skipping brew bundle"
 fi
