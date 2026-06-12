@@ -1,5 +1,28 @@
 vim.loader.enable()
 
+-- 起動時間短縮: 使っていない組み込みプラグインを無効化
+for _, plugin in ipairs({
+    "gzip",
+    "tar",
+    "tarPlugin",
+    "zip",
+    "zipPlugin",
+    "getscript",
+    "getscriptPlugin",
+    "vimball",
+    "vimballPlugin",
+    "2html_plugin",
+    "logipat",
+    "rrhelper",
+    "spellfile_plugin",
+    "netrw",
+    "netrwPlugin",
+    "netrwSettings",
+    "netrwFileHandlers",
+}) do
+    vim.g["loaded_" .. plugin] = 1
+end
+
 -- リーダーキーを `<space>` に設定
 -- 詳しくは、 `:help mapleader` を参照
 vim.g.mapleader = " "
