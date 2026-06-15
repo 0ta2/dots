@@ -53,7 +53,7 @@ case "$key" in
             read -r new_session_name
             if [ -n "$new_session_name" ]; then
                 # 命名の表記揺れ吸収
-                name="${(U)new_session_name}"
+                name="${(L)new_session_name}"
                 # セッション名の簡易正規化(英数._- 以外は - に変換)
                 name="${name//[^A-Za-z0-9_.-]/-}"
 
