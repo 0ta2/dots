@@ -60,6 +60,7 @@ local fzf = require("fzf-lua")
 fzf.setup({
     files = {
         hidden = true,
+        no_ignore = true,
     },
     lsp = {
         jump1 = true,
