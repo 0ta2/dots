@@ -35,20 +35,23 @@ def remaining(resets_at):
         return f'{d}d{h}h'
     return f'{h}h{m:02d}m'
 
-def calc_pace(pct, resets_at, window_secs, per_secs):
-    """経過時間から消費ペース（%/per_secs）を計算する。窓の開始直後は None。"""
+def calc_projected(pct, resets_at, window_secs):
+    """このペースが続いた場合のリセット時点の予測着地 (%)。窓の開始直後は None。"""
     if resets_at is None:
         return None
     elapsed = window_secs - max(0, resets_at - time.time())
     if elapsed < 60:
         return None
-    return pct / elapsed * per_secs
+    return pct * window_secs / elapsed
 
-def fmt(label, pct, resets_at=None, pace=None, pace_unit=''):
+def fmt(label, pct, resets_at=None, projected=None):
     p = round(pct)
     rem = f' {DIM}{remaining(resets_at)}{R}' if resets_at is not None else ''
-    pace_str = f' {DIM}({pace:.1f}%/{pace_unit}){R}' if pace is not None else ''
-    return f'{label} {gradient(pct)}{bar(pct)} {p}%{R}{rem}{pace_str}'
+    if projected is not None:
+        proj_str = f' {DIM}→ ~{min(round(projected), 999)}%{R}'
+    else:
+        proj_str = ''
+    return f'{label} {gradient(pct)}{bar(pct)} {p}%{R}{rem}{proj_str}'
 
 model = data.get('model', {}).get('display_name', 'Claude')
 parts = [model]
@@ -60,13 +63,13 @@ if ctx is not None:
 five_data = data.get('rate_limits', {}).get('five_hour', {})
 five = five_data.get('used_percentage')
 if five is not None:
-    five_pace = calc_pace(five, five_data.get('resets_at'), 5 * 3600, 3600)
-    parts.append(fmt('5h', five, five_data.get('resets_at'), pace=five_pace, pace_unit='h'))
+    five_proj = calc_projected(five, five_data.get('resets_at'), 5 * 3600)
+    parts.append(fmt('5h', five, five_data.get('resets_at'), projected=five_proj))
 
 week_data = data.get('rate_limits', {}).get('seven_day', {})
 week = week_data.get('used_percentage')
 if week is not None:
-    week_pace = calc_pace(week, week_data.get('resets_at'), 7 * 86400, 86400)
-    parts.append(fmt('7d', week, week_data.get('resets_at'), pace=week_pace, pace_unit='d'))
+    week_proj = calc_projected(week, week_data.get('resets_at'), 7 * 86400)
+    parts.append(fmt('7d', week, week_data.get('resets_at'), projected=week_proj))
 
 print(f'{DIM}│{R}'.join(f' {p} ' for p in parts), end='')
