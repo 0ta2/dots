@@ -9,6 +9,7 @@ brew "mise"
 brew "bat"
 brew "fd"
 brew "gsed"
+brew "lazysql"
 brew "terminal-notifier"
 
 # editor
