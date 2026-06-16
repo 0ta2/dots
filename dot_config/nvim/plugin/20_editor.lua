@@ -82,7 +82,7 @@ vim.keymap.set("n", "<C-p>", "<Cmd>FzfLua global<CR>", { desc = "ファイル検
 vim.pack.add({
     { src = "https://github.com/kylechui/nvim-surround" },
     { src = "https://github.com/andymass/vim-matchup" },
-    { src = "https://github.com/saghen/blink.download" },
+    { src = "https://github.com/saghen/blink.lib" },
     { src = "https://github.com/saghen/blink.indent" },
     { src = "https://github.com/saghen/blink.pairs", version = vim.version.range(">=0") },
 })
@@ -109,6 +109,7 @@ end
 
 --- @module 'blink.pairs'
 --- @type blink.pairs.Config
+require("blink.pairs").download():pwait(60000)
 require("blink.pairs").setup({
     mappings = {
         enabled = true,
