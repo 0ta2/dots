@@ -18,3 +18,7 @@
     type = "git-repo"
     url = "https://github.com/eduwass/tmux-palette.git"
     refreshPeriod = "168h"
+[".config/tmux/plugins/Kristijan/flash-copy.tmux"]
+    type = "git-repo"
+    url = "https://github.com/Kristijan/flash-copy.tmux.git"
+    refreshPeriod = "168h"
