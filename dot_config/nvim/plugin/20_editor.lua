@@ -58,6 +58,9 @@ vim.pack.add({
 
 local fzf = require("fzf-lua")
 fzf.setup({
+    files = {
+        hidden = true,
+    },
     lsp = {
         jump1 = true,
         ignore_current_line = true,
