@@ -3,12 +3,14 @@
 --
 vim.pack.add({
     { src = "https://github.com/folke/lazydev.nvim" },
+    { src = "https://github.com/icholy/lsplinks.nvim" },
 })
 require("lazydev").setup({
     library = {
         { path = "${3rd}/luv/library", words = { "vim%.uv" } },
     },
 })
+require("lsplinks").setup()
 
 --
 -- Mason（LSP/ツールインストーラ）
@@ -78,12 +80,14 @@ vim.api.nvim_create_autocmd("LspAttach", {
         )
         vim.keymap.set("n", "gk", vim.lsp.buf.hover, vim.tbl_extend("force", opts, { desc = "ホバー" }))
         vim.keymap.set("n", "gR", vim.lsp.buf.rename, vim.tbl_extend("force", opts, { desc = "リネーム" }))
-        vim.keymap.set(
-            "n",
-            "gd",
-            "<Cmd>FzfLua lsp_definitions<CR>",
-            vim.tbl_extend("force", opts, { desc = "定義へ移動" })
-        )
+        vim.keymap.set("n", "gd", function()
+            -- LSP ドキュメントリンク（$ref 等）があれば開き、なければ定義へ移動
+            if require("lsplinks").current() then
+                require("lsplinks").open()
+            else
+                vim.cmd("FzfLua lsp_definitions")
+            end
+        end, vim.tbl_extend("force", opts, { desc = "定義/ドキュメントリンクへ移動" }))
         vim.keymap.set(
             "n",
             "gD",
