@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json, sys, time
+from datetime import date, timedelta
 
 data = json.load(sys.stdin)
 
@@ -35,14 +36,32 @@ def remaining(resets_at):
         return f'{d}d{h}h'
     return f'{h}h{m:02d}m'
 
-def calc_projected(pct, resets_at, window_secs):
+def count_weekdays(start_ts, end_ts):
+    d, end_d = date.fromtimestamp(start_ts), date.fromtimestamp(end_ts)
+    count = 0
+    while d < end_d:
+        if d.weekday() < 5:
+            count += 1
+        d += timedelta(days=1)
+    return count
+
+def calc_projected(pct, resets_at, window_secs, weekdays_only=False):
     """このペースが続いた場合のリセット時点の予測着地 (%)。窓の開始直後は None。"""
     if resets_at is None:
         return None
-    elapsed = window_secs - max(0, resets_at - time.time())
-    if elapsed < 60:
-        return None
-    return pct * window_secs / elapsed
+    now = time.time()
+    if weekdays_only:
+        start_ts = resets_at - window_secs
+        elapsed = count_weekdays(start_ts, now)
+        total = count_weekdays(start_ts, resets_at)
+        if elapsed < 1 or total == 0:
+            return None
+        return pct * total / elapsed
+    else:
+        elapsed = window_secs - max(0, resets_at - now)
+        if elapsed < 60:
+            return None
+        return pct * window_secs / elapsed
 
 def fmt(label, pct, resets_at=None, projected=None):
     p = round(pct)
@@ -69,7 +88,7 @@ if five is not None:
 week_data = data.get('rate_limits', {}).get('seven_day', {})
 week = week_data.get('used_percentage')
 if week is not None:
-    week_proj = calc_projected(week, week_data.get('resets_at'), 7 * 86400)
+    week_proj = calc_projected(week, week_data.get('resets_at'), 7 * 86400, weekdays_only=True)
     parts.append(fmt('7d', week, week_data.get('resets_at'), projected=week_proj))
 
 print(f'{DIM}│{R}'.join(f' {p} ' for p in parts), end='')
