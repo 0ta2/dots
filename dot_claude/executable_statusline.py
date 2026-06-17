@@ -36,14 +36,18 @@ def remaining(resets_at):
         return f'{d}d{h}h'
     return f'{h}h{m:02d}m'
 
-def count_weekdays(start_ts, end_ts):
-    d, end_d = date.fromtimestamp(start_ts), date.fromtimestamp(end_ts)
-    count = 0
+def count_weekdays_split(start_ts, pivot_ts, end_ts):
+    """start→pivot を elapsed、start→end を total として平日数を同時計算する。"""
+    d = date.fromtimestamp(start_ts)
+    pivot_d, end_d = date.fromtimestamp(pivot_ts), date.fromtimestamp(end_ts)
+    elapsed = total = 0
     while d < end_d:
         if d.weekday() < 5:
-            count += 1
+            total += 1
+            if d < pivot_d:
+                elapsed += 1
         d += timedelta(days=1)
-    return count
+    return elapsed, total
 
 def calc_projected(pct, resets_at, window_secs, weekdays_only=False):
     """このペースが続いた場合のリセット時点の予測着地 (%)。窓の開始直後は None。"""
@@ -52,9 +56,8 @@ def calc_projected(pct, resets_at, window_secs, weekdays_only=False):
     now = time.time()
     if weekdays_only:
         start_ts = resets_at - window_secs
-        elapsed = count_weekdays(start_ts, now)
-        total = count_weekdays(start_ts, resets_at)
-        if elapsed < 1 or total == 0:
+        elapsed, total = count_weekdays_split(start_ts, now, resets_at)
+        if elapsed < 1 or total == 0:  # elapsed は日数単位
             return None
         return pct * total / elapsed
     else:
