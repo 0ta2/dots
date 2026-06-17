@@ -56,6 +56,14 @@ def fmt(label, pct, resets_at=None, projected=None):
 model = data.get('model', {}).get('display_name', 'Claude')
 parts = [model]
 
+effort_level = data.get('effort', {}).get('level')
+if effort_level is not None:
+    thinking = data.get('thinking', {}).get('enabled', False)
+    label = f'effort:{effort_level}'
+    if thinking:
+        label += '+think'
+    parts.append(label)
+
 ctx = data.get('context_window', {}).get('used_percentage')
 if ctx is not None:
     parts.append(fmt('ctx', ctx))
