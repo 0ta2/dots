@@ -35,10 +35,23 @@ def remaining(resets_at):
         return f'{d}d{h}h'
     return f'{h}h{m:02d}m'
 
-def fmt(label, pct, resets_at=None):
+def calc_projected(pct, resets_at, window_secs):
+    """このペースが続いた場合のリセット時点の予測着地 (%)。窓の開始直後は None。"""
+    if resets_at is None:
+        return None
+    elapsed = window_secs - max(0, resets_at - time.time())
+    if elapsed < 60:
+        return None
+    return pct * window_secs / elapsed
+
+def fmt(label, pct, resets_at=None, projected=None):
     p = round(pct)
     rem = f' {DIM}{remaining(resets_at)}{R}' if resets_at is not None else ''
-    return f'{label} {gradient(pct)}{bar(pct)} {p}%{R}{rem}'
+    if projected is not None:
+        proj_str = f' {DIM}→ ~{min(round(projected), 999)}%{R}'
+    else:
+        proj_str = ''
+    return f'{label} {gradient(pct)}{bar(pct)} {p}%{R}{rem}{proj_str}'
 
 model = data.get('model', {}).get('display_name', 'Claude')
 parts = [model]
@@ -50,11 +63,13 @@ if ctx is not None:
 five_data = data.get('rate_limits', {}).get('five_hour', {})
 five = five_data.get('used_percentage')
 if five is not None:
-    parts.append(fmt('5h', five, five_data.get('resets_at')))
+    five_proj = calc_projected(five, five_data.get('resets_at'), 5 * 3600)
+    parts.append(fmt('5h', five, five_data.get('resets_at'), projected=five_proj))
 
 week_data = data.get('rate_limits', {}).get('seven_day', {})
 week = week_data.get('used_percentage')
 if week is not None:
-    parts.append(fmt('7d', week, week_data.get('resets_at')))
+    week_proj = calc_projected(week, week_data.get('resets_at'), 7 * 86400)
+    parts.append(fmt('7d', week, week_data.get('resets_at'), projected=week_proj))
 
 print(f'{DIM}│{R}'.join(f' {p} ' for p in parts), end='')
