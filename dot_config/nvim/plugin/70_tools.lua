@@ -100,3 +100,19 @@ require("iwe").setup({
     },
 })
 vim.keymap.set("n", "gf", "<Plug>(iwe-picker-find-files)")
+
+--
+-- Jira クライアント（jira.nvim）
+-- 初回: :Jira auth login で認証する
+--
+vim.pack.add({
+    "https://github.com/letieu/jira.nvim",
+})
+
+require("jira").setup({
+    jira = {
+        limit = 200,
+    },
+})
+
+vim.keymap.set("n", "<leader>jj", "<Cmd>Jira<CR>", { desc = "Jira: ダッシュボードを開く" })
