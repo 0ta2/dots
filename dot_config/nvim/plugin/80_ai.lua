@@ -70,3 +70,25 @@
 -- vim.keymap.set({ "n", "x" }, "<leader>ap", function()
 --     require("sidekick.cli").prompt()
 -- end, { desc = "Sidekick の Prompt を選択" })
+
+--
+-- code-bridge.nvim — tmux で動く外部 Claude Code セッションへのコンテキスト送信
+--
+vim.pack.add({
+    { src = "https://github.com/samir-roy/code-bridge.nvim" },
+})
+
+require("code-bridge").setup({
+    tmux = {
+        target_mode = "window_name",
+        window_name = "claude",
+        switch_to_target = true,
+        find_node_process = true, -- Claude Code は node.js プロセスで動作する
+    },
+})
+
+vim.keymap.set({ "n", "v" }, "<leader>cb", ":CodeBridgeTmux<CR>", { desc = "code-bridge: ファイルを Claude に送信" })
+vim.keymap.set({ "n", "v" }, "<leader>ci", ":CodeBridgeTmuxInteractive<CR>", { desc = "code-bridge: インタラクティブ送信" })
+vim.keymap.set("n", "<leader>cd", ":CodeBridgeTmuxDiff<CR>", { desc = "code-bridge: git diff を送信" })
+vim.keymap.set({ "n", "v" }, "<leader>cq", ":CodeBridgeQuery<CR>", { desc = "code-bridge: クイックチャット" })
+vim.keymap.set("n", "<leader>cc", ":CodeBridgeChat<CR>", { desc = "code-bridge: チャットを開く" })
