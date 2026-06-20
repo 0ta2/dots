@@ -66,6 +66,26 @@ if _ok then
 end
 
 --
+-- LSP 階層ビューア（meow.yarn.nvim）
+--
+vim.pack.add({
+    { src = "https://github.com/retran/meow.yarn.nvim" },
+})
+require("meow.yarn").setup({})
+vim.keymap.set("n", "<leader>yt", function()
+    require("meow.yarn").open_tree("type_hierarchy", "supertypes")
+end, { desc = "型階層（上位型）" })
+vim.keymap.set("n", "<leader>yT", function()
+    require("meow.yarn").open_tree("type_hierarchy", "subtypes")
+end, { desc = "型階層（下位型）" })
+vim.keymap.set("n", "<leader>yc", function()
+    require("meow.yarn").open_tree("call_hierarchy", "callers")
+end, { desc = "呼び出し元一覧" })
+vim.keymap.set("n", "<leader>yC", function()
+    require("meow.yarn").open_tree("call_hierarchy", "callees")
+end, { desc = "呼び出し先一覧" })
+
+--
 -- LSP キーマップ
 --
 vim.api.nvim_create_autocmd("LspAttach", {
