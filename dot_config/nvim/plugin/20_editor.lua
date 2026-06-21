@@ -162,6 +162,26 @@ require("codediff").setup({
         discard_hunk = "<leader>hr",
     },
 })
+vim.keymap.set("n", "gp", function()
+    local accessors = require("codediff.ui.lifecycle.accessors")
+    local _, path = accessors.get_paths(vim.api.nvim_get_current_tabpage())
+    if not path then
+        vim.notify("codediff セッションが見つかりません", vim.log.levels.WARN)
+        return
+    end
+    local buf = vim.fn.bufadd(path)
+    vim.fn.bufload(buf)
+    local popup = require("nui.popup")({
+        bufnr = buf,
+        enter = true,
+        relative = "editor",
+        position = "50%",
+        size = { width = "80%", height = "85%" },
+        border = { style = "rounded", text = { top = " " .. vim.fn.fnamemodify(path, ":~:.") .. " " } },
+    })
+    popup:mount()
+    popup:map("n", "q", function() popup:unmount() end, { nowait = true })
+end, { desc = "Peek current diff file in float" })
 require("gitlinker").setup()
 
 --

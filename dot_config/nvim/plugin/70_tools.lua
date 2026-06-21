@@ -100,3 +100,37 @@ require("iwe").setup({
     },
 })
 vim.keymap.set("n", "gf", "<Plug>(iwe-picker-find-files)")
+
+--
+-- コードレビュー注釈（review.nvim）
+--
+vim.pack.add({
+    "https://github.com/georgeguimaraes/review.nvim",
+})
+
+require("review").setup({
+    keymaps = {
+        close = false,
+        readonly_add = false,
+        readonly_delete = false,
+        readonly_edit = false,
+        readonly_add_file = false,
+    },
+})
+
+vim.api.nvim_create_user_command("ReviewPR", function(opts)
+    local pr_ref = opts.fargs[1] or ""
+    local json = vim.fn.system("gh pr view " .. pr_ref .. " --json baseRefName,headRefName")
+    local ok, pr = pcall(vim.json.decode, json)
+    if not ok or not pr.baseRefName or not pr.headRefName then
+        vim.notify("PR が見つかりません", vim.log.levels.ERROR)
+        return
+    end
+    vim.fn.system("git fetch origin " .. pr.baseRefName .. " " .. pr.headRefName)
+    local mb = vim.fn.systemlist("git merge-base origin/" .. pr.baseRefName .. " origin/" .. pr.headRefName)[1]
+    if not mb or mb == "" then
+        vim.notify("merge-base を取得できません", vim.log.levels.ERROR)
+        return
+    end
+    vim.cmd("Review commits " .. mb .. " origin/" .. pr.headRefName)
+end, { nargs = "?", desc = "PR の差分を review.nvim で表示" })
