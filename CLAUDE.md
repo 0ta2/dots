@@ -69,8 +69,7 @@ dots/
 │   └── starship.toml         # Starship プロンプト設定
 ├── dot_local/bin/            # → ~/.local/bin/ （カスタムスクリプト）
 │   ├── executable_claude-notify  # terminal-notifier でClaude Code通知
-│   ├── executable_ta             # カスタムスクリプト
-│   └── executable_tsm            # カスタムスクリプト
+│   └── executable_ta             # カスタムスクリプト
 ├── Brewfile                  # Homebrew パッケージ定義（chezmoi管理外）
 ├── mise.toml                 # mise タスク定義（chezmoi管理外）
 └── selene.toml               # Lua linter 設定（neovim標準, global_usage/unused_variable=deny）
