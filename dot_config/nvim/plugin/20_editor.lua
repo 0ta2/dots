@@ -152,6 +152,9 @@ vim.pack.add({
 
 require("gitsigns").setup()
 require("codediff").setup({
+    explorer = {
+        view_mode = "tree",
+    },
     keymaps = {
         toggle_stage = "-",
         stage_hunk = "<leader>hs",
