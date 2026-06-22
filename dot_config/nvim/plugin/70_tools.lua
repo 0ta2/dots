@@ -111,7 +111,6 @@ vim.pack.add({
 require("review").setup({
     keymaps = {
         close = false,
-        readonly_add = false,
         readonly_delete = false,
         readonly_edit = false,
         readonly_add_file = false,
