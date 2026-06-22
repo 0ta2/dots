@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+"""tmux-claude-usage — tmux ステータスバー用 Claude rate limit 表示。
+
+Haiku に 1 トークンだけリクエストし、レスポンスヘッダの rate limit を読む。
+キャッシュ TTL 300 秒。Claude 非アクティブ時は API コールゼロ。
+"""
+
+import glob
+import json
+import os
+import subprocess
+import sys
+import time
+import urllib.request
+import urllib.error
+
+CACHE_FILE = os.path.expanduser("~/.cache/tmux-claude-usage.json")
+CREDENTIALS_FILE = os.path.expanduser("~/.claude/.credentials.json")
+CLAUDE_PROJECTS = os.path.expanduser("~/.claude/projects")
+CACHE_TTL = 300
+STALE_LIMIT = 600
+
+
+def read_token():
+    if sys.platform == "darwin":
+        try:
+            r = subprocess.run(
+                ["security", "find-generic-password",
+                 "-s", "Claude Code-credentials",
+                 "-a", os.environ.get("USER", ""), "-w"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if r.returncode == 0:
+                creds = json.loads(r.stdout.strip())
+                token = creds.get("claudeAiOauth", {}).get("accessToken")
+                if token:
+                    return token
+        except Exception:
+            pass
+    try:
+        with open(CREDENTIALS_FILE) as f:
+            return json.load(f)["claudeAiOauth"]["accessToken"]
+    except Exception:
+        return None
+
+
+def load_cache():
+    try:
+        with open(CACHE_FILE) as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def save_cache(data):
+    os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
+    with open(CACHE_FILE, "w") as f:
+        json.dump(data, f)
+
+
+def latest_jsonl_mtime():
+    mt = 0.0
+    if not os.path.isdir(CLAUDE_PROJECTS):
+        return mt
+    for p in glob.glob(f"{CLAUDE_PROJECTS}/**/*.jsonl", recursive=True):
+        try:
+            mt = max(mt, os.path.getmtime(p))
+        except Exception:
+            pass
+    return mt
+
+
+def fetch_rate_limit(token):
+    body = json.dumps({
+        "model": "claude-haiku-4-5-20251001",
+        "max_tokens": 1,
+        "messages": [{"role": "user", "content": "."}],
+    }).encode()
+    req = urllib.request.Request(
+        "https://api.anthropic.com/v1/messages",
+        data=body,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "anthropic-version": "2023-06-01",
+            "anthropic-beta": "oauth-2025-04-20",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=5) as r:
+        rl = {k.lower(): v for k, v in r.headers.items()
+              if "ratelimit-unified" in k.lower()}
+        return {
+            "fetched_at": time.time(),
+            "util_5h": float(rl.get("anthropic-ratelimit-unified-5h-utilization", 0)),
+            "util_7d": float(rl.get("anthropic-ratelimit-unified-7d-utilization", 0)),
+            "reset_5h": int(rl.get("anthropic-ratelimit-unified-5h-reset", 0)),
+            "reset_7d": int(rl.get("anthropic-ratelimit-unified-7d-reset", 0)),
+        }
+
+
+def fmt(cache):
+    if not cache:
+        return "–"
+    parts = []
+    u5 = cache.get("util_5h")
+    if u5 is not None:
+        parts.append(f"5h:{round(u5 * 100)}%")
+    u7 = cache.get("util_7d")
+    if u7 is not None:
+        parts.append(f"7d:{round(u7 * 100)}%")
+    return " ".join(parts) if parts else "–"
+
+
+def main():
+    force = "--refresh" in sys.argv
+
+    cache = load_cache()
+    now = time.time()
+    cache_age = (now - cache["fetched_at"]) if cache else float("inf")
+
+    if not force and cache and cache_age < CACHE_TTL:
+        print(fmt(cache), end="")
+        return
+
+    if force:
+        token = read_token()
+        if token:
+            data = fetch_rate_limit(token)
+            save_cache(data)
+            print(fmt(data), end="")
+            return
+        print(fmt(cache), end="")
+        return
+
+    recently_active = latest_jsonl_mtime() > (now - CACHE_TTL)
+    if recently_active:
+        token = read_token()
+        if token:
+            data = fetch_rate_limit(token)
+            save_cache(data)
+            print(fmt(data), end="")
+            return
+
+    if cache and cache_age < STALE_LIMIT:
+        print(fmt(cache), end="")
+    else:
+        print("–", end="")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception:
+        print("–", end="")
