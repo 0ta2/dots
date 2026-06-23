@@ -33,8 +33,7 @@
             "Bash(git diff:*)",
             "Bash(git log:*)",
             "Bash(git branch:*)",
-            "Bash(git show:*)",
-            "Bash(rtk:*)"
+            "Bash(git show:*)"
         ],
         "deny": [
             "Read(./.env)",
@@ -63,17 +62,6 @@
                     {
                         "type": "command",
                         "command": "~/.local/bin/tmux-claude-usage --refresh >/dev/null 2>&1"
-                    }
-                ]
-            }
-        ],
-        "PreToolUse": [
-            {
-                "matcher": "Bash",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "rtk hook claude"
                     }
                 ]
             }
