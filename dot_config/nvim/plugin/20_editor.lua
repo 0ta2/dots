@@ -1,53 +1,42 @@
 --
 -- ファイルエクスプローラー
 --
-local canola_columns = {
-    detail = { "icon", "git_status", "permissions", "size", "mtime" },
-    simple = { "icon" },
-}
-local canola_detail = true
-vim.g.canola = {
-    cursor = true,
-    hidden = {
-        enabled = false,
-    },
-    columns = canola_columns.detail,
-    keymaps = {
-        ["gd"] = {
-            desc = "Toggle file detail view",
-            callback = function()
-                canola_detail = not canola_detail
-                local cols = canola_detail and canola_columns.detail or canola_columns.simple
-                require("canola").set_columns(cols)
-            end,
-        },
-        ["<C-p>"] = {
-            desc = "カレントディレクトリでファイル検索",
-            callback = function()
-                local dir = require("canola").get_current_dir()
-                require("fzf-lua").files({ cwd = dir })
-            end,
-        },
-        ["<C-g>"] = {
-            desc = "カレントディレクトリで文字列検索",
-            callback = function()
-                local dir = require("canola").get_current_dir()
-                require("fzf-lua").live_grep_native({ cwd = dir })
-            end,
-        },
-    },
-    watch = false,
-}
-vim.g.canola_git = {
-    show = { untracked = true, ignored = false },
-    format = "compact",
-}
-vim.g.canola_trash = {}
 vim.pack.add({
-    { src = "https://github.com/barrettruth/canola.nvim", version = "canola" },
-    { src = "https://github.com/barrettruth/canola-collection" },
+    { src = "https://github.com/nvim-neo-tree/neo-tree.nvim" },
 })
-vim.keymap.set("n", "<Leader>e", "<Cmd>Canola<CR>", { desc = "ファイルツリーを開く" })
+
+local function neotree_node_dir(state)
+    local node = state.tree:get_node()
+    return node.type == "directory" and node.path or vim.fn.fnamemodify(node.path, ":h")
+end
+
+require("neo-tree").setup({
+    filesystem = {
+        filtered_items = {
+            visible = true,
+            hide_dotfiles = false,
+            hide_gitignored = false,
+        },
+        window = {
+            mappings = {
+                ["-"] = "close_node",
+                ["<C-p>"] = {
+                    function(state)
+                        require("fzf-lua").files({ cwd = neotree_node_dir(state) })
+                    end,
+                    desc = "カレントディレクトリでファイル検索",
+                },
+                ["<C-g>"] = {
+                    function(state)
+                        require("fzf-lua").live_grep_native({ cwd = neotree_node_dir(state) })
+                    end,
+                    desc = "カレントディレクトリで文字列検索",
+                },
+            },
+        },
+    },
+})
+vim.keymap.set("n", "<Leader>e", "<Cmd>Neotree reveal toggle<CR>", { desc = "ファイルツリーを開く（現在ファイルを選択）" })
 
 --
 -- ファジーファインダー
