@@ -20,6 +20,6 @@ require("amanoukihashi").setup({
 vim.keymap.set({ "n", "t", "i", "x" }, "<c-.>", function()
     require("amanoukihashi").toggle()
 end, { desc = "Claude Code: セッションをトグル" })
-vim.keymap.set("n", "<leader>af", "<Cmd>AmanoukihashiInsert @{file}<CR>", { desc = "amanoukihashi: 現在ファイルのパスを挿入" })
-vim.keymap.set("v", "<leader>av", ":AmanoukihashiInsert {selections}<CR>", { desc = "amanoukihashi: ビジュアル選択テキストを挿入" })
+vim.keymap.set("n", "<leader>af", "<Cmd>AmanoukihashiSend @{file}<CR>", { desc = "amanoukihashi: 現在ファイルのパスを挿入" })
+vim.keymap.set("v", "<leader>av", ":AmanoukihashiSend {selections}<CR>", { desc = "amanoukihashi: ビジュアル選択テキストを挿入" })
 vim.keymap.set("n", "<leader>al", "<Cmd>AmanoukihashiList<CR>", { desc = "amanoukihashi: セッション一覧" })
