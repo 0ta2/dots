@@ -61,3 +61,7 @@ run = [
     "gh skill update",
 ]
 
+[tasks."uv:tools:install"]
+description = "uv tool install で管理する Python CLI ツール群"
+run = "uv tool install --python 3.13 'headroom-ai[all]'"
+

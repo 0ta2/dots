@@ -39,7 +39,7 @@ rust = "latest"
 
 # For Python
 python = "latest"
-uv = "latest"
+"github:astral-sh/uv" = "latest"
 poetry = "latest"
 
 [settings]
