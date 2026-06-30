@@ -11,7 +11,7 @@ end)
 
 vim.cmd.packadd("amanoukihashi.nvim-local")
 require("amanoukihashi").setup({
-    default_cmd = { "claude" },
+    default_cmd = { "headroom", "wrap", "claude" },
     layout = "split",
     split = {
         width = vim.o.columns > 200 and 150 or 80,

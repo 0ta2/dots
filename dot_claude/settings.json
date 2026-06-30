@@ -51,6 +51,28 @@
         "CLAUDE_CODE_NO_FLICKER": "1"
     },
     "hooks": {
+        "Notification": [
+            {
+                "matcher": "",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "~/ghq/github.com/0ta2/amanoukihashi.nvim/scripts/claude-hook-status.sh"
+                    }
+                ]
+            }
+        ],
+        "UserPromptSubmit": [
+            {
+                "matcher": "",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "~/ghq/github.com/0ta2/amanoukihashi.nvim/scripts/claude-hook-status.sh"
+                    }
+                ]
+            }
+        ],
         "Stop": [
             {
                 "matcher": "",
