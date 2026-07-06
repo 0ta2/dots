@@ -29,9 +29,12 @@ node = "latest"
 "npm:@zed-industries/claude-code-acp" = "latest"
 "npm:ccusage" = "latest"
 "npm:@fsouza/prettierd" = "latest"
+"npm:@openai/codex" = "latest"
+"npm:@ticktick/ticktick-cli" = "latest"
 
 # For Rust
 rust = "latest"
+"github:rtk-ai/rtk" = "latest"
 
 # For Lua
 "cargo:selene" = "latest"

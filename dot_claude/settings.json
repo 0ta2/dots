@@ -29,6 +29,7 @@
             "Bash(gh api:*)",
             "Bash(gh search:*)",
             "Bash(go test*)",
+            "Bash(rtk:*)",
             "Bash(git status:*)",
             "Bash(git diff:*)",
             "Bash(git log:*)",
@@ -84,6 +85,17 @@
                     {
                         "type": "command",
                         "command": "~/.local/bin/tmux-claude-usage --refresh >/dev/null 2>&1"
+                    }
+                ]
+            }
+        ],
+        "PreToolUse": [
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "rtk hook claude"
                     }
                 ]
             }
