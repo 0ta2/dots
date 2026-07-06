@@ -29,6 +29,7 @@ node = "latest"
 "npm:@zed-industries/claude-code-acp" = "latest"
 "npm:ccusage" = "latest"
 "npm:@fsouza/prettierd" = "latest"
+"npm:@openai/codex" = "latest"
 
 # For Rust
 rust = "latest"
