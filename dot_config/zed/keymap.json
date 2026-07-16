@@ -4,8 +4,8 @@
         "bindings": {
             "shift-h": "vim::FirstNonWhitespace",
             "shift-l": "vim::EndOfLine",
-            "j": "vim::Down",
-            "k": "vim::Up",
+            "j": ["vim::Down", { "display_lines": true }],
+            "k": ["vim::Up", { "display_lines": true }],
             ":": "command_palette::Toggle"
         }
     },
@@ -13,7 +13,7 @@
         "context": "vim_mode == normal && !menu",
         "bindings": {
             "ctrl-p": "file_finder::Toggle",
-            ";": "vim::CountCommand",
+            ";": "command_palette::Toggle",
             "g q": "editor::Format"
         }
     }
