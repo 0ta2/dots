@@ -205,6 +205,11 @@ vim.keymap.set("n", "<C-j>", require("smart-splits").move_cursor_down)
 vim.keymap.set("n", "<C-k>", require("smart-splits").move_cursor_up)
 vim.keymap.set("n", "<C-l>", require("smart-splits").move_cursor_right)
 vim.keymap.set("n", "<C-\\>", require("smart-splits").move_cursor_previous)
+-- ターミナルモード（t）で Ctrl + hjkl によるウィンドウ移動を可能にする
+vim.keymap.set("t", "<C-h>", [[<C-\><C-n><C-w>h]], { silent = true })
+vim.keymap.set("t", "<C-j>", [[<C-\><C-n><C-w>j]], { silent = true })
+vim.keymap.set("t", "<C-k>", [[<C-\><C-n><C-w>k]], { silent = true })
+vim.keymap.set("t", "<C-l>", [[<C-\><C-n><C-w>l]], { silent = true })
 -- バッファスワップ
 vim.keymap.set("n", "<leader>lh", require("smart-splits").swap_buf_left)
 vim.keymap.set("n", "<leader>lj", require("smart-splits").swap_buf_down)
