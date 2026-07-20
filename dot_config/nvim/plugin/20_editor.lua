@@ -205,11 +205,36 @@ vim.keymap.set("n", "<C-j>", require("smart-splits").move_cursor_down)
 vim.keymap.set("n", "<C-k>", require("smart-splits").move_cursor_up)
 vim.keymap.set("n", "<C-l>", require("smart-splits").move_cursor_right)
 vim.keymap.set("n", "<C-\\>", require("smart-splits").move_cursor_previous)
--- ターミナルモード（t）で Ctrl + hjkl によるウィンドウ移動を可能にする
-vim.keymap.set("t", "<C-h>", [[<C-\><C-n><C-w>h]], { silent = true })
-vim.keymap.set("t", "<C-j>", [[<C-\><C-n><C-w>j]], { silent = true })
-vim.keymap.set("t", "<C-k>", [[<C-\><C-n><C-w>k]], { silent = true })
-vim.keymap.set("t", "<C-l>", [[<C-\><C-n><C-w>l]], { silent = true })
+-- ターミナルでは単発 Esc をジョブへ送り、300ms以内の二連打でNormal modeへ抜ける
+local terminal_escape_timers = {}
+
+local function handle_terminal_escape()
+    local buf = vim.api.nvim_get_current_buf()
+    local timer = terminal_escape_timers[buf]
+    if timer then
+        timer:stop()
+        timer:close()
+        terminal_escape_timers[buf] = nil
+
+        local keys = vim.api.nvim_replace_termcodes("<C-\\><C-n>", true, false, true)
+        vim.api.nvim_feedkeys(keys, "n", false)
+        return
+    end
+
+    terminal_escape_timers[buf] = vim.defer_fn(function()
+        terminal_escape_timers[buf] = nil
+        if not vim.api.nvim_buf_is_valid(buf) then
+            return
+        end
+
+        local job_id = vim.b[buf].terminal_job_id
+        if job_id then
+            vim.fn.chansend(job_id, "\27")
+        end
+    end, 300)
+end
+
+vim.keymap.set("t", "<Esc>", handle_terminal_escape, { silent = true })
 -- バッファスワップ
 vim.keymap.set("n", "<leader>lh", require("smart-splits").swap_buf_left)
 vim.keymap.set("n", "<leader>lj", require("smart-splits").swap_buf_down)
