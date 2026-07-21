@@ -13,7 +13,6 @@ vim.cmd.packadd("amanoukihashi.nvim-local")
 local amanoukihashi = require("amanoukihashi")
 amanoukihashi.setup({
     claude_cmd = { "headroom", "wrap", "claude" },
-    history_dirs = { vim.fn.expand("~/ghq/github.com/0ta2/harness") },
 })
 vim.keymap.set({ "n", "t", "i", "x" }, "<c-.>", function()
     amanoukihashi.sidebar_toggle()
