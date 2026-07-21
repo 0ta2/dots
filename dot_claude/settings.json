@@ -7,7 +7,18 @@
         "lua-lsp@claude-plugins-official": true,
         "gopls-lsp@claude-plugins-official": true,
         "pyright-lsp@claude-plugins-official": true,
-        "superpowers@claude-plugins-official": true
+        "superpowers@claude-plugins-official": true,
+        "typescript-lsp@claude-plugins-official": true,
+        "discord@claude-plugins-official": true,
+        "codex@openai-codex": true
+    },
+    "extraKnownMarketplaces": {
+        "openai-codex": {
+            "source": {
+                "source": "github",
+                "repo": "openai/codex-plugin-cc"
+            }
+        }
     },
     "statusLine": {
         "type": "command",
@@ -52,28 +63,6 @@
         "CLAUDE_CODE_NO_FLICKER": "1"
     },
     "hooks": {
-        "Notification": [
-            {
-                "matcher": "",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "~/ghq/github.com/0ta2/amanoukihashi.nvim/scripts/claude-hook-status.sh"
-                    }
-                ]
-            }
-        ],
-        "UserPromptSubmit": [
-            {
-                "matcher": "",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "~/ghq/github.com/0ta2/amanoukihashi.nvim/scripts/claude-hook-status.sh"
-                    }
-                ]
-            }
-        ],
         "Stop": [
             {
                 "matcher": "",
