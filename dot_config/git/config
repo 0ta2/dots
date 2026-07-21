@@ -1,5 +1,6 @@
 [core]
     editor = nvim
+    excludesFile = ~/.config/git/gitignore
 
 [pull]
     rebase = false
