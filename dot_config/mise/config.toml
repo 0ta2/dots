@@ -13,6 +13,7 @@ gcloud = "latest"
 act = "latest"
 claude = "latest"
 bun = "latest"
+herdr = "latest" # AI エージェント用ターミナルマルチプレクサ
 
 # For Go
 go = "latest"
