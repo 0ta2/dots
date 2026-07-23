@@ -10,16 +10,34 @@ vim.keymap.set("n", "<Leader>k", function()
 end)
 
 vim.cmd.packadd("amanoukihashi.nvim-local")
-require("amanoukihashi").setup({
-    default_cmd = { "headroom", "wrap", "claude" },
-    layout = "split",
-    split = {
-        width = vim.o.columns > 200 and 150 or 80,
-    },
+local amanoukihashi = require("amanoukihashi")
+amanoukihashi.setup({
+    claude_cmd = { "headroom", "wrap", "claude" },
 })
 vim.keymap.set({ "n", "t", "i", "x" }, "<c-.>", function()
-    require("amanoukihashi").toggle()
-end, { desc = "Claude Code: セッションをトグル" })
-vim.keymap.set("n", "<leader>af", "<Cmd>AmanoukihashiSend @{file}<CR>", { desc = "amanoukihashi: 現在ファイルのパスを挿入" })
-vim.keymap.set("v", "<leader>av", ":AmanoukihashiSend {selections}<CR>", { desc = "amanoukihashi: ビジュアル選択テキストを挿入" })
-vim.keymap.set("n", "<leader>al", "<Cmd>AmanoukihashiList<CR>", { desc = "amanoukihashi: セッション一覧" })
+    amanoukihashi.sidebar_toggle()
+end, { desc = "amanoukihashi: サイドバーをトグル" })
+vim.keymap.set("n", "<leader>al", amanoukihashi.sidebar_toggle, { desc = "amanoukihashi: セッション一覧" })
+vim.keymap.set("n", "<leader>an", amanoukihashi.new_session, { desc = "amanoukihashi: セッションを作成" })
+vim.keymap.set("n", "<leader>ah", amanoukihashi.history, { desc = "amanoukihashi: 履歴から再開" })
+vim.keymap.set("n", "<leader>ad", amanoukihashi.diff, { desc = "amanoukihashi: 累積差分" })
+vim.keymap.set("n", "<leader>ar", function()
+    local old = require("amanoukihashi.sidebar").selected()
+    if not old then
+        vim.notify("amanoukihashi: no selected session", vim.log.levels.WARN)
+        return
+    end
+    vim.ui.input({ prompt = "rename session: ", default = old }, function(new)
+        if new and new ~= "" and new ~= old then
+            amanoukihashi.rename(old, new)
+        end
+    end)
+end, { desc = "amanoukihashi: 選択セッションを移動" })
+vim.keymap.set("n", "<leader>ak", function()
+    local path_name = require("amanoukihashi.sidebar").selected()
+    if not path_name then
+        vim.notify("amanoukihashi: no selected session", vim.log.levels.WARN)
+        return
+    end
+    amanoukihashi.kill(path_name)
+end, { desc = "amanoukihashi: 選択セッションを破棄" })
