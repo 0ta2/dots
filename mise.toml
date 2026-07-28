@@ -49,19 +49,20 @@ run = [
 [tasks."skill:install"]
 description = "スキルのインストール"
 run = """
-for agent in github-copilot claude-code codex gemini-cli; do
-    gh skill install anthropics/skills skill-creator --scope user --agent $agent
-    gh skill install heptameta/heptabase-cli-skills heptabase-cli --scope user --agent $agent
-done
+npx --yes skills add anthropics/skills --skill skill-creator --global \
+    --agent github-copilot --agent claude-code --agent codex --agent gemini-cli --yes
+npx --yes skills add heptameta/heptabase-cli-skills --skill heptabase-cli --global \
+    --agent github-copilot --agent claude-code --agent codex --agent gemini-cli --yes
+npx --yes skills add ogulcancelik/herdr --skill herdr --global \
+    --agent github-copilot --agent claude-code --agent codex --agent gemini-cli --yes
 """
 
 [tasks."skill:update"]
 description = "スキルの更新"
 run = [
-    "gh skill update",
+    "npx --yes skills update --global --yes",
 ]
 
 [tasks."uv:tools:install"]
 description = "uv tool install で管理する Python CLI ツール群"
 run = "uv tool install --python 3.13 'headroom-ai[all]'"
-
