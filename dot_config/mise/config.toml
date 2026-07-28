@@ -45,7 +45,7 @@ rust = "latest"
 python = "latest"
 "github:astral-sh/uv" = "latest"
 poetry = "latest"
-"pipx:headroom-ai" = { version = "latest", extras = ["all"] } # https://github.com/headroomlabs-ai/headroom
+"pipx:headroom-ai" = { version = "latest", extras = ["all"], uvx_args = "--python 3.13" } # https://github.com/headroomlabs-ai/headroom
 
 [settings]
 idiomatic_version_file_enable_tools = ["python"]
