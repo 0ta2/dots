@@ -22,7 +22,6 @@ cask "google-chrome"
 cask "azooKey"
 cask "1password"
 cask "heptabase"
-cask "readdle-spark"
 cask "reader" # Readwise Reader
 cask "docker-desktop"
 cask "karabiner-elements"
@@ -46,3 +45,4 @@ vscode "vscodevim.vim"
 # for app store
 mas "LINE", id: 539883307
 mas "Pixelmator Pro", id: 1289583905
+mas "Spark Mail", id: 6445813049
