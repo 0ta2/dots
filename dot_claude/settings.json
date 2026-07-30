@@ -3,6 +3,8 @@
     "language": "japanese",
     "vim": true,
     "voiceEnabled": true,
+    "agentPushNotifEnabled": true,
+    "inputNeededNotifEnabled": true,
     "enabledPlugins": {
         "lua-lsp@claude-plugins-official": true,
         "gopls-lsp@claude-plugins-official": true,
@@ -63,17 +65,6 @@
         "CLAUDE_CODE_NO_FLICKER": "1"
     },
     "hooks": {
-        "Stop": [
-            {
-                "matcher": "",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "~/.local/bin/tmux-claude-usage --refresh >/dev/null 2>&1"
-                    }
-                ]
-            }
-        ],
         "PreToolUse": [
             {
                 "matcher": "Bash",
