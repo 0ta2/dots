@@ -69,10 +69,6 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "~/.local/bin/claude-notify 'タスクが完了しました'"
-                    },
-                    {
-                        "type": "command",
                         "command": "~/.local/bin/tmux-claude-usage --refresh >/dev/null 2>&1"
                     }
                 ]
