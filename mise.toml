@@ -34,7 +34,7 @@ run = "chezmoi --source={{vars.source}} status"
 [tasks."brew:sync"]
 description = "Brewのsync"
 run = [
-    "brew bundle --cleanup --force --file={{vars.brewfile}}",
+    "brew bundle cleanup --install --force --file={{vars.brewfile}}",
 ]
 
 
