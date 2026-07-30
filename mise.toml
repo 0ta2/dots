@@ -47,14 +47,10 @@ run = [
 ]
 
 [tasks."skill:install"]
-description = "スキルのインストール"
+description = "スキルのインストール (ネイティブ plugin 経路が無いものだけをここで管理する)"
 run = """
-npx --yes skills add anthropics/skills --skill skill-creator --global \
-    --agent github-copilot --agent claude-code --agent codex --agent gemini-cli --yes
-npx --yes skills add heptameta/heptabase-cli-skills --skill heptabase-cli --global \
-    --agent github-copilot --agent claude-code --agent codex --agent gemini-cli --yes
 npx --yes skills add ogulcancelik/herdr --skill herdr --global \
-    --agent github-copilot --agent claude-code --agent codex --agent gemini-cli --yes
+    --agent claude-code --agent codex --yes
 """
 
 [tasks."skill:update"]
@@ -73,6 +69,7 @@ jq -r '.enabledPlugins | to_entries[] | select(.value) | .key' ~/.claude/setting
 # アプリ自身が有効化するため対象外。ここでは能動的に入れた追加分のみを列挙する
 # (要 codex login 済み。未ログインだと marketplace が見えず not found になる)
 codex plugin add superpowers@openai-curated
+codex plugin add heptabase@heptabase-cli-skills
 """
 
 [tasks."uv:tools:install"]

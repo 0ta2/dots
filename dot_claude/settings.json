@@ -10,13 +10,13 @@
         "superpowers@claude-plugins-official": true,
         "typescript-lsp@claude-plugins-official": true,
         "discord@claude-plugins-official": true,
-        "codex@openai-codex": true
+        "heptabase@heptabase-cli-skills": true
     },
     "extraKnownMarketplaces": {
-        "openai-codex": {
+        "heptabase-cli-skills": {
             "source": {
                 "source": "github",
-                "repo": "openai/codex-plugin-cc"
+                "repo": "heptameta/heptabase-cli-skills"
             }
         }
     },
