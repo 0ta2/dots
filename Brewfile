@@ -30,6 +30,7 @@ cask "kobo"
 cask "chatgpt"
 cask "claude"
 cask "codex-app"
+cask "codexbar"
 
 # terminal
 brew "starship"
