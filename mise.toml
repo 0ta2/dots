@@ -49,7 +49,7 @@ run = [
 [tasks."skill:install"]
 description = "スキルのインストール (ネイティブ plugin 経路が無いものだけをここで管理する)"
 run = """
-npx --yes skills add ogulcancelik/herdr --skill herdr --global \
+npx --yes skills add herdrdev/herdr --skill herdr --global \
     --agent claude-code --agent codex --yes
 """
 
