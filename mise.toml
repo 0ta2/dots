@@ -69,7 +69,6 @@ jq -r '.enabledPlugins | to_entries[] | select(.value) | .key' ~/.claude/setting
 # アプリ自身が有効化するため対象外。ここでは能動的に入れた追加分のみを列挙する
 # (要 codex login 済み。未ログインだと marketplace が見えず not found になる)
 codex plugin add superpowers@openai-curated
-# heptabase-cli-skills は openai-curated 等と違い既定で未登録のため、先に marketplace 登録が要る
 codex plugin marketplace add heptameta/heptabase-cli-skills
 codex plugin add heptabase@heptabase-cli-skills
 """
