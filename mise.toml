@@ -63,6 +63,18 @@ run = [
     "npx --yes skills update --global --yes",
 ]
 
+[tasks."plugin:install"]
+description = "Claude Code / Codex の plugin インストール"
+run = """
+# Claude Code: 対象は dot_claude/settings.json の enabledPlugins が正 (chezmoi:apply の後に実行する)
+jq -r '.enabledPlugins | to_entries[] | select(.value) | .key' ~/.claude/settings.json \
+    | xargs -n1 claude plugin install
+# Codex: openai-primary-runtime/openai-bundled 系のデフォルト plugin は codex login 後に
+# アプリ自身が有効化するため対象外。ここでは能動的に入れた追加分のみを列挙する
+# (要 codex login 済み。未ログインだと marketplace が見えず not found になる)
+codex plugin add superpowers@openai-curated
+"""
+
 [tasks."uv:tools:install"]
 description = "uv tool install で管理する Python CLI ツール群"
 run = "uv tool install --python 3.13 'headroom-ai[all]'"
