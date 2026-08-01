@@ -164,6 +164,8 @@ alias "vim"="nvim"
 
 # Custom
 alias "c"="clear"
+alias hc="headroom wrap claude"
+alias hx="headroom wrap codex"
 
 # gwq
 source <(gwq completion zsh)
