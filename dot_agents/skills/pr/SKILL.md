@@ -26,21 +26,16 @@ allowed-tools: Bash(git status), Bash(git log*), Bash(git diff*), Bash(git branc
    - `git log --oneline -10` で最近のコミット履歴を確認
    - `git diff main...HEAD` でベースブランチとの差分を確認（ベースブランチは状況に応じて `main` or `master`）
 
-2. plan 結果ドキュメントの確認とコミット
-   - `git status` の結果に未コミットのドキュメントファイル（`.md` など）が含まれている場合は plan や設計書の可能性を確認する
-   - plan 結果のドキュメントが未コミットであれば、PR 作成より**先に**コミットする
-     ```bash
-     git add <ドキュメントファイル>
-     git commit -m "docs: <内容の要約>"
-     ```
-   - コミットメッセージは `docs(<スコープ>): <内容>` 形式で作成する
+2. 未コミットファイルの確認
+   - `git status` の結果に未コミットファイルがある場合、PR に含めるべきか判断する
+   - `specs/` `plans/` `docs/superpowers/` 配下の設計ドキュメントは**コミットしない**（作業用ファイルであり成果物ではない）
+   - それ以外のドキュメント（README 更新等）で PR に含めるべきものがあればコミットする
 
 3. PR テンプレートの有無を確認する
    - 以下の優先順位で探す:
      1. `.github/PULL_REQUEST_TEMPLATE.md`
      2. `.github/pull_request_template.md`
      3. `.github/PULL_REQUEST_TEMPLATE/` ディレクトリ内のファイル
-     4. `docs/PULL_REQUEST_TEMPLATE.md`
    - テンプレートが見つかった場合はその内容を確認し、PR本文のベースとして使用する
    - テンプレートが見つからない場合は後述のデフォルトフォーマットを使用する
 
@@ -82,7 +77,7 @@ gh pr create --draft --title "タイトル" --body "$(cat <<'EOF'
 
 - [ ] 動作確認済み
 
-🤖 Generated with [Claude Code](https://claude.ai/claude-code)
+🤖 Generated with <Claude Code または Codex>
 EOF
 )"
 ```
@@ -122,7 +117,7 @@ EOF
 
    - [ ] 動作確認済み
 
-   🤖 Generated with [Claude Code](https://claude.ai/claude-code)
+   🤖 Generated with <Claude Code または Codex>
    EOF
    )"
    ```
@@ -147,7 +142,7 @@ EOF
 <タイプ>: <件名（日本語）>
 ```
 
-### タイプ一覧
+### タイプ
 
 | タイプ     | 用途                                         |
 | ---------- | -------------------------------------------- |

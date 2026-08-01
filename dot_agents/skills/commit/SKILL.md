@@ -3,7 +3,7 @@ name: commit
 description: git の変更を解析してコミットメッセージを自動生成しコミットを作成する。コミット作成、git commit、変更をコミットする場合に使用する。
 disable-model-invocation: false
 user-invocable: true
-allowed-tools: Bash(git status), Bash(git diff*), Bash(git log*), Bash(git add*), Bash(git commit*)
+allowed-tools: Bash(git status), Bash(git diff*), Bash(git log*), Bash(git add*), Bash(git commit*), Bash(git branch*)
 ---
 
 # コミット規約スキル
@@ -22,7 +22,7 @@ allowed-tools: Bash(git status), Bash(git diff*), Bash(git log*), Bash(git add*)
 <タイプ>: <件名（日本語）>
 ```
 
-## タイプ一覧
+## タイプ
 
 | タイプ     | 用途                                         |
 | ---------- | -------------------------------------------- |
@@ -54,7 +54,10 @@ allowed-tools: Bash(git status), Bash(git diff*), Bash(git log*), Bash(git add*)
 
 ## 手順
 
-1. 次の3つのコマンドを並列で実行する
+1. 次の4つのコマンドを並列で実行する
+   - `git branch --show-current` で現在ブランチを確認。**main/master なら先にブランチを切る**
+     (対象リポジトリの `CLAUDE.md` / `AGENTS.md` にある git ルールを優先する。
+     guard は cd 先を誤判定し得るため自分で確認する)
    - `git status` で未追跡ファイルを確認（`-uall` フラグは使わない）
    - `git diff --staged && git diff` でステージ済み・未ステージの変更を確認
    - `git log --oneline -10` で最近のコミット履歴を参照し、スコープの使い方を把握する
@@ -67,20 +70,19 @@ allowed-tools: Bash(git status), Bash(git diff*), Bash(git log*), Bash(git add*)
    - 「結果として同じ機能に関係する」という関連性だけでは束ねる理由にならない。変更の「なぜ」が異なれば別コミットにする
 
    分割方針が決まったら:
-   - 各コミットに最も適したタイプを上記一覧から選択する
+   - 各コミットに最も適したタイプを、このファイルの「タイプ」の表から選択する
    - `.env` や `secrets/` などの機密ファイルはコミットしない
 
-3. 次の2つを並列で実行する
+3. ステージして混入を確認してからコミットする
    - 関連する未追跡ファイルをステージに追加（`git add -A` や `git add .` は避け、ファイル名を指定する）
+   - `git diff --staged` で**無関係な変更（他の実験・自動生成物・stash 復元物）が混入していないか確認する** (`CLAUDE.md` の「git」)
    - 以下の形式で HEREDOC を使ってコミットを作成する:
 
 ```bash
 git commit -m "$(cat <<'EOF'
-feat(claude): lua-lsp プラグインを追加
+feat(nvim): lua-lsp プラグインを追加
 
 lua-lsp を有効にする。Neovim 上での Lua 開発の補完精度を向上させる。
-
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>
 EOF
 )"
 ```

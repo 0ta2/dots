@@ -67,24 +67,22 @@ allowed-tools: WebFetch Bash(heptabase *) Bash(jq *) Bash(date *)
 
 ### 4. Heptabase カードへの追記
 
-heptabase-cli スキルのコマンドを使い、以下の手順で追記する。
+以下の手順で追記する。
 
 ```bash
 # 1. カードを名前で検索
-heptabase card list -q "{{カード名}}" --limit 10
+heptabase card list -q "{{カード名}}" --card-types note
 
-# 2. jq でカード ID を取得（タイトルが完全一致するものを優先）
-# 結果 JSON を確認してカード ID を特定する
+# 2. 結果から カード ID を特定する（タイトルが完全一致するものを優先）
 
 # 3. 生成した Markdown を追記
-# heptabase card --help でサブコマンドを確認してから実行
-heptabase card append --card-id {{cardId}} --content "{{生成した Markdown}}"
+heptabase note append {{cardId}} -c "{{生成した Markdown}}"
 ```
 
 カードが見つからない場合はユーザーに確認し、必要なら新規カードを作成する:
 
 ```bash
-heptabase card create --title "{{カード名}}"
+heptabase note create -c "# {{カード名}}\n{{本文}}"   # 先頭の # 見出しが題名になる
 ```
 
 追記が成功したら、カード名と追記した見出しをユーザーに報告して終了する。
