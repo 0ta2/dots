@@ -31,7 +31,8 @@ node = "latest"
 "npm:ccusage" = "latest"
 "npm:@fsouza/prettierd" = "latest"
 "npm:@openai/codex" = "latest"
-"npm:@ticktick/ticktick-cli" = "latest"
+# npm backend の週間ダウンロード数制限を下回るため、明示的に許可する
+"npm:@ticktick/ticktick-cli" = { version = "latest", allow_low_downloads = true }
 
 # For Rust
 rust = "latest"
@@ -44,8 +45,6 @@ rust = "latest"
 # For Python
 python = "latest"
 "github:astral-sh/uv" = "latest"
-poetry = "latest"
-"pipx:headroom-ai" = { version = "latest", extras = ["all"], uvx_args = "--python 3.13" } # https://github.com/headroomlabs-ai/headroom
 
 [settings]
 idiomatic_version_file_enable_tools = ["python"]
