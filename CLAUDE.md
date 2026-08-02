@@ -54,7 +54,8 @@ dots/
 │   └── run_onchange_01_brew-bundle.sh.tmpl # Brewfile 変更時に brew bundle 実行
 ├── .chezmoiexternal.toml     # 外部 git リポジトリ（tmux プラグイン）
 ├── .chezmoiignore            # chezmoi でデプロイしないファイル（Brewfile, mise.toml等）
-├── dot_claude/               # → ~/.claude/ (Claude Code 設定)
+├── dot_agents/skills/        # → ~/.agents/skills/ (Claude Code / Codex 共通 skill の正本)
+├── dot_claude/               # → ~/.claude/ (Claude Code 設定と共通 skill へのリンク)
 ├── dot_config/               # → ~/.config/
 │   ├── nvim/                 # Neovim設定（lazy.nvim, selene でLint）
 │   ├── zsh/                  # zsh設定（zimfw使用）
@@ -87,6 +88,12 @@ dots/
 - ステータスライン: モデル名とコンテキスト使用率を表示（`statusline-command.sh`）
 - 通知: Stop/Notification フックで `terminal-notifier` を使って macOS 通知
 - パーミッション: `rm -rf` と `sudo` は deny、`git push/merge/rebase` は確認必須
+
+### 共通 skills
+
+全リポジトリで使う skill の正本は `dot_agents/skills/` に置く。
+chezmoi は `~/.agents/skills/` へ配布し、`dot_claude/skills/symlink_*` により
+`~/.claude/skills/` からも同じ実体を参照する。内容を2箇所へコピーしない。
 
 ### Neovim 設定（`dot_config/nvim/`）
 
