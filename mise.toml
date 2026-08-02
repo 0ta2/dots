@@ -51,6 +51,8 @@ description = "スキルのインストール (ネイティブ plugin 経路が�
 run = """
 npx --yes skills add herdrdev/herdr --skill herdr --global \
     --agent claude-code --agent codex --yes
+npx --yes skills add modem-dev/hunk --skill hunk-review --global \
+    --agent claude-code --agent codex --yes
 """
 
 [tasks."skill:update"]
@@ -77,6 +79,7 @@ codex plugin add heptabase@heptabase-cli-skills
 description = "herdr の plugin インストール"
 run = """
 herdr plugin install smarzban/herdr-file-viewer --yes
+herdr plugin install crafts69guy/herdr-ghq --yes
 """
 
 [tasks."uv:tools:install"]
