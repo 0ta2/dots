@@ -31,6 +31,7 @@ node = "latest"
 "npm:ccusage" = "latest"
 "npm:@fsouza/prettierd" = "latest"
 "npm:@openai/codex" = "latest"
+# npm backend の週間ダウンロード数制限を下回るため、明示的に許可する
 "npm:@ticktick/ticktick-cli" = { version = "latest", allow_low_downloads = true }
 
 # For Rust
