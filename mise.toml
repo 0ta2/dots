@@ -38,20 +38,34 @@ run = [
 ]
 
 
-[tasks."update"]
-description = "Brew と mise のupgrade & update"
+[tasks."install"]
+description = "初回セットアップ一式 (chezmoi適用 → mise tools → brew/skill/plugin/uv)"
 run = [
+    "mise run chezmoi:apply",
+    "mise install",
+    "mise run brew:sync",
+    "mise run skill:install",
+    "mise run plugin:install",
+    "mise run herdr:plugin:install",
+    "mise run uv:tools:install",
+]
+
+[tasks."update"]
+description = "全ツールの更新 (chezmoi/brew/mise/skill/uv tool/herdr plugin)"
+run = [
+    "mise run chezmoi:apply",
     "brew upgrade",
     "brew update",
-    "mise upgrade"
+    "mise upgrade",
+    "mise run skill:update",
+    "uv tool upgrade --all",
+    "mise run herdr:plugin:install",
 ]
 
 [tasks."skill:install"]
 description = "スキルのインストール (ネイティブ plugin 経路が無いものだけをここで管理する)"
 run = """
 npx --yes skills add herdrdev/herdr --skill herdr --global \
-    --agent claude-code --agent codex --yes
-npx --yes skills add modem-dev/hunk --skill hunk-review --global \
     --agent claude-code --agent codex --yes
 """
 
@@ -79,6 +93,7 @@ codex plugin add heptabase@heptabase-cli-skills
 description = "herdr の plugin インストール"
 run = """
 herdr plugin install crafts69guy/herdr-ghq --yes
+herdr plugin install smarzban/herdr-file-viewer --yes
 """
 
 [tasks."uv:tools:install"]
