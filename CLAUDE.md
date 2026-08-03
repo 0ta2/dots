@@ -30,6 +30,17 @@ mise run update            # brew と mise を upgrade/update
 chezmoi --source=~/ghq/github.com/0ta2/dots apply
 ```
 
+**罠**: `--source` を付けずに `chezmoi apply/diff/managed` を叩くと、デフォルトソース
+(`~/.local/share/chezmoi`、ほぼ空スタブ) を見てしまい「managed でない」と誤判定する。
+
+`~/.config/` 配下のファイルを編集する前に、必ず一度 chezmoi 管理下か確認する:
+```bash
+chezmoi --source=~/ghq/github.com/0ta2/dots managed | grep <name>
+```
+`find dots -iname '*<name>*'` で済ませない(該当ファイルを見落として直接編集し、次の
+`chezmoi apply` で上書きされる事故が過去に複数回発生している)。実体を直接編集して
+しまった場合は `mise run chezmoi:add <path>` でソース側に取り込む。
+
 Lua ファイル（Neovim設定）のLint:
 ```bash
 selene dot_config/nvim/
