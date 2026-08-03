@@ -21,8 +21,9 @@ mise run chezmoi:template  # ファイルをテンプレートとして管理
 # homebrew
 mise run brew:sync         # Brewfileを元にパッケージを同期
 
-# update
-mise run update            # brew と mise を upgrade/update
+# install / update
+mise run install            # 初回セットアップ一式 (chezmoi適用 → mise tools → brew/skill/plugin/uv)
+mise run update              # 全ツールの更新 (chezmoi/brew/mise/skill/uv tool/herdr plugin)
 ```
 
 直接 chezmoi コマンドを実行する場合は `--source` を指定する:

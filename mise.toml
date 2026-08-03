@@ -38,12 +38,28 @@ run = [
 ]
 
 
-[tasks."update"]
-description = "Brew と mise のupgrade & update"
+[tasks."install"]
+description = "初回セットアップ一式 (chezmoi適用 → mise tools → brew/skill/plugin/uv)"
 run = [
+    "mise run chezmoi:apply",
+    "mise install",
+    "mise run brew:sync",
+    "mise run skill:install",
+    "mise run plugin:install",
+    "mise run herdr:plugin:install",
+    "mise run uv:tools:install",
+]
+
+[tasks."update"]
+description = "全ツールの更新 (chezmoi/brew/mise/skill/uv tool/herdr plugin)"
+run = [
+    "mise run chezmoi:apply",
     "brew upgrade",
     "brew update",
-    "mise upgrade"
+    "mise upgrade",
+    "mise run skill:update",
+    "uv tool upgrade --all",
+    "mise run herdr:plugin:install",
 ]
 
 [tasks."skill:install"]
