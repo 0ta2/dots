@@ -79,6 +79,7 @@ codex plugin add heptabase@heptabase-cli-skills
 description = "herdr の plugin インストール"
 run = """
 herdr plugin install crafts69guy/herdr-ghq --yes
+herdr plugin install smarzban/herdr-file-viewer --yes
 """
 
 [tasks."uv:tools:install"]
