@@ -36,6 +36,7 @@ node = "latest"
 # For Rust
 rust = "latest"
 "github:rtk-ai/rtk" = "latest"
+"github:agavra/tuicr" = "0.20.0" # herdr-ghq v0.10.0+ が要求する最小バージョン
 
 # For Lua
 "cargo:selene" = "latest"

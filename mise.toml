@@ -51,8 +51,6 @@ description = "スキルのインストール (ネイティブ plugin 経路が�
 run = """
 npx --yes skills add herdrdev/herdr --skill herdr --global \
     --agent claude-code --agent codex --yes
-npx --yes skills add modem-dev/hunk --skill hunk-review --global \
-    --agent claude-code --agent codex --yes
 """
 
 [tasks."skill:update"]
