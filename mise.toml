@@ -51,6 +51,8 @@ description = "スキルのインストール (ネイティブ plugin 経路が�
 run = """
 npx --yes skills add herdrdev/herdr --skill herdr --global \
     --agent claude-code --agent codex --yes
+npx --yes skills add modem-dev/hunk --skill hunk-review --global \
+    --agent claude-code --agent codex --yes
 """
 
 [tasks."skill:update"]
@@ -71,6 +73,12 @@ jq -r '.enabledPlugins | to_entries[] | select(.value) | .key' ~/.claude/setting
 codex plugin add superpowers@openai-curated
 codex plugin marketplace add heptameta/heptabase-cli-skills
 codex plugin add heptabase@heptabase-cli-skills
+"""
+
+[tasks."herdr:plugin:install"]
+description = "herdr の plugin インストール"
+run = """
+herdr plugin install crafts69guy/herdr-ghq --yes
 """
 
 [tasks."uv:tools:install"]
