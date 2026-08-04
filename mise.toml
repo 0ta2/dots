@@ -87,6 +87,8 @@ jq -r '.enabledPlugins | to_entries[] | select(.value) | .key' ~/.claude/setting
 codex plugin add superpowers@openai-curated
 codex plugin marketplace add heptameta/heptabase-cli-skills
 codex plugin add heptabase@heptabase-cli-skills
+codex plugin marketplace add DietrichGebert/ponytail
+codex plugin add ponytail@ponytail
 """
 
 [tasks."herdr:plugin:install"]
