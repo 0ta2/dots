@@ -1,36 +1,186 @@
 ---
 name: herdr-review
-description: 隣の Herdr pane に別エージェントを起動して、現在の差分・特定ファイル・直近コミットなどをレビューさせ、結果を回収して報告する。 「隣のcodexにレビューしてもらって」「隣のopusにレビューさせて」「別のエージェントにこの差分を見てもらって」のように、隣ペイン・別エージェント・レビューを明示した依頼で使う。既定は codex。claude、opus、sonnet 等が指定された場合はそのエージェントまたはモデルを使う。「レビューして」だけの依頼、または自分でレビューする依頼には使わず、既存の review スキルを使う。 
+description: 隣の Herdr pane に別エージェントを起動して、現在の差分・特定ファイル・直近コミットなどをレビューさせ、結果を回収して報告する。 「隣のcodexにレビューしてもらって」「隣のopusにレビューさせて」「別のエージェントにこの差分を見てもらって」のように、隣ペイン・別エージェント・レビューを明示した依頼で使う。既定は codex。claude、opus、sonnet 等が指定された場合はそのエージェントまたはモデルを使う。「レビューして」だけの依頼、または自分でレビューする依頼には使わず、既存の review スキルを使う。
 disable-model-invocation: false
 user-invocable: true
 allowed-tools: Bash(herdr *), Bash(grep *), Bash(sed *), Bash(test *), Read
 ---
 
-# Herdr Review
+# herdr-review
 
-別モデルの目で、対象を限定した actionable なレビューを行う。
+隣のペインに別エージェントを立ててレビューさせ、結果を回収して報告する。
+汎用の herdr CLI 作法は herdr 本体が提供する `herdr` skill にある。
+ここはその上の「レビューを委譲する」ワークフローだけを書く。
 
-## 手順
+## 前提
 
-1. `HERDR_ENV=1` であることを確認する。設定されていなければ、Herdr 内で実行するようユーザーに伝えて止める。
-2. `herdr pane layout --current` を確認し、`width >= height * 2` なら `right`、それ以外なら `down` を選ぶ。
-3. `herdr pane split --current --direction <dir> --cwd "$PWD" --no-focus` を実行し、返された `pane_id` を控える。
-4. `herdr pane run <pane_id> "headroom wrap codex --sandbox workspace-write --ask-for-approval on-failure"` または `herdr pane run <pane_id> "headroom wrap claude"` で別エージェントを起動する。
-   - 指定がなければ codex を使う。
-   - `claude` または `codex` が指定されたら対応するコマンドを使う。
-   - `opus`、`sonnet` などモデルが指定されたら、対応するランタイムに `--model <指定された語>` をそのまま渡す。モデル指定がなければ `--model` は付けない。
-   - `hc` / `hx` エイリアスは使わない。
-   - codex には `--sandbox workspace-write --ask-for-approval on-failure` を付ける。ファイル書き込みは自動承認され、コマンドが失敗したときだけ確認が入るため、承認プロンプトの往復が減る。`gh` などネットワークアクセスを伴うコマンドはサンドボックスでブロックされることがあり、その場合は個別に承認する。
-5. `herdr agent list` をポーリングし、対象 `pane_id` のエージェント検出を待つ。30 秒待っても検出されなければ `herdr pane read <pane_id>` で状況を確認してユーザーに報告し、ポーリングを続けない。
-6. 検出後、`herdr agent rename <pane_id> reviewer` を実行する。
-7. `herdr agent get reviewer` で reviewer が idle であることを確認する。不自然な状態なら `herdr agent explain reviewer` で判定根拠を読む。
-8. 対象を明示し、「actionable な指摘のみ返す」ことを含めた依頼文を作る。例: `現在の git diff をレビューし、actionable な指摘のみ返してください。`
-9. `herdr agent prompt reviewer "<レビュー依頼文>" --wait --timeout 300000` で依頼する。依頼文を `herdr pane run` で送らない。
-10. `herdr agent read reviewer --source recent-unwrapped --lines 80` で回答を回収する。出力が truncated または内容不足のときだけ行数を増やす。alternate screen から深い履歴を取るのは reviewer が idle のときだけにする。それでも取得できなければ、「回答を tmp に Markdown で書き、パスだけ返してください」とフォールバックする。
-11. 回収した actionable な指摘をユーザーに要約して報告する。指摘がなければその旨を報告する。
+```bash
+test "${HERDR_ENV:-}" = 1
+```
 
-## 運用制約
+false なら Herdr の中で動いていないと伝えて終了する。外から他人の
+セッションを操作しない。
 
-- idle / done は完了の証明ではない。Herdr は画面から状態を推定しているだけである。
-- `herdr agent prompt` の前に必ず `herdr agent get` で相手が idle か確認する。
-- reviewer に Herdr コマンドを実行させない。socket API は呼び出し元を認可しない。
+## レビュー先とモデルを決める
+
+指定は **エージェント種別** と **モデル** の2軸。混ぜて扱わない。
+
+- エージェント種別: `claude` か `codex`。既定は `codex`
+- モデル: 種別ごとに語彙が違う。claude は `opus` / `sonnet` / `haiku`、
+  codex は `terra` / `sol` / `luna`
+
+モデル名だけ言われた場合はその語彙から種別を決める
+(「opus でレビューして」→ 種別 claude、モデル opus)。どちらも言われなければ
+種別 codex、モデル未指定。知らない語が来たら推測せず種別を確認する
+(モデルは増えるので、この一覧は既知のものにすぎない)。
+
+起動は必ず `headroom wrap claude` / `headroom wrap codex` で行う。
+
+**理由は headroom のプロキシを通すため。** 素の `claude` / `codex` を起動すると
+トークン圧縮も retrieve も効かない。ここは省略しない。
+
+この帰結として `herdr agent start` は使えない。あれは `--kind` のバイナリを
+直接起動するので headroom で包めない。代わりに `herdr pane run` を使う。
+headroom 自体が無い環境では素の `claude` / `codex` に落とすが、その旨を伝える。
+
+モデル指定はユーザーが言った語から組み立てる。skill にモデル名を固定しない。
+
+- claude: `headroom wrap claude --model <語>` (短縮名もフル ID もそのまま通る)
+- codex: 短縮名の実体は `gpt-<version>-<短縮名>` (「tera」と書かれても terra を指す)。
+  version は焼き込まず設定から取る:
+
+  ```bash
+  grep -m1 '^model' ~/.codex/config.toml | sed -E 's/^model[[:space:]]*=[[:space:]]*"(.+)-[^-]+"$/\1/'
+  ```
+
+  出力が `gpt-5.6` なら `headroom wrap codex -m gpt-5.6-sol`。接頭辞が取れなければモデル指定を
+  諦めてユーザーに確認する。
+
+モデル未指定ならフラグを付けない。各 CLI の設定既定に委ねる。
+
+## ペインを作る
+
+```bash
+herdr pane layout --current
+```
+
+自分の rect の `width` / `height` を見て方向を決める。`width >= height * 2` なら
+`right`、そうでなければ `down`。同じ方向に分割を重ねて使えない幅にしない。
+ユーザーが方向を指定したらそれに従う。
+
+```bash
+herdr pane split --current --direction <dir> --cwd "$PWD" --no-focus
+```
+
+`.result.pane.pane_id` を控える。`--no-focus` は必須 (ユーザーの焦点を奪わない)。
+`--cwd "$PWD"` も必須 (省くと別のディレクトリで起動しうる)。
+
+## エージェントを起動して命名する
+
+```bash
+herdr pane run <pane_id> "headroom wrap codex --sandbox workspace-write --ask-for-approval on-failure"
+```
+
+`--sandbox workspace-write --ask-for-approval on-failure` を付ける。ファイル書き込みは
+自動承認され、コマンドが失敗したときだけ確認が入るため、承認プロンプトの往復が減る。
+`gh` などネットワークアクセスを伴うコマンドはサンドボックスでブロックされることがあり、
+その場合は個別に承認する。claude を起動する場合はこのオプションは付けない。
+
+herdr はペイン内のエージェントを自動検出する。`herdr agent list` の
+`.result.agents[]` に自分の `pane_id` を持つ要素が現れるまでポーリングし、
+現れたら命名する:
+
+```bash
+herdr agent rename <pane_id> reviewer
+```
+
+30 秒待っても検出されなければ `herdr pane read <pane_id>` で状況を見る
+(起動失敗・認証待ちなどが読める)。ポーリングを続けず、そこで報告する。
+
+## 依頼を送る
+
+送る前に相手が idle であることを確かめる。`--wait` は個々の依頼ターンでなく
+最初に落ち着いた状態を待つので、working 中に送ると別のターンの完了で戻ってくる。
+
+```bash
+herdr agent get reviewer
+herdr agent prompt reviewer "<依頼文>" --wait --timeout 300000
+```
+
+依頼文に必ず含める:
+
+- レビュー対象 (現在の git diff / 特定ファイル / 直近コミットなど範囲を明示)
+- 見てほしい観点があれば明示 (無ければ全般でよい)
+- **actionable な指摘のみ返すこと** (所感・褒め言葉・前置き・謝辞は不要)
+- **コードを書き換えないこと** (指摘に留める。修正は依頼元が行う)
+- 回答の最後に単独行で `REVIEW_DONE` と出力すること
+
+最後の完了マーカーは省略しない。**理由:** herdr はまだ作業中のエージェントを
+idle/done と誤判定することがあり、`--wait` の戻りだけを信じると途中経過を
+最終レビューとして報告してしまう。マーカーの有無で完了を機械的に確認する。
+
+依頼が長くかかりそうなら `--wait` を付けずに投げ、本流の作業に戻ってから
+拾ってもよい:
+
+```bash
+herdr agent wait reviewer --until blocked --until idle --timeout 300000
+```
+
+## 結果を確認する
+
+```bash
+herdr agent get reviewer
+herdr agent read reviewer --source recent-unwrapped --lines 80
+```
+
+`--lines` は 80 から始め、`truncated` が立つか内容が足りないときだけ増やす。
+読むほど自分のコンテキストを食う。
+
+alternate screen を使うエージェント (claude など) の履歴回収は相手が idle の
+ときだけ効く。working / blocked / unknown 中は深い履歴を取れないので、まず
+idle を待つ。
+
+**`REVIEW_DONE` マーカーが出力に含まれているか確認する。** 含まれていなければ
+`--wait` が戻っていても idle 表示が出ていても完了とみなさない。数秒待って
+再度 `herdr agent read` するか `herdr agent wait reviewer --until idle` を
+やり直す。何度待ってもマーカーが現れない場合は途中経過として扱い、その旨と
+生の出力をユーザーに提示して判断を仰ぐ (勝手に最終レビューとして報告しない)。
+
+マーカーはあるが応答全文が出ないなら「回答を tmp に md で書いてパスだけ
+返して」と頼み直し、ファイルを直接読む。最初の依頼文でファイル出力を求めるのは
+避ける (画面から取れるなら不要)。
+
+**idle や done は完了の証明ではない。** herdr は画面から状態を推定しているだけで、
+バックグラウンド実行中を idle と誤判定する既知の不具合がある。`REVIEW_DONE`
+マーカーの有無で機械的に確認し、状態表示や相手の報告文だけで完了扱いにしない。
+
+## blocked になったら
+
+承認待ちか質問待ちを意味する。**自動で承認しない。**
+`herdr agent read` で何を聞かれているか読み、ユーザーに提示して判断を仰ぐ。
+指示を受けてから `herdr agent prompt` か `herdr agent send-keys` で応答する。
+
+## 状態がおかしいとき
+
+working のはずが idle に見える、いつまでも検出されない、といったときは
+
+```bash
+herdr agent explain <名前 or pane_id>
+```
+
+で herdr がその状態と判定した根拠を読む。相手側の設定 (codex の
+`[tui] terminal_title` など) が検出を壊していることがある。推測で送信を
+繰り返さず、根拠を見てから次の手を決める。
+
+## やらないこと
+
+- 自分が作っていないペイン・タブ・ワークスペースを閉じない
+- ユーザーの焦点を奪わない (`--no-focus` を外さない)
+- reviewer にコードを書き換えさせない (指摘に留める。修正は依頼元が行う)
+- `REVIEW_DONE` マーカーの無い回答を最終レビューとしてそのまま報告しない
+- 依頼文を `herdr pane run` で送らない。codex は貼り付け直後の Enter を
+  捨てることがあり、依頼が入力欄に残る。`pane run` は起動だけ、送信は
+  `agent prompt` に統一する
+- reviewer に herdr コマンドを実行させない。herdr の socket API は呼び出し元を
+  認可しないので、herdr を触れること = 任意のペインで任意コマンドを起動できること
+  になる
