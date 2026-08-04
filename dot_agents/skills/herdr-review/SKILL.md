@@ -15,11 +15,12 @@ allowed-tools: Bash(herdr *), Bash(grep *), Bash(sed *), Bash(test *), Read
 1. `HERDR_ENV=1` であることを確認する。設定されていなければ、Herdr 内で実行するようユーザーに伝えて止める。
 2. `herdr pane layout --current` を確認し、`width >= height * 2` なら `right`、それ以外なら `down` を選ぶ。
 3. `herdr pane split --current --direction <dir> --cwd "$PWD" --no-focus` を実行し、返された `pane_id` を控える。
-4. `herdr pane run <pane_id> "headroom wrap codex"` または `herdr pane run <pane_id> "headroom wrap claude"` で別エージェントを起動する。
+4. `herdr pane run <pane_id> "headroom wrap codex --sandbox workspace-write --ask-for-approval on-failure"` または `herdr pane run <pane_id> "headroom wrap claude"` で別エージェントを起動する。
    - 指定がなければ codex を使う。
    - `claude` または `codex` が指定されたら対応するコマンドを使う。
    - `opus`、`sonnet` などモデルが指定されたら、対応するランタイムに `--model <指定された語>` をそのまま渡す。モデル指定がなければ `--model` は付けない。
    - `hc` / `hx` エイリアスは使わない。
+   - codex には `--sandbox workspace-write --ask-for-approval on-failure` を付ける。ファイル書き込みは自動承認され、コマンドが失敗したときだけ確認が入るため、承認プロンプトの往復が減る。`gh` などネットワークアクセスを伴うコマンドはサンドボックスでブロックされることがあり、その場合は個別に承認する。
 5. `herdr agent list` をポーリングし、対象 `pane_id` のエージェント検出を待つ。30 秒待っても検出されなければ `herdr pane read <pane_id>` で状況を確認してユーザーに報告し、ポーリングを続けない。
 6. 検出後、`herdr agent rename <pane_id> reviewer` を実行する。
 7. `herdr agent get reviewer` で reviewer が idle であることを確認する。不自然な状態なら `herdr agent explain reviewer` で判定根拠を読む。
