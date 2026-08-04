@@ -43,6 +43,7 @@
             "Bash(gh search:*)",
             "Bash(go test*)",
             "Bash(rtk:*)",
+            "Bash(herdr:*)",
             "Bash(git status:*)",
             "Bash(git diff:*)",
             "Bash(git log:*)",
