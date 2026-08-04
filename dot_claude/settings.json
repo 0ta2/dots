@@ -12,13 +12,20 @@
         "superpowers@claude-plugins-official": true,
         "typescript-lsp@claude-plugins-official": true,
         "discord@claude-plugins-official": true,
-        "heptabase@heptabase-cli-skills": true
+        "heptabase@heptabase-cli-skills": true,
+        "ponytail@ponytail": true
     },
     "extraKnownMarketplaces": {
         "heptabase-cli-skills": {
             "source": {
                 "source": "github",
                 "repo": "heptameta/heptabase-cli-skills"
+            }
+        },
+        "ponytail": {
+            "source": {
+                "source": "github",
+                "repo": "DietrichGebert/ponytail"
             }
         }
     },
