@@ -78,8 +78,13 @@ herdr pane split --current --direction <dir> --cwd "$PWD" --no-focus
 ## エージェントを起動して命名する
 
 ```bash
-herdr pane run <pane_id> "headroom wrap codex"
+herdr pane run <pane_id> "headroom wrap codex --sandbox workspace-write --ask-for-approval on-failure"
 ```
+
+`--sandbox workspace-write --ask-for-approval on-failure` を付ける。ファイル書き込みは
+自動承認され、コマンドが失敗したときだけ確認が入るため、承認プロンプトの往復が減る。
+`gh` などネットワークアクセスを伴うコマンドはサンドボックスでブロックされることがあり、
+その場合は個別に承認する。claude を起動する場合はこのオプションは付けない。
 
 herdr はペイン内のエージェントを自動検出する。`herdr agent list` の
 `.result.agents[]` に自分の `pane_id` を持つ要素が現れるまでポーリングし、
