@@ -107,6 +107,13 @@ dots/
 chezmoi は `~/.agents/skills/` へ配布し、`dot_claude/skills/symlink_*` により
 `~/.claude/skills/` からも同じ実体を参照する。内容を2箇所へコピーしない。
 
+`~/.agents/skills/` は Claude Code と Codex の両方が読む。frontmatter は
+両者が解釈できるフィールドだけを使う。`name` / `description` / `allowed-tools` /
+`disable-model-invocation` / `user-invocable` は両対応。**`when_to_use` は使わない**
+(Codex 側に実装が無く、書いてもトリガー情報が Codex から見えなくなる)。
+発動条件・トリガー語句・除外条件はすべて `description` に書く。Claude Code は
+`description` と `when_to_use` を連結して一覧に載せるため、まとめても損失はない。
+
 ### Neovim 設定（`dot_config/nvim/`）
 
 lazy.nvim でプラグイン管理。プラグインは `lua/plugins/` に機能ごとに分割:
