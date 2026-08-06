@@ -58,6 +58,14 @@ headroom 自体が無い環境では素の `claude` / `codex` に落とすが、
 
 モデル未指定ならフラグを付けない。各 CLI の設定既定に委ねる。
 
+## 既存エージェントを使うか判定する
+
+ユーザーが「左の Claude」のように既存ペインを位置で指定した場合は、ペインを
+作らない。`herdr pane neighbor --direction <left|right|up|down> --current` で対象を
+特定し、`herdr agent get <pane_id>` でエージェントを確認してから、その pane ID に
+`herdr agent prompt` を送る。新規ペインの作成は、ユーザーが新しいエージェントの
+起動を求めた場合だけ行う。
+
 ## ペインを作る
 
 ```bash
