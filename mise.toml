@@ -94,8 +94,7 @@ codex plugin add ponytail@ponytail
 [tasks."herdr:plugin:install"]
 description = "herdr の plugin インストール"
 run = """
-herdr plugin install crafts69guy/herdr-ghq --yes
-herdr plugin install smarzban/herdr-file-viewer --yes
+herdr plugin install crafts69guy/herdr-switchboard --yes
 """
 
 [tasks."uv:tools:install"]

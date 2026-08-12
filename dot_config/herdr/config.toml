@@ -130,20 +130,8 @@ navigate_pane_up = "ctrl+k"
 [[keys.command]]
 key = "prefix+space"
 type = "plugin_action"
-command = "ghq.menu"
-description = "ghq project switcher"
-
-[[keys.command]]
-key = "prefix+f"
-type = "plugin_action"
-command = "herdr-file-viewer.open-file-viewer"
-description = "open file viewer in split"
-
-[[keys.command]]
-key = "prefix+shift+f"
-type = "plugin_action"
-command = "herdr-file-viewer.open-file-viewer-tab"
-description = "open file viewer in tab"
+command = "switchboard.projects"
+description = "switchboard project switcher"
 
 # Legacy indexed shortcut config is still parsed for compatibility.
 # Prefer switch_tab, switch_workspace, and focus_agent for new configs.
@@ -254,6 +242,8 @@ description = "open file viewer in tab"
 # accent = "cyan"
 
 # Background notification popup delivery
+show_agent_labels_on_pane_borders = true
+agent_panel_sort = "spaces"
 [ui.toast]
 # off = disable pop-up notifications
 # herdr = show in-app toasts
@@ -262,6 +252,7 @@ description = "open file viewer in tab"
 # delivery = "off"
 # delay_seconds = 1
 
+delivery = "herdr"
 [ui.toast.herdr]
 # position = "bottom-right"
 
