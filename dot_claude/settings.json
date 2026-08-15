@@ -1,110 +1,111 @@
 {
-    "$schema": "https://json.schemastore.org/claude-code-settings.json",
-    "language": "japanese",
-    "vim": true,
-    "voiceEnabled": true,
-    "agentPushNotifEnabled": true,
-    "inputNeededNotifEnabled": true,
-    "enabledPlugins": {
-        "lua-lsp@claude-plugins-official": true,
-        "gopls-lsp@claude-plugins-official": true,
-        "pyright-lsp@claude-plugins-official": true,
-        "superpowers@claude-plugins-official": true,
-        "typescript-lsp@claude-plugins-official": true,
-        "discord@claude-plugins-official": true,
-        "heptabase@heptabase-cli-skills": true,
-        "ponytail@ponytail": true
-    },
-    "extraKnownMarketplaces": {
-        "heptabase-cli-skills": {
-            "source": {
-                "source": "github",
-                "repo": "heptameta/heptabase-cli-skills"
-            }
-        },
-        "ponytail": {
-            "source": {
-                "source": "github",
-                "repo": "DietrichGebert/ponytail"
-            }
-        }
-    },
-    "statusLine": {
-        "type": "command",
-        "command": "python3 ~/.claude/statusline.py"
-    },
-    "permissions": {
-        "allow": [
-            "Bash(curl:http://localhost*)",
-            "Bash(base64:*)",
-            "Bash(gh pr view:*)",
-            "Bash(gh pr list:*)",
-            "Bash(gh pr diff:*)",
-            "Bash(gh pr checks:*)",
-            "Bash(gh issue view:*)",
-            "Bash(gh issue list:*)",
-            "Bash(gh repo view:*)",
-            "Bash(gh run view:*)",
-            "Bash(gh run list:*)",
-            "Bash(gh api:*)",
-            "Bash(gh search:*)",
-            "Bash(go test*)",
-            "Bash(rtk:*)",
-            "Bash(herdr agent:*)",
-            "Bash(herdr pane:*)",
-            "Bash(herdr tab:*)",
-            "Bash(herdr workspace:*)",
-            "Bash(herdr worktree list:*)",
-            "Bash(herdr worktree create:*)",
-            "Bash(herdr worktree open:*)",
-            "Bash(herdr session:*)",
-            "Bash(herdr terminal:*)",
-            "Bash(herdr notification:*)",
-            "Bash(herdr status:*)",
-            "Bash(git status:*)",
-            "Bash(git diff:*)",
-            "Bash(git log:*)",
-            "Bash(git branch:*)",
-            "Bash(git show:*)"
-        ],
-        "deny": [
-            "Read(./.env)",
-            "Read(./.env.*)",
-            "Read(./secrets/**)",
-            "Bash(sudo:*)"
-        ],
-        "ask": [
-            "Bash(git push:*)",
-            "Bash(git merge:*)",
-            "Bash(git rebase:*)"
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "CLAUDE_CODE_NO_FLICKER": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(curl:http://localhost*)",
+      "Bash(base64:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh api:*)",
+      "Bash(gh search:*)",
+      "Bash(go test*)",
+      "Bash(rtk:*)",
+      "Bash(herdr agent:*)",
+      "Bash(herdr pane:*)",
+      "Bash(herdr tab:*)",
+      "Bash(herdr workspace:*)",
+      "Bash(herdr worktree list:*)",
+      "Bash(herdr worktree create:*)",
+      "Bash(herdr worktree open:*)",
+      "Bash(herdr session:*)",
+      "Bash(herdr terminal:*)",
+      "Bash(herdr notification:*)",
+      "Bash(herdr status:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git show:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Bash(sudo:*)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(git merge:*)",
+      "Bash(git rebase:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "rtk hook claude"
+          }
         ]
-    },
-    "env": {
-        "CLAUDE_CODE_NO_FLICKER": "1"
-    },
-    "hooks": {
-        "PreToolUse": [
-            {
-                "matcher": "Bash",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "rtk hook claude"
-                    }
-                ]
-            }
-        ],
-        "SessionStart": [
-            {
-                "matcher": "*",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "bash ~/.claude/hooks/herdr-agent-state.sh session",
-                        "timeout": 10
-                    }
-                ]
-            }
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/herdr-agent-state.sh session",
+            "timeout": 10
+          }
         ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "python3 ~/.claude/statusline.py"
+  },
+  "enabledPlugins": {
+    "lua-lsp@claude-plugins-official": true,
+    "gopls-lsp@claude-plugins-official": true,
+    "pyright-lsp@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "discord@claude-plugins-official": true,
+    "heptabase@heptabase-cli-skills": true,
+    "ponytail@ponytail": true
+  },
+  "extraKnownMarketplaces": {
+    "heptabase-cli-skills": {
+      "source": {
+        "source": "github",
+        "repo": "heptameta/heptabase-cli-skills"
+      }
+    },
+    "ponytail": {
+      "source": {
+        "source": "github",
+        "repo": "DietrichGebert/ponytail"
+      }
     }
+  },
+  "language": "japanese",
+  "inputNeededNotifEnabled": true,
+  "agentPushNotifEnabled": true,
+  "voiceEnabled": true,
+  "vim": true,
+  "model": "opus[1m]"
 }
