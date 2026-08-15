@@ -1,12 +1,30 @@
 # dots
 
-`chezmoi` のインストールと `dots` の反映するには下記を実行
+## セットアップ (初回のみ、2段階)
+
+### 1. chezmoi を導入し dots を取得する (反映はしない)
 
 ```bash
-sh -c "$(curl -fsLS get.chezmoi.io)" -- -b $HOME/.local/bin init --source=~/ghq/github.com/0ta2/dots --apply git@github.com:0ta2/dots.git
+sh -c "$(curl -fsLS get.chezmoi.io)" -- -b $HOME/.local/bin init --source=~/ghq/github.com/0ta2/dots git@github.com:0ta2/dots.git
 ```
 
-ファイルに変更があった際に、反映するには下記を実行
+### 2. Homebrew と mise を用意して初回セットアップする
+
+```bash
+~/ghq/github.com/0ta2/dots/bootstrap.sh
+```
+
+Homebrew・mise を導入した後 `mise run install` (ドットファイル反映・不足ツール・skill・plugin の
+導入・Codex 設定同期) を実行する。
+
+## 日常のコマンド
+
+```bash
+mise run sync    # ドットファイル反映 + Codex設定マージ (副作用なし、何度実行しても収束する)
+mise run update  # brew/mise/skill/uv tool の更新、最後に sync
+```
+
+直接 chezmoi コマンドを実行する場合は下記の通り:
 
 ```bash
 ~/.local/bin/chezmoi --source=~/ghq/github.com/0ta2/dots apply

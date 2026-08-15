@@ -12,7 +12,7 @@
 
 ```bash
 # chezmoi
-mise run chezmoi:apply     # ドットファイルを適用
+mise run chezmoi:apply     # ドットファイルを適用 (ネットワーク・sudo は行わない)
 mise run chezmoi:diff      # 差分確認
 mise run chezmoi:status    # status確認
 mise run chezmoi:add       # ファイルをchezmoi管理下に追加
@@ -21,10 +21,20 @@ mise run chezmoi:template  # ファイルをテンプレートとして管理
 # homebrew
 mise run brew:sync         # Brewfileを元にパッケージを同期
 
-# install / update
-mise run install            # 初回セットアップ一式 (chezmoi適用 → mise tools → brew/skill/plugin/uv)
-mise run update              # 全ツールの更新 (chezmoi/brew/mise/skill/uv tool/herdr plugin)
+# 日常
+mise run sync                 # chezmoi:apply + Codex設定マージ (副作用なし、何度実行しても収束する)
+mise run install               # 初回セットアップ (不足ツール・skill・plugin を導入し、最後に sync)
+mise run update                 # 全ツールの更新 (brew/mise/skill/uv tool/herdr plugin)、最後に sync
+mise run security:sshd-harden  # sshd を鍵認証のみに制限 (sudo 必要、手動実行のみ)
+
+# 初回のみ (mise が無い状態から): bootstrap.sh が Homebrew と mise を用意して install へ引き渡す
+./bootstrap.sh
 ```
+
+責務の分離: `apply` はドットファイル反映のみ (ネットワーク・ツール導入・sudo なし)。`sync` は
+apply と Codex 設定マージのみで、何度実行しても同じ結果に収束する。`install`/`update` は
+それぞれの用途のツール導入を行い、最後に `sync` を呼ぶ。`bootstrap.sh` は mise が無い初回だけの
+入口で、Homebrew と mise を用意したら `mise run install` に処理を渡す。
 
 直接 chezmoi コマンドを実行する場合は `--source` を指定する:
 ```bash
@@ -52,8 +62,10 @@ selene dot_config/nvim/
 - `private_` prefix → パーミッション600でデプロイ
 - `executable_` prefix → 実行可能ファイルとしてデプロイ
 - `.tmpl` suffix → Go テンプレートとして処理される
-- `run_once_` prefix → chezmoi apply 時に一度だけ実行されるスクリプト
-- `run_onchange_` prefix → ファイル変更時に実行されるスクリプト
+
+`run_once_`/`run_onchange_` (chezmoi apply に自動フックするスクリプト) は現在未使用。
+ネットワーク・sudo を伴う処理は `apply` の副作用にせず、`bootstrap.sh`/`mise run install`/
+`mise run update`/`mise run security:sshd-harden` の明示タスクとして持つ方針にしている。
 
 ## アーキテクチャ
 
@@ -61,15 +73,12 @@ selene dot_config/nvim/
 
 ```
 dots/
-├── .chezmoiscripts/          # chezmoi apply 時に実行されるスクリプト
-│   ├── run_once_01_install_brew.sh.tmpl    # Homebrew インストール（初回のみ）
-│   ├── run_onchange_01_brew-bundle.sh.tmpl # Brewfile 変更時に brew bundle 実行
-│   ├── run_onchange_after_02_mise-tools.sh.tmpl   # mise ツールと uv tool の導入
-│   └── run_onchange_after_03_sshd-hardening.sh.tmpl # sshd を鍵認証のみに制限（sudo 必要）
 ├── .chezmoiexternal.toml     # 外部 git リポジトリ（tmux プラグイン）
-├── .chezmoiignore            # chezmoi でデプロイしないファイル（Brewfile, mise.toml等）
+├── .chezmoiignore            # chezmoi でデプロイしないファイル（Brewfile, mise.toml, bootstrap.sh, scripts/等）
 ├── dot_agents/skills/        # → ~/.agents/skills/ (Claude Code / Codex 共通 skill の正本)
 ├── dot_claude/               # → ~/.claude/ (Claude Code 設定と共通 skill へのリンク)
+├── dot_codex/rules/          # → ~/.codex/rules/ (Codex execpolicy の許可コマンド定義)
+│   └── personal.rules            # Claude の permissions.allow を安全な prefix 単位で移植
 ├── dot_config/               # → ~/.config/
 │   ├── nvim/                 # Neovim設定（lazy.nvim, selene でLint）
 │   ├── zsh/                  # zsh設定（zimfw使用）
@@ -83,7 +92,12 @@ dots/
 │   ├── zsh-abbr/             # zsh 略語設定
 │   └── starship.toml         # Starship プロンプト設定
 ├── dot_local/bin/            # → ~/.local/bin/ （カスタムスクリプト）
-│   └── executable_ta             # カスタムスクリプト
+│   ├── executable_ta                    # カスタムスクリプト
+│   └── executable_dots-sshd-harden.tmpl # sshd hardening (mise run security:sshd-harden から手動実行)
+├── scripts/codex-config-sync/  # chezmoi 配布対象外 (.chezmoiignore)。mise run sync から呼ぶ
+│   ├── sync.py                     # managed.toml を ~/.codex/config.toml へ tomlkit でマージ
+│   └── managed.toml                 # dots が宣言する Codex 共通設定 (未知キー/Desktop stateは触らない)
+├── bootstrap.sh               # 初回のみ。Homebrew/mise を用意して `mise run install` へ引き渡す
 ├── Brewfile                  # Homebrew パッケージ定義（chezmoi管理外）
 ├── mise.toml                 # mise タスク定義（chezmoi管理外）
 └── selene.toml               # Lua linter 設定（neovim標準, global_usage/unused_variable=deny）
@@ -102,6 +116,17 @@ dots/
 - ステータスライン: モデル名とコンテキスト使用率を表示（`statusline-command.sh`）
 - 通知: Stop/Notification フックで `terminal-notifier` を使って macOS 通知
 - パーミッション: `rm -rf` と `sudo` は deny、`git push/merge/rebase` は確認必須
+
+### Codex 設定（`dot_codex/rules/personal.rules`, `scripts/codex-config-sync/`）
+
+- `dot_codex/rules/personal.rules` は `dot_claude/settings.json` の `permissions.allow` を
+  Codex execpolicy の `prefix_rule` へ安全な prefix 単位で移植したもの。`rtk:*` や
+  引数の部分一致が必要なもの (`curl:http://localhost*` 等) は execpolicy で安全に
+  表現できないため移植しない。ファイル読み取りの deny は execpolicy の対象外。
+- `scripts/codex-config-sync/sync.py` は chezmoi 配布対象外 (`.chezmoiignore`)。
+  `managed.toml` に列挙したキーだけを tomlkit で `~/.codex/config.toml` へマージし、
+  `projects`/`notice`/`tui`/`marketplaces` などの Codex Desktop/CLI が書く state と
+  未知キーには触れない。`mise run sync` から呼ぶ。
 
 ### 共通 skills
 
