@@ -7,32 +7,28 @@
                         "description": "Double tap left_control to toggle Ghostty Quick Terminal",
                         "manipulators": [
                             {
-                                "type": "basic",
-                                "from": {
-                                    "key_code": "left_control"
-                                },
-                                "to": [
-                                    {
-                                        "key_code": "f19"
-                                    }
-                                ],
                                 "conditions": [
                                     {
-                                        "type": "variable_if",
                                         "name": "left_control_key",
+                                        "type": "variable_if",
                                         "value": 1
                                     }
-                                ]
+                                ],
+                                "from": { "key_code": "left_control" },
+                                "to": [{ "key_code": "f19" }],
+                                "type": "basic"
                             },
                             {
-                                "type": "basic",
+                                "conditions": [
+                                    {
+                                        "name": "left_control_key",
+                                        "type": "variable_if",
+                                        "value": 0
+                                    }
+                                ],
                                 "from": {
                                     "key_code": "left_control",
-                                    "modifiers": {
-                                        "optional": [
-                                            "any"
-                                        ]
-                                    }
+                                    "modifiers": { "optional": ["any"] }
                                 },
                                 "to": [
                                     {
@@ -41,12 +37,10 @@
                                             "value": 1
                                         }
                                     },
-                                    {
-                                        "key_code": "left_control"
-                                    }
+                                    { "key_code": "left_control" }
                                 ],
                                 "to_delayed_action": {
-                                    "to_if_invoked": [
+                                    "to_if_canceled": [
                                         {
                                             "set_variable": {
                                                 "name": "left_control_key",
@@ -54,7 +48,7 @@
                                             }
                                         }
                                     ],
-                                    "to_if_canceled": [
+                                    "to_if_invoked": [
                                         {
                                             "set_variable": {
                                                 "name": "left_control_key",
@@ -63,30 +57,33 @@
                                         }
                                     ]
                                 },
-                                "conditions": [
-                                    {
-                                        "type": "variable_if",
-                                        "name": "left_control_key",
-                                        "value": 0
-                                    }
-                                ]
+                                "type": "basic"
                             }
                         ]
                     }
                 ]
             },
+            "devices": [
+                {
+                    "identifiers": {
+                        "is_keyboard": true,
+                        "is_pointing_device": true,
+                        "product_id": 22,
+                        "vendor_id": 1278
+                    },
+                    "ignore": false
+                },
+                {
+                    "identifiers": { "is_consumer": true },
+                    "ignore": false
+                }
+            ],
             "name": "Default profile",
             "selected": true,
             "simple_modifications": [
                 {
-                    "from": {
-                        "key_code": "caps_lock"
-                    },
-                    "to": [
-                        {
-                            "key_code": "left_control"
-                        }
-                    ]
+                    "from": { "key_code": "caps_lock" },
+                    "to": [{ "key_code": "left_control" }]
                 }
             ],
             "virtual_hid_keyboard": {
