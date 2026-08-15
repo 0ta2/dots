@@ -1,0 +1,44 @@
+#!/bin/bash
+
+set -eu
+
+{{ if eq .chezmoi.username "0ta2" }}
+# authorized_keys のハッシュを埋めることで、鍵を後から登録したときに本スクリプトが再実行される。
+# (埋めないと鍵が無い状態の実行で state が記録され、以降パスワード認証が残り続ける)
+# authorized_keys hash: {{ if stat (joinPath .chezmoi.homeDir ".ssh" "authorized_keys") }}{{ include (joinPath .chezmoi.homeDir ".ssh" "authorized_keys") | sha256sum }}{{ else }}absent{{ end }}
+
+CONF=/etc/ssh/sshd_config.d/099-hardening.conf
+
+DESIRED=$(cat <<'EOF'
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+PermitRootLogin no
+MaxAuthTries 3
+AllowUsers {{ .chezmoi.username }}
+EOF
+)
+
+# 鍵で入れない状態でパスワード認証を切ると締め出される。
+# 非空チェックだけではコメント行のみのファイルを通してしまうため、
+# ssh-keygen に実際にパースさせて有効な鍵の存在を確かめる。
+if ! ssh-keygen -l -f "${HOME}/.ssh/authorized_keys" >/dev/null 2>&1; then
+    echo "🔐 no usable public key in authorized_keys, skipping sshd hardening" >&2
+    exit 0
+fi
+
+echo "🔐 Applying sshd hardening (sudo required)..."
+TMP=$(mktemp)
+printf '%s\n' "$DESIRED" >"$TMP"
+sudo install -m 644 "$TMP" "$CONF"
+rm -f "$TMP"
+
+if ! sudo sshd -T >/dev/null; then
+    echo "🔐 sshd config test failed, reverting" >&2
+    sudo rm -f "$CONF"
+    exit 1
+fi
+
+sudo launchctl kickstart -k system/com.openssh.sshd || echo "🔐 sshd is not running, config will apply when enabled"
+echo "🔐 sshd hardening applied"
+{{ end }}

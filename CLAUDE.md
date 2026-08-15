@@ -63,7 +63,9 @@ selene dot_config/nvim/
 dots/
 ├── .chezmoiscripts/          # chezmoi apply 時に実行されるスクリプト
 │   ├── run_once_01_install_brew.sh.tmpl    # Homebrew インストール（初回のみ）
-│   └── run_onchange_01_brew-bundle.sh.tmpl # Brewfile 変更時に brew bundle 実行
+│   ├── run_onchange_01_brew-bundle.sh.tmpl # Brewfile 変更時に brew bundle 実行
+│   ├── run_onchange_after_02_mise-tools.sh.tmpl   # mise ツールと uv tool の導入
+│   └── run_onchange_after_03_sshd-hardening.sh.tmpl # sshd を鍵認証のみに制限（sudo 必要）
 ├── .chezmoiexternal.toml     # 外部 git リポジトリ（tmux プラグイン）
 ├── .chezmoiignore            # chezmoi でデプロイしないファイル（Brewfile, mise.toml等）
 ├── dot_agents/skills/        # → ~/.agents/skills/ (Claude Code / Codex 共通 skill の正本)
