@@ -136,7 +136,7 @@ description = "switchboard project switcher"
 # Open a temporary shell in a repository selected from ghq. The popup closes
 # when that shell exits and leaves the current tab layout unchanged.
 [[keys.command]]
-key = "prefix+shift+o"
+key = "prefix+control+f"
 type = "popup"
 command = "herdr-popup-repo"
 width = "90%"
