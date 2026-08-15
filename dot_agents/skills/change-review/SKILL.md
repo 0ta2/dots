@@ -1,12 +1,12 @@
 ---
-name: review
-description: PR レビュー。security / performance / DRY / consistency の4観点でチェックし、[MUST]/[SHOULD]/[IMO]/[nits]/[Q] プレフィックス付きの指摘を出力する。「PR をレビューして」「コードレビュー」「/review #123」など、Pull Request のレビュー依頼があれば積極的に使用する。
+name: change-review
+description: コードレビュー。security / performance / DRY / consistency の4観点でチェックし、[MUST]/[SHOULD]/[IMO]/[nits]/[Q] プレフィックス付きの指摘を出力する。対象は PR・現在のローカル差分・特定ファイル・直近コミット。Claude Code / Codex 組み込みの review コマンドと名前が衝突しないよう change-review という名前にしている。明示呼び出しは Claude Code で `/change-review`、Codex で `$change-review`。「PR をレビューして」「コードレビュー」「今の差分をレビューして」「このファイルをレビューして」「直近のコミットをレビューして」など、レビュー依頼があれば積極的に使用する。
 user-invocable: true
 allowed-tools: Bash(gh *), Bash(git *), Grep, Glob, Read
-argument-hint: "[PR番号 or PR URL] [--skip <観点>] [--only <観点>]"
+argument-hint: "[PR番号/URL | ファイルパス | --diff | --last-commit] [--skip <観点>] [--only <観点>]"
 ---
 
-# Review: PR レビュー
+# Change Review: コードレビュー
 
 ## コンテキスト
 
@@ -25,23 +25,41 @@ $ARGUMENTS
 
 `--skip <観点名>` / `--only <観点名>` で絞り込み可能。
 
-## Step 0: PR 情報の取得
+## Step 0: レビュー対象の取得
 
-引数から PR 番号または URL を取得する。引数がなければユーザーに確認する。
+引数からレビュー対象を判定する。引数がなければユーザーに確認する。
+
+### PR (番号 or URL)
 
 ```bash
 gh pr view <PR番号> --json title,body,files,headRefName
 gh pr diff <PR番号>
 ```
 
-## Step 1: 変更ファイルの全体を読む
-
-差分だけでレビューしない。**変更ファイルの全体**をブランチから読む:
+### 現在のローカル差分
 
 ```bash
-git fetch origin <headRefName>
-git show origin/<headRefName>:<file_path>
+git diff HEAD
 ```
+
+### 特定ファイル
+
+指定されたパスをそのまま読む (差分ではなく現在の内容全体)。
+
+### 直近コミット
+
+```bash
+git show HEAD --stat
+git show HEAD
+```
+
+## Step 1: 変更ファイルの全体を読む
+
+差分だけでレビューしない。**変更ファイルの全体**を読む。
+
+- PR: `git fetch origin <headRefName>` してから `git show origin/<headRefName>:<file_path>`
+- 現在のローカル差分・直近コミット: 対象ファイルを作業ツリーからそのまま読む
+- 特定ファイル: Step 0 で読み込み済み
 
 変更された関数の呼び出し元・呼び出し先も確認する。削除されたコードの参照元が残っていないかも見る。
 
