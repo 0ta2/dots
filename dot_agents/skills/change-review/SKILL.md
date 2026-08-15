@@ -40,7 +40,11 @@ gh pr diff <PR番号>
 
 ```bash
 git diff HEAD
+git status --short
 ```
+
+`git diff HEAD` は新規作成 (untracked) ファイルの中身を出力しない。`git status --short` の
+`??` 行に出た untracked ファイルも読み、レビュー対象に含める。
 
 ### 特定ファイル
 
@@ -58,7 +62,9 @@ git show HEAD
 差分だけでレビューしない。**変更ファイルの全体**を読む。
 
 - PR: `git fetch origin <headRefName>` してから `git show origin/<headRefName>:<file_path>`
-- 現在のローカル差分・直近コミット: 対象ファイルを作業ツリーからそのまま読む
+- 現在のローカル差分: 対象ファイル (untracked 含む) を作業ツリーからそのまま読む
+- 直近コミット: 作業ツリーではなく `git show HEAD:<file_path>` から読む (worktree が HEAD より
+  後で編集されていることがあるため)。削除されたファイルは `git show HEAD^:<file_path>`
 - 特定ファイル: Step 0 で読み込み済み
 
 変更された関数の呼び出し元・呼び出し先も確認する。削除されたコードの参照元が残っていないかも見る。
