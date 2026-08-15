@@ -1,0 +1,12 @@
+# dots が宣言管理する ~/.codex/config.toml のキーだけをここに書く。
+# sync.py はここに列挙したキーだけを上書きし、それ以外 (projects/notice/tui/marketplaces/notify
+# などの Codex Desktop/CLI が書き込む state) には触れない。
+
+model = "gpt-5.6-terra"
+personality = "pragmatic"
+model_verbosity = "low"
+model_reasoning_effort = "high"
+approval_policy = "on-request"
+approvals_reviewer = "auto_review"
+sandbox_mode = "workspace-write"
+service_tier = "default"

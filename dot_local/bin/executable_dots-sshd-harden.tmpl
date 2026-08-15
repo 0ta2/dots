@@ -3,10 +3,6 @@
 set -eu
 
 {{ if eq .chezmoi.username "0ta2" }}
-# authorized_keys のハッシュを埋めることで、鍵を後から登録したときに本スクリプトが再実行される。
-# (埋めないと鍵が無い状態の実行で state が記録され、以降パスワード認証が残り続ける)
-# authorized_keys hash: {{ if stat (joinPath .chezmoi.homeDir ".ssh" "authorized_keys") }}{{ include (joinPath .chezmoi.homeDir ".ssh" "authorized_keys") | sha256sum }}{{ else }}absent{{ end }}
-
 CONF=/etc/ssh/sshd_config.d/099-hardening.conf
 
 DESIRED=$(cat <<'EOF'

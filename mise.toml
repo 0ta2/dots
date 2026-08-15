@@ -38,8 +38,15 @@ run = [
 ]
 
 
+[tasks."sync"]
+description = "ドットファイル反映 + Codex設定マージ (副作用なし、何度実行しても収束する)"
+run = [
+    "mise run chezmoi:apply",
+    "{{vars.source}}/scripts/codex-config-sync/sync.py",
+]
+
 [tasks."install"]
-description = "初回セットアップ一式 (chezmoi適用 → mise tools → brew/skill/plugin/uv)"
+description = "初回セットアップ (不足ツール・skill・plugin を導入し、最後に sync)"
 run = [
     "mise run chezmoi:apply",
     "mise install",
@@ -48,19 +55,24 @@ run = [
     "mise run plugin:install",
     "mise run herdr:plugin:install",
     "mise run uv:tools:install",
+    "mise run sync",
 ]
 
 [tasks."update"]
-description = "全ツールの更新 (chezmoi/brew/mise/skill/uv tool/herdr plugin)"
+description = "全ツールの更新 (brew/mise/skill/uv tool/herdr plugin)、最後に sync"
 run = [
-    "mise run chezmoi:apply",
-    "brew upgrade",
     "brew update",
+    "brew upgrade",
     "mise upgrade",
     "mise run skill:update",
     "uv tool upgrade --all",
     "mise run herdr:plugin:install",
+    "mise run sync",
 ]
+
+[tasks."security:sshd-harden"]
+description = "sshd をパスワード認証なし・鍵認証のみに制限する (sudo 必要、手動実行)"
+run = "~/.local/bin/dots-sshd-harden"
 
 [tasks."skill:install"]
 description = "スキルのインストール (ネイティブ plugin 経路が無いものだけをここで管理する)"
