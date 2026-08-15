@@ -31,6 +31,7 @@ cask "chatgpt"
 cask "claude"
 cask "codex-app"
 cask "codexbar"
+cask "tailscale-app"
 
 # terminal
 brew "starship"
