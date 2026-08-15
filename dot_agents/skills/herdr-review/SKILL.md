@@ -1,6 +1,6 @@
 ---
 name: herdr-review
-description: 隣の Herdr pane に別エージェントを起動して、現在の差分・特定ファイル・直近コミットなどをレビューさせ、結果を回収して報告する。 「隣のcodexにレビューしてもらって」「隣のopusにレビューさせて」「別のエージェントにこの差分を見てもらって」のように、隣ペイン・別エージェント・レビューを明示した依頼で使う。既定は codex。claude、opus、sonnet 等が指定された場合はそのエージェントまたはモデルを使う。「レビューして」だけの依頼、または自分でレビューする依頼には使わず、既存の review スキルを使う。
+description: 隣の Herdr pane に別エージェントを起動して、現在の差分・特定ファイル・直近コミットなどをレビューさせ、結果を回収して報告する。 「隣のcodexにレビューしてもらって」「隣のopusにレビューさせて」「別のエージェントにこの差分を見てもらって」のように、隣ペイン・別エージェント・レビューを明示した依頼で使う。既定は codex。claude、opus、sonnet 等が指定された場合はそのエージェントまたはモデルを使う。「レビューして」だけの依頼、または自分でレビューする依頼には使わず、既存の change-review スキルを使う。
 disable-model-invocation: false
 user-invocable: true
 allowed-tools: Bash(herdr *), Bash(grep *), Bash(sed *), Bash(test *), Read
@@ -145,7 +145,7 @@ herdr agent prompt reviewer "<依頼文>" --wait --timeout 300000
 依頼文に必ず含める:
 
 - レビュー対象 (現在の git diff / 特定ファイル / 直近コミット / PR番号など範囲を明示)
-- `~/.agents/skills/review/SKILL.md` を読み、その観点・出力形式に従ってレビューすること。
+- `~/.agents/skills/change-review/SKILL.md` を読み、その観点・出力形式に従ってレビューすること。
   PR ではない対象 (現在の diff・特定ファイルなど) のときは、その skill の Step 0 (`gh pr view`
   による取得) は省略し、指定した対象をそのままレビューしてよいと明記する
 - **コードを書き換えないこと** (指摘に留める。修正は依頼元が行う)
@@ -153,8 +153,8 @@ herdr agent prompt reviewer "<依頼文>" --wait --timeout 300000
   「回答の最後に、`REVIEW` と `DONE` をアンダースコア1つで繋いだ語を単独行で
   出力すること (他の文字と同じ行に混ぜない)」と書く
 
-ルーブリックをここに書き下さず `review` skill のファイルをそのまま参照させる。codex はこの skill を
-`/review` のようなコマンドとして起動する手段を持たないが、ファイルを読んで従うことはできるので、
+ルーブリックをここに書き下さず `change-review` skill のファイルをそのまま参照させる。codex はこの skill を
+`/change-review` のようなコマンドとして起動する手段を持たないが、ファイルを読んで従うことはできるので、
 claude・codex どちらが相手でも同じ依頼文・同じやり方で統一できる。skill の内容が変わっても
 herdr-review 側の追従は不要 (DRY)。
 
