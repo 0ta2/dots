@@ -5,6 +5,7 @@ cask "font-moralerspace"
 # cli
 brew "git"
 brew "tmux"
+brew "mosh"
 brew "mise"
 brew "bat"
 brew "fd"

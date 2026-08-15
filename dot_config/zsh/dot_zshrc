@@ -1,9 +1,6 @@
 #
 # 環境変数
 #
-# brew
-eval "$(/opt/homebrew/bin/brew shellenv)"
-
 # mise
 eval "$(mise activate zsh)"
 
