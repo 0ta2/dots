@@ -19,7 +19,7 @@ import tomlkit
 
 # Codex Desktop/CLI がランタイムで書き込む state。managed.toml に紛れ込んでも
 # 上書きしないための最終防衛線 (通常は managed.toml 側で書かない運用)。
-DESKTOP_STATE_KEYS = {"projects", "notice", "tui", "marketplaces"}
+DESKTOP_STATE_KEYS = {"projects", "notice", "tui", "marketplaces", "notify"}
 
 CONFIG_PATH = pathlib.Path.home() / ".codex" / "config.toml"
 MANAGED_PATH = pathlib.Path(__file__).parent / "managed.toml"
@@ -59,12 +59,13 @@ def demo() -> None:
         "managed.toml にないキー(projects)は保持されなければならない"
     )
 
-    try:
-        merge(before, {"notice": {}})
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("Desktop state キーの上書きは拒否されなければならない")
+    for key in DESKTOP_STATE_KEYS:
+        try:
+            merge(before, {key: "x"})
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"Desktop state キー '{key}' の上書きは拒否されなければならない")
 
     print("demo ok")
 
