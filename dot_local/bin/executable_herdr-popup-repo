@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo="$(ghq list --full-path | fzf --prompt='Repository> ')" || exit 0
+
+cd "$repo"
+exec "${SHELL:-/bin/zsh}" -l

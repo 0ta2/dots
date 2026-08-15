@@ -133,6 +133,15 @@ type = "plugin_action"
 command = "switchboard.projects"
 description = "switchboard project switcher"
 
+# Open a temporary shell in a repository selected from ghq. The popup closes
+# when that shell exits and leaves the current tab layout unchanged.
+[[keys.command]]
+key = "prefix+shift+o"
+type = "popup"
+command = "herdr-popup-repo"
+width = "90%"
+height = "90%"
+
 # Legacy indexed shortcut config is still parsed for compatibility.
 # Prefer switch_tab, switch_workspace, and focus_agent for new configs.
 # [keys.indexed]
