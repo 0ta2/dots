@@ -6,8 +6,19 @@
 #   Claude 側より広い許可になってしまうため見送る。
 # - Bash(rtk:*) … rtk は Claude Code 用のトークン圧縮プロキシで Codex では想定外。
 #   意図的に許可しない (デフォルトの承認フローに任せる)。
+# - Bash(gh api:*) … `gh api` は --method でリクエストの動詞を任意に変えられ、
+#   prefix_rule では GET のみに絞り込めない (例: `gh api --method DELETE ...` も
+#   同じ prefix にマッチしてしまう)。副作用のある呼び出しまで allow してしまうため
+#   移植せず、デフォルトの承認フローに任せる。
 # ファイル読み取りの deny (.env 等) は execpolicy の対象外 (コマンド実行のみを扱う) なので
 # ここには含めない。
+#
+# herdr は agent/pane/tab/workspace/session 配下に破壊的操作 (close/rename/send-keys/
+# delete 等) や別ペインへの入力送信 (send-keys/prompt) を持つサブコマンドが混在する。
+# 一括で allow すると `herdr pane close`・`herdr agent send-keys`・`herdr session delete`
+# のようなコマンドまで無承認で実行できてしまうため、閲覧・状態確認系のサブコマンドだけを
+# 個別に列挙する。`herdr terminal` は attach --takeover 等でターミナルを乗っ取れるため
+# 対象外とする。
 
 prefix_rule(
     pattern = ["base64"],
@@ -24,11 +35,19 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern = ["git", ["status", "diff", "log", "branch", "show"]],
+    pattern = ["git", ["status", "diff", "log", "show"]],
     decision = "allow",
     justification = "読み取り専用の git サブコマンドのみ",
-    match = ["git status", "git diff HEAD", "git log -1", "git branch", "git show HEAD"],
+    match = ["git status", "git diff HEAD", "git log -1", "git show HEAD"],
     not_match = ["git push", "git commit"],
+)
+
+prefix_rule(
+    pattern = ["git", "branch", ["--list", "--show-current"]],
+    decision = "allow",
+    justification = "git branch は -D 等で削除もできるため、閲覧系オプション指定時のみ許可する",
+    match = ["git branch --list", "git branch --show-current"],
+    not_match = ["git branch -D foo", "git branch"],
 )
 
 prefix_rule(
@@ -60,13 +79,6 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern = ["gh", "api"],
-    decision = "allow",
-    justification = "GitHub API 呼び出し (gh の認証スコープの範囲に限られる)",
-    match = ["gh api repos/0ta2/dots"],
-)
-
-prefix_rule(
     pattern = ["gh", "search"],
     decision = "allow",
     justification = "GitHub 横断検索のみ",
@@ -74,22 +86,57 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern = [
-        "herdr",
-        [
-            "agent",
-            "pane",
-            "tab",
-            "workspace",
-            "session",
-            "terminal",
-            "notification",
-            "status",
-        ],
-    ],
+    pattern = ["herdr", "agent", ["list", "get", "read", "explain"]],
     decision = "allow",
-    justification = "herdr の操作系サブコマンド",
-    match = ["herdr agent list", "herdr pane list", "herdr status"],
+    justification = "herdr agent の閲覧・状態確認のみ (send-keys/prompt/rename等の操作は対象外)",
+    match = ["herdr agent list", "herdr agent get reviewer", "herdr agent read reviewer"],
+    not_match = ["herdr agent send-keys reviewer enter", "herdr agent prompt reviewer hi"],
+)
+
+prefix_rule(
+    pattern = ["herdr", "pane", ["list", "current", "get", "layout", "process-info", "neighbor", "edges", "read"]],
+    decision = "allow",
+    justification = "herdr pane の閲覧のみ (close/split/send-keys等の操作は対象外)",
+    match = ["herdr pane list", "herdr pane layout --current", "herdr pane read foo"],
+    not_match = ["herdr pane close foo", "herdr pane send-keys foo enter"],
+)
+
+prefix_rule(
+    pattern = ["herdr", "tab", ["list", "get"]],
+    decision = "allow",
+    justification = "herdr tab の閲覧のみ",
+    match = ["herdr tab list", "herdr tab get foo"],
+    not_match = ["herdr tab close foo"],
+)
+
+prefix_rule(
+    pattern = ["herdr", "workspace", ["list", "get"]],
+    decision = "allow",
+    justification = "herdr workspace の閲覧のみ",
+    match = ["herdr workspace list", "herdr workspace get foo"],
+    not_match = ["herdr workspace close foo"],
+)
+
+prefix_rule(
+    pattern = ["herdr", "session", "list"],
+    decision = "allow",
+    justification = "herdr session の閲覧のみ (attach/stop/delete は対象外)",
+    match = ["herdr session list"],
+    not_match = ["herdr session delete foo"],
+)
+
+prefix_rule(
+    pattern = ["herdr", "notification", "show"],
+    decision = "allow",
+    justification = "herdr notification の閲覧のみ",
+    match = ["herdr notification show"],
+)
+
+prefix_rule(
+    pattern = ["herdr", "status"],
+    decision = "allow",
+    justification = "herdr の状態確認のみ",
+    match = ["herdr status"],
 )
 
 prefix_rule(

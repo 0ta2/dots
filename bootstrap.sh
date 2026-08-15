@@ -20,4 +20,10 @@ fi
 MISE_BIN=$(command -v mise || echo "$("$BREW_BIN" --prefix mise)/bin/mise")
 
 cd "$(dirname "$0")"
+
+# 初回はこのリポジトリのmise.tomlが未trustなので、明示的にtrustしてから実行する。
+# BREWFILEは通常dot_zshenv.tmpl経由でシェル起動時にexportされるが、chezmoi apply前の
+# このプロセスには反映されないため、ここで直接エクスポートする。
+"$MISE_BIN" trust
+export BREWFILE="$PWD/Brewfile"
 "$MISE_BIN" run install

@@ -120,9 +120,12 @@ dots/
 ### Codex 設定（`dot_codex/rules/personal.rules`, `scripts/codex-config-sync/`）
 
 - `dot_codex/rules/personal.rules` は `dot_claude/settings.json` の `permissions.allow` を
-  Codex execpolicy の `prefix_rule` へ安全な prefix 単位で移植したもの。`rtk:*` や
-  引数の部分一致が必要なもの (`curl:http://localhost*` 等) は execpolicy で安全に
-  表現できないため移植しない。ファイル読み取りの deny は execpolicy の対象外。
+  Codex execpolicy の `prefix_rule` へ安全な prefix 単位で移植したもの。`rtk:*`、
+  引数の部分一致が必要なもの (`curl:http://localhost*`)、動詞を任意に変えられるもの
+  (`gh api` の `--method`) は execpolicy で安全に絞り込めないため移植しない。
+  `git branch` や `herdr` の各名前空間のように削除・送信系のサブコマンドが混在するものは、
+  閲覧・状態確認系のサブコマンドだけを個別に列挙する (一括 allow しない)。
+  ファイル読み取りの deny は execpolicy の対象外。
 - `scripts/codex-config-sync/sync.py` は chezmoi 配布対象外 (`.chezmoiignore`)。
   `managed.toml` に列挙したキーだけを tomlkit で `~/.codex/config.toml` へマージし、
   `projects`/`notice`/`tui`/`marketplaces` などの Codex Desktop/CLI が書く state と
