@@ -146,3 +146,10 @@ prefix_rule(
     match = ["herdr worktree list", "herdr worktree create foo", "herdr worktree open foo"],
     not_match = ["herdr worktree remove foo"],
 )
+
+# Discord通知はmacOS Keychain内の専用bot tokenを読むため、既知の通知スクリプトだけをサンドボックス外で許可する。
+prefix_rule(
+    pattern = ["bash", "scripts/discord-notify.sh"],
+    decision = "allow",
+    justification = "Allow the reviewed Discord notifier to read its dedicated Keychain token",
+)
