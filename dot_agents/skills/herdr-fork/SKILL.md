@@ -48,15 +48,13 @@ herdr pane split --current --direction <dir> --cwd "$PWD" --no-focus
 ## フォークして resume する
 
 ```bash
-herdr pane run <pane_id> "headroom wrap claude --resume $CLAUDE_CODE_SESSION_ID --fork-session"
+herdr pane run <pane_id> "claude --resume $CLAUDE_CODE_SESSION_ID --fork-session"
 ```
 
 モデル指定があれば末尾に `--model <語>` を付ける。
 
-起動は必ず `headroom wrap claude` で行う。**理由は headroom のプロキシを通すため。**
-素の `claude` を起動するとトークン圧縮も retrieve も効かない。この帰結として
-`herdr agent start` は使えない (`--kind` のバイナリを直接起動するので headroom で
-包めない)。headroom 自体が無い環境では素の `claude` に落とすが、その旨を伝える。
+起動は必ず `claude` で行う。`herdr agent start` は `-- [AGENT_ARG]...` で同じ引数を
+渡せるので切り替えられる可能性があるが未検証。当面は `herdr pane run` を使う。
 
 `--fork-session` は新しいセッション ID を払い出す。元セッション
 ($CLAUDE_CODE_SESSION_ID のセッション) には影響しない。
