@@ -11,9 +11,7 @@ end)
 
 vim.cmd.packadd("amanoukihashi.nvim-local")
 local amanoukihashi = require("amanoukihashi")
-amanoukihashi.setup({
-    claude_cmd = { "headroom", "wrap", "claude" },
-})
+amanoukihashi.setup()
 vim.keymap.set({ "n", "t", "i", "x" }, "<c-.>", function()
     amanoukihashi.sidebar_toggle()
 end, { desc = "amanoukihashi: サイドバーをトグル" })

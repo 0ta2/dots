@@ -34,18 +34,14 @@ false なら Herdr の中で動いていないと伝えて終了する。外か�
 種別 codex、モデル未指定。知らない語が来たら推測せず種別を確認する
 (モデルは増えるので、この一覧は既知のものにすぎない)。
 
-起動は必ず `headroom wrap claude` / `headroom wrap codex` で行う。
+起動は必ず素の `claude` / `codex` で行う。
 
-**理由は headroom のプロキシを通すため。** 素の `claude` / `codex` を起動すると
-トークン圧縮も retrieve も効かない。ここは省略しない。
-
-この帰結として `herdr agent start` は使えない。あれは `--kind` のバイナリを
-直接起動するので headroom で包めない。代わりに `herdr pane run` を使う。
-headroom 自体が無い環境では素の `claude` / `codex` に落とすが、その旨を伝える。
+`herdr agent start` は `-- [AGENT_ARG]...` で同じ引数を渡せるので切り替えられる
+可能性があるが未検証。当面は `herdr pane run` を使う。
 
 モデル指定はユーザーが言った語から組み立てる。skill にモデル名を固定しない。
 
-- claude: `headroom wrap claude --model <語>` (短縮名もフル ID もそのまま通る)
+- claude: `claude --model <語>` (短縮名もフル ID もそのまま通る)
 - codex: 短縮名の実体は `gpt-<version>-<短縮名>` (「tera」と書かれても terra を指す)。
   version は焼き込まず設定から取る:
 
@@ -53,7 +49,7 @@ headroom 自体が無い環境では素の `claude` / `codex` に落とすが、
   grep -m1 '^model' ~/.codex/config.toml | sed -E 's/^model[[:space:]]*=[[:space:]]*"(.+)-[^-]+"$/\1/'
   ```
 
-  出力が `gpt-5.6` なら `headroom wrap codex -m gpt-5.6-sol`。接頭辞が取れなければモデル指定を
+  出力が `gpt-5.6` なら `codex -m gpt-5.6-sol`。接頭辞が取れなければモデル指定を
   諦めてユーザーに確認する。
 
 モデル未指定ならフラグを付けない。各 CLI の設定既定に委ねる。
@@ -101,7 +97,7 @@ herdr pane split --current --direction <dir> --cwd "$PWD" --no-focus
 ## エージェントを起動して命名する
 
 ```bash
-herdr pane run <pane_id> "headroom wrap codex --sandbox workspace-write --ask-for-approval on-request"
+herdr pane run <pane_id> "codex --sandbox workspace-write --ask-for-approval on-request"
 ```
 
 `--sandbox workspace-write` でファイル書き込みを自動承認し、`--ask-for-approval` で
