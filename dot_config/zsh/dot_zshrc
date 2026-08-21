@@ -7,6 +7,9 @@ eval "$(mise activate zsh)"
 # starship
 eval "$(starship init zsh)"
 
+# Claude Code: ツール定義を遅延ロードする
+export ENABLE_TOOL_SEARCH="true"
+
 #
 # 環境固有の設定
 #
