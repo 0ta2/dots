@@ -204,11 +204,13 @@ gh api repos/<owner>/<repo>/pulls/<PR番号>/reviews --method POST --input <JSON
 
 ```bash
 gh api --paginate repos/<owner>/<repo>/pulls/<PR番号>/comments \
-  -q '.[] | "\(.id) \(.user.login) line=\(.line) \(.body[0:200])"'
+  -q '.[] | "--- \(.id) \(.user.login) line=\(.line)\n\(.body)"'
 ```
 
-`--paginate` を省くと 1 ページ目しか見ない。`line` が `null` のものは outdated (指摘対象の行が
-その後の push で消えている) なので、内容が既に解消済みかを確かめる。
+`--paginate` を省くと 1 ページ目しか見ない。**本文を切り詰めない** (再現条件や要求されている
+対処が後半に書かれていることがあり、切ると対応済みかどうかを判断できない)。`line` が `null` の
+ものは outdated (指摘対象の行がその後の push で消えている) なので、内容が既に解消済みかを
+確かめる。
 
 指摘に対応したら、対応内容を返信してからスレッドを resolve する。resolve は REST に無いので
 GraphQL を使う:
@@ -217,16 +219,22 @@ GraphQL を使う:
 gh api repos/<owner>/<repo>/pulls/<PR番号>/comments/<comment_id>/replies \
   --method POST -f body='<識別行 + 対応内容>'
 
-gh api graphql -f query='
-query($owner:String!,$name:String!,$pr:Int!){ repository(owner:$owner,name:$name){
-  pullRequest(number:$pr){ reviewThreads(first:50){ nodes{
-    id isResolved comments(first:1){nodes{databaseId}} } } } } }' \
+gh api graphql --paginate -f query='
+query($owner:String!,$name:String!,$pr:Int!,$endCursor:String){
+  repository(owner:$owner,name:$name){ pullRequest(number:$pr){
+    reviewThreads(first:100, after:$endCursor){
+      pageInfo{ hasNextPage endCursor }
+      nodes{ id isResolved comments(first:1){nodes{fullDatabaseId}} } } } } }' \
   -F owner=<owner> -F name=<repo> -F pr=<PR番号>
 
 gh api graphql \
   -f query='mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread{ isResolved } } }' \
   -F id=<thread_id>
 ```
+
+`--paginate` と `pageInfo` の組み合わせで全ページを辿る (スレッドが 100 を超える PR で
+1 ページ目しか見ないと、後続スレッドの ID を引けず resolve できない)。コメント ID は
+`databaseId` ではなく `fullDatabaseId` を使う (前者は非推奨で 64-bit ID を扱えない)。
 
 返信にも識別行を付ける。**対応していない指摘を resolve しない** (見た目上だけ片付いて、次に
 見たときに残っていることが分からなくなる)。
