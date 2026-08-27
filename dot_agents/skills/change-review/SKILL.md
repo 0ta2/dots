@@ -2,7 +2,7 @@
 name: change-review
 description: コードレビュー。security / performance / DRY / consistency の4観点でチェックし、[MUST]/[SHOULD]/[IMO]/[nits]/[Q] プレフィックス付きの指摘を出力する。対象は PR・現在のローカル差分・特定ファイル・直近コミット。PR が対象のときは結果を PR のインラインコメントとして投稿する (`--no-comment` で抑止)。Claude Code / Codex 組み込みの review コマンドと名前が衝突しないよう change-review という名前にしている。明示呼び出しは Claude Code で `/change-review`、Codex で `$change-review`。「PR をレビューして」「コードレビュー」「今の差分をレビューして」「このファイルをレビューして」「直近のコミットをレビューして」など、レビュー依頼があれば積極的に使用する。
 user-invocable: true
-allowed-tools: Bash(gh *), Bash(git *), Grep, Glob, Read
+allowed-tools: Bash(gh *), Bash(git *), Grep, Glob, Read, Write
 argument-hint: "[PR番号/URL | ファイルパス | --diff | --last-commit] [--skip <観点>] [--only <観点>] [--no-comment]"
 ---
 
@@ -145,8 +145,11 @@ CRITICAL が 1 つでもあれば「ブロッカーあり」、HIGH があれば
 入れる。見出しやプレフィックスより前に置く:
 
 ```text
-> 🤖 **Claude Code** `claude-opus-5[1m]`
+> 🤖 **<エージェント名>** `<実際に動いているモデル ID>`
 ```
+
+`<...>` は自分の実行環境の値に置き換える。**この skill に書かれた例をそのままコピーしない**
+(モデルは実行のたびに変わりうるので、固定値を写すと別のモデルの名前で投稿することになる)。
 
 順序は次で固定する。
 
@@ -184,9 +187,9 @@ gh api repos/<owner>/<repo>/pulls/<PR番号>/reviews --method POST --input <JSON
 {
   "commit_id": "<headRefOid>",
   "event": "COMMENT",
-  "body": "> 🤖 **Claude Code** `claude-opus-5[1m]`\n\n## レビュー結果: #<番号> <タイトル>\n\n<サマリ表>\n\n総合: ...",
+  "body": "> 🤖 **<エージェント名>** `<モデル ID>`\n\n## レビュー結果: #<番号> <タイトル>\n\n<サマリ表>\n\n総合: ...",
   "comments": [
-    {"path": "<ファイルパス>", "line": <行番号>, "side": "RIGHT", "body": "> 🤖 **Claude Code** `claude-opus-5[1m]`\n\n**[SHOULD] <見出し>**\n\n<本文>"}
+    {"path": "<ファイルパス>", "line": <行番号>, "side": "RIGHT", "body": "> 🤖 **<エージェント名>** `<モデル ID>`\n\n**[SHOULD] <見出し>**\n\n<本文>"}
   ]
 }
 ```
