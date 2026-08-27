@@ -107,5 +107,6 @@
   "agentPushNotifEnabled": true,
   "voiceEnabled": true,
   "vim": true,
-  "model": "opus[1m]"
+  "model": "opus[1m]",
+  "outputStyle": "Concise"
 }
