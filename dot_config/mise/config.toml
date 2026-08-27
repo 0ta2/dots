@@ -14,6 +14,7 @@ act = "latest"
 claude = "latest"
 bun = "latest"
 herdr = "latest" # AI エージェント用ターミナルマルチプレクサ
+neovim = "latest" # brew から移管 (リリース監視を mise の backend 情報に一本化するため)
 
 # For Go
 go = "latest"
