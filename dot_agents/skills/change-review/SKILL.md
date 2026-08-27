@@ -1,9 +1,9 @@
 ---
 name: change-review
-description: コードレビュー。security / performance / DRY / consistency の4観点でチェックし、[MUST]/[SHOULD]/[IMO]/[nits]/[Q] プレフィックス付きの指摘を出力する。対象は PR・現在のローカル差分・特定ファイル・直近コミット。Claude Code / Codex 組み込みの review コマンドと名前が衝突しないよう change-review という名前にしている。明示呼び出しは Claude Code で `/change-review`、Codex で `$change-review`。「PR をレビューして」「コードレビュー」「今の差分をレビューして」「このファイルをレビューして」「直近のコミットをレビューして」など、レビュー依頼があれば積極的に使用する。
+description: コードレビュー。security / performance / DRY / consistency の4観点でチェックし、[MUST]/[SHOULD]/[IMO]/[nits]/[Q] プレフィックス付きの指摘を出力する。対象は PR・現在のローカル差分・特定ファイル・直近コミット。PR が対象のときは結果を PR のインラインコメントとして投稿する (`--no-comment` で抑止)。Claude Code / Codex 組み込みの review コマンドと名前が衝突しないよう change-review という名前にしている。明示呼び出しは Claude Code で `/change-review`、Codex で `$change-review`。「PR をレビューして」「コードレビュー」「今の差分をレビューして」「このファイルをレビューして」「直近のコミットをレビューして」など、レビュー依頼があれば積極的に使用する。
 user-invocable: true
-allowed-tools: Bash(gh *), Bash(git *), Grep, Glob, Read
-argument-hint: "[PR番号/URL | ファイルパス | --diff | --last-commit] [--skip <観点>] [--only <観点>]"
+allowed-tools: Bash(gh pr view*), Bash(gh pr diff*), Bash(gh api *), Bash(git *), Grep, Glob, Read, Write
+argument-hint: "[PR番号/URL | ファイルパス | --diff | --last-commit] [--skip <観点>] [--only <観点>] [--no-comment]"
 ---
 
 # Change Review: コードレビュー
@@ -24,6 +24,7 @@ $ARGUMENTS
 | 4   | 一貫性         | 命名・パターン・スタイルの一貫性                    |
 
 `--skip <観点名>` / `--only <観点名>` で絞り込み可能。
+対象が PR のときは Step 4 で結果を PR に投稿する。`--no-comment` を付けると投稿しない。
 
 ## Step 0: レビュー対象の取得
 
@@ -32,9 +33,12 @@ $ARGUMENTS
 ### PR (番号 or URL)
 
 ```bash
-gh pr view <PR番号> --json title,body,files,headRefName
+gh pr view <PR番号> --json title,body,files,headRefName,headRefOid
 gh pr diff <PR番号>
 ```
+
+`headRefOid` を控える。**レビューはこのコミットに対して行う。** Step 4 の `commit_id` と、
+投稿前の変化検知に使う。
 
 ### 現在のローカル差分
 
@@ -101,7 +105,8 @@ git show HEAD
 重要度や確信度でフィルタしない。絞り込みは別パスで行う。省くのはスタイルや命名の好みのような
 些細な点だけ。
 
-各指摘の冒頭に必ずプレフィックスを付ける:
+各指摘の冒頭に必ずプレフィックスを付ける (Step 4 の識別行はその前に置く前置きで、
+指摘本文自体はプレフィックスから始める):
 
 | プレフィックス | 使う基準                                     |
 | -------------- | -------------------------------------------- |
@@ -129,6 +134,152 @@ git show HEAD
 ```
 
 CRITICAL が 1 つでもあれば「ブロッカーあり」、HIGH があれば「要対応」。
+
+## Step 4: PR への投稿
+
+対象が PR のときは、Step 3 の結果を PR のインラインコメントとして**既定で投稿する**。
+ローカル差分・特定ファイル・直近コミットは投稿先が無いので常に端末出力のみ。
+
+`--no-comment` が指定されたときは **GitHub への書き込みを一切しない**。この Step の投稿だけで
+なく、Step 5 の返信と resolve も行わない。読み取りと端末出力だけにする。
+
+**投稿する前に Step 5 の「1. 未対応の指摘を読む」を実行する。** 他のレビュアが既に挙げていて
+未対応のままの指摘を、そうと知らずに重複投稿しないため。既出だったものは新しいコメントを
+立てず、既存スレッドへの返信で済ませる。
+
+**本文と各インラインコメントの、それぞれ先頭行に**、実行したエージェントとモデルを引用行で
+入れる。見出しやプレフィックスより前に置く:
+
+```text
+> 🤖 **<エージェント名>** `<実際に動いているモデル ID>`
+```
+
+`<...>` は自分の実行環境の値に置き換える。**この skill に書かれた例をそのままコピーしない**
+(モデルは実行のたびに変わりうるので、固定値を写すと別のモデルの名前で投稿することになる)。
+
+順序は次で固定する。
+
+- レビュー本文: 識別行 → 見出し → サマリ表 → 総合
+- インライン・返信・追加コメント: 識別行 → `[MUST]` 等から始まる指摘本文
+
+Codex から実行したなら `**Codex**` と実際のモデル名にする。どのモデルで実行したか分からない
+まま投稿しない。
+
+**本文に 1 回だけ書くのでは足りない。** GitHub の投稿者名は実行者の 1 アカウントに集約される
+ので、画面上ではレビューの指摘も著者の返信もすべて同じ名前で並ぶ。コメント単位で識別行が
+無いと、どのコメントがどのエージェントのものか読み手が追えない。返信・追加コメントを
+投稿するときも同じ行を先頭に付ける。
+
+`event` は必ず `COMMENT` にする。**`APPROVE` は使わない** (GitHub は自分の PR に approve を
+出せない)。指摘が 1 件も無いときも `COMMENT` で投稿し、本文の総合を `LGTM` と書く。
+
+指摘は行に紐づけて `comments` に入れる。同じ行に複数の指摘を付けてよい。差分外の補足は
+行に紐づかないので、本文側に「参考 (PR 差分外)」として書く。
+
+`commit_id` には Step 0 で控えた `headRefOid` を使う。投稿の直前に再取得して一致を確認し、
+**変わっていたら投稿しない** (レビューは旧コミットの差分に対する行番号を持っているので、
+新しいコミットに投稿すると別の行に付くか 422 になる)。その場合は新しい head でレビューし直す。
+
+```bash
+gh pr view <PR番号> --json headRefOid -q .headRefOid   # Step 0 で控えた値と一致するか確認
+gh api repos/<owner>/<repo>/pulls/<PR番号>/reviews --method POST --input <JSONファイル> \
+  -q '.html_url, .state'
+```
+
+指摘本文にはバッククォートやクォートが入るのでシェルに埋め込まず、JSON を一時ファイルに
+書き出して `--input` で渡す:
+
+```json
+{
+  "commit_id": "<headRefOid>",
+  "event": "COMMENT",
+  "body": "> 🤖 **<エージェント名>** `<モデル ID>`\n\n## レビュー結果: #<番号> <タイトル>\n\n<サマリ表>\n\n総合: ...",
+  "comments": [
+    {"path": "<ファイルパス>", "line": <行番号>, "side": "RIGHT", "body": "> 🤖 **<エージェント名>** `<モデル ID>`\n\n**[SHOULD] <見出し>**\n\n<本文>"}
+  ]
+}
+```
+
+`line` は変更後 (右側) の行番号で `side` は `RIGHT`。削除行に付けるときは変更前の行番号と
+`"side": "LEFT"` にする。投稿したら返ってきた `html_url` をユーザーに報告する。
+
+## Step 5: 既存の指摘に答える
+
+自分が投稿するだけで終わりにしない。**その PR に付いている他のレビュー (人間・
+`chatgpt-codex-connector` などの bot・別エージェント) も読み、未対応のものが無いか確認する。**
+
+`--no-comment` のときは読み取り (下の 1.) だけ行い、返信と resolve はしない。確認した内容は
+端末に出す。
+
+### 1. 未対応の指摘を読む (Step 4 の投稿より前に行う)
+
+まず未解決スレッドに絞る。resolved / unresolved は REST では返らないので GraphQL で引く:
+
+```bash
+gh api graphql --paginate -f query='
+query($owner:String!,$name:String!,$pr:Int!,$endCursor:String){
+  repository(owner:$owner,name:$name){ pullRequest(number:$pr){
+    reviewThreads(first:100, after:$endCursor){
+      pageInfo{ hasNextPage endCursor }
+      nodes{ id isResolved comments(first:1){nodes{fullDatabaseId}} } } } } }' \
+  -F owner=<owner> -F name=<repo> -F pr=<PR番号> \
+  -q '.data.repository.pullRequest.reviewThreads.nodes[]
+      | select(.isResolved | not)
+      | "\(.id)\t\(.comments.nodes[0].fullDatabaseId)"'
+```
+
+`--paginate` は `-q` か `--slurp` が無いとページごとに別の JSON を吐くので、上のように `-q` で
+必要な形に落とす。`fullDatabaseId` は `BigInt` で **JSON では文字列**、REST の `.id` は数値。
+突き合わせるときは型を揃える (`==` が黙って空になる)。ID は非推奨の `databaseId` ではなく
+`fullDatabaseId` を使う (前者は 64-bit ID を扱えない)。
+
+次に本文を読む。**3 つのエンドポイントを全部見る。** インラインだけでは足りない (Step 4 は
+サマリ表・総合・「参考 (PR 差分外)」を review body に書くので、インラインしか読まないと
+自分の投稿すら回収できない):
+
+```bash
+# インラインコメント
+gh api --paginate repos/<owner>/<repo>/pulls/<PR番号>/comments \
+  -q '.[] | "--- \(.id) \(.user.login) line=\(.line) subject=\(.subject_type)\n\(.body)"'
+# レビュー本文 (サマリ・総合はここに入る)
+gh api --paginate repos/<owner>/<repo>/pulls/<PR番号>/reviews \
+  -q '.[] | select(.body != "") | "--- review \(.id) \(.user.login) \(.state)\n\(.body)"'
+# PR の会話 (経緯コメント)
+gh api --paginate repos/<owner>/<repo>/issues/<PR番号>/comments \
+  -q '.[] | "--- issue \(.id) \(.user.login)\n\(.body)"'
+```
+
+`--paginate` を省くと 1 ページ目しか見ない。**本文を切り詰めない** (再現条件や要求されている
+対処が後半に書かれていることがあり、切ると対応済みかどうかを判断できない)。`line` が `null`
+のものは outdated (指摘対象の行がその後の push で消えた) か、ファイル単位のコメント
+(`subject_type: "file"`) のどちらか。後者は行に紐づかないだけの現役の指摘なので、outdated と
+同じ扱いにしない。
+
+### 2. 対応内容を返信する
+
+本文にはシングルクォートやバッククォートが入るのでシェルに埋め込まず、ファイルに書いて渡す:
+
+```bash
+gh api repos/<owner>/<repo>/pulls/<PR番号>/comments/<comment_id>/replies \
+  --method POST -F body=@<返信本文を書いたファイル>
+```
+
+返信にも識別行を付ける。
+
+### 3. スレッドを resolve する
+
+```bash
+gh api graphql \
+  -f query='mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread{ isResolved } } }' \
+  -F id=<thread_id>
+```
+
+**対応していない指摘を resolve しない** (見た目上だけ片付いて、次に見たときに残っていることが
+分からなくなる)。
+
+**レビュア側で実行しているとき** (他人の変更を見に行くだけで、コードは直さない) は、未対応
+スレッドを resolve できない。黙って通り過ぎず、「独立に検証したがまだ有効」と返信し、Step 4 の
+投稿本文にも残課題として書く。
 
 ## 偽陽性防止
 
