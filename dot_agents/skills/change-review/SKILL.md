@@ -33,9 +33,12 @@ $ARGUMENTS
 ### PR (番号 or URL)
 
 ```bash
-gh pr view <PR番号> --json title,body,files,headRefName
+gh pr view <PR番号> --json title,body,files,headRefName,headRefOid
 gh pr diff <PR番号>
 ```
+
+`headRefOid` を控える。**レビューはこのコミットに対して行う。** Step 4 の `commit_id` と、
+投稿前の変化検知に使う。
 
 ### 現在のローカル差分
 
@@ -137,7 +140,7 @@ CRITICAL が 1 つでもあれば「ブロッカーあり」、HIGH があれば
 `--no-comment` が指定されたときだけ投稿せず端末出力に留める。ローカル差分・特定ファイル・
 直近コミットは投稿先が無いので常に端末出力のみ。
 
-本文の冒頭に、実行したエージェントとモデルを引用行で入れる:
+本文の見出し直後に、実行したエージェントとモデルを引用行で入れる:
 
 ```text
 > レビュー実施: **Claude Code** / model `claude-opus-5[1m]` (skill: `change-review`)
@@ -152,8 +155,12 @@ Codex から実行したなら `**Codex**` と実際のモデル名にする。�
 指摘は行に紐づけて `comments` に入れる。同じ行に複数の指摘を付けてよい。差分外の補足は
 行に紐づかないので、本文側に「参考 (PR 差分外)」として書く。
 
+`commit_id` には Step 0 で控えた `headRefOid` を使う。投稿の直前に再取得して一致を確認し、
+**変わっていたら投稿しない** (レビューは旧コミットの差分に対する行番号を持っているので、
+新しいコミットに投稿すると別の行に付くか 422 になる)。その場合は新しい head でレビューし直す。
+
 ```bash
-gh pr view <PR番号> --json headRefOid -q .headRefOid   # commit_id に使う
+gh pr view <PR番号> --json headRefOid -q .headRefOid   # Step 0 で控えた値と一致するか確認
 gh api repos/<owner>/<repo>/pulls/<PR番号>/reviews --method POST --input <JSONファイル> \
   -q '.html_url, .state'
 ```
