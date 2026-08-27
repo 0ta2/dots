@@ -197,6 +197,40 @@ gh api repos/<owner>/<repo>/pulls/<PR番号>/reviews --method POST --input <JSON
 `line` は変更後 (右側) の行番号で `side` は `RIGHT`。削除行に付けるときは変更前の行番号と
 `"side": "LEFT"` にする。投稿したら返ってきた `html_url` をユーザーに報告する。
 
+## Step 5: 既存の指摘に答える
+
+自分が投稿するだけで終わりにしない。**その PR に付いている他のレビュー (人間・
+`chatgpt-codex-connector` などの bot・別エージェント) も読み、未対応のものが無いか確認する。**
+
+```bash
+gh api --paginate repos/<owner>/<repo>/pulls/<PR番号>/comments \
+  -q '.[] | "\(.id) \(.user.login) line=\(.line) \(.body[0:200])"'
+```
+
+`--paginate` を省くと 1 ページ目しか見ない。`line` が `null` のものは outdated (指摘対象の行が
+その後の push で消えている) なので、内容が既に解消済みかを確かめる。
+
+指摘に対応したら、対応内容を返信してからスレッドを resolve する。resolve は REST に無いので
+GraphQL を使う:
+
+```bash
+gh api repos/<owner>/<repo>/pulls/<PR番号>/comments/<comment_id>/replies \
+  --method POST -f body='<識別行 + 対応内容>'
+
+gh api graphql -f query='
+query($owner:String!,$name:String!,$pr:Int!){ repository(owner:$owner,name:$name){
+  pullRequest(number:$pr){ reviewThreads(first:50){ nodes{
+    id isResolved comments(first:1){nodes{databaseId}} } } } } }' \
+  -F owner=<owner> -F name=<repo> -F pr=<PR番号>
+
+gh api graphql \
+  -f query='mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread{ isResolved } } }' \
+  -F id=<thread_id>
+```
+
+返信にも識別行を付ける。**対応していない指摘を resolve しない** (見た目上だけ片付いて、次に
+見たときに残っていることが分からなくなる)。
+
 ## 偽陽性防止
 
 **指摘を出す前:**
