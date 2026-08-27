@@ -2,7 +2,7 @@
 name: change-review
 description: コードレビュー。security / performance / DRY / consistency の4観点でチェックし、[MUST]/[SHOULD]/[IMO]/[nits]/[Q] プレフィックス付きの指摘を出力する。対象は PR・現在のローカル差分・特定ファイル・直近コミット。PR が対象のときは結果を PR のインラインコメントとして投稿する (`--no-comment` で抑止)。Claude Code / Codex 組み込みの review コマンドと名前が衝突しないよう change-review という名前にしている。明示呼び出しは Claude Code で `/change-review`、Codex で `$change-review`。「PR をレビューして」「コードレビュー」「今の差分をレビューして」「このファイルをレビューして」「直近のコミットをレビューして」など、レビュー依頼があれば積極的に使用する。
 user-invocable: true
-allowed-tools: Bash(gh *), Bash(git *), Grep, Glob, Read, Write
+allowed-tools: Bash(gh pr view*), Bash(gh pr diff*), Bash(gh api *), Bash(git *), Grep, Glob, Read, Write
 argument-hint: "[PR番号/URL | ファイルパス | --diff | --last-commit] [--skip <観点>] [--only <観点>] [--no-comment]"
 ---
 
@@ -141,6 +141,10 @@ CRITICAL が 1 つでもあれば「ブロッカーあり」、HIGH があれば
 `--no-comment` が指定されたときだけ投稿せず端末出力に留める。ローカル差分・特定ファイル・
 直近コミットは投稿先が無いので常に端末出力のみ。
 
+**投稿する前に Step 5 の「1. 未対応の指摘を読む」を実行する。** 他のレビュアが既に挙げていて
+未対応のままの指摘を、そうと知らずに重複投稿しないため。既出だったものは新しいコメントを
+立てず、既存スレッドへの返信で済ませる。
+
 **本文と各インラインコメントの、それぞれ先頭行に**、実行したエージェントとモデルを引用行で
 入れる。見出しやプレフィックスより前に置く:
 
@@ -202,42 +206,75 @@ gh api repos/<owner>/<repo>/pulls/<PR番号>/reviews --method POST --input <JSON
 自分が投稿するだけで終わりにしない。**その PR に付いている他のレビュー (人間・
 `chatgpt-codex-connector` などの bot・別エージェント) も読み、未対応のものが無いか確認する。**
 
-```bash
-gh api --paginate repos/<owner>/<repo>/pulls/<PR番号>/comments \
-  -q '.[] | "--- \(.id) \(.user.login) line=\(.line)\n\(.body)"'
-```
+### 1. 未対応の指摘を読む (Step 4 の投稿より前に行う)
 
-`--paginate` を省くと 1 ページ目しか見ない。**本文を切り詰めない** (再現条件や要求されている
-対処が後半に書かれていることがあり、切ると対応済みかどうかを判断できない)。`line` が `null` の
-ものは outdated (指摘対象の行がその後の push で消えている) なので、内容が既に解消済みかを
-確かめる。
-
-指摘に対応したら、対応内容を返信してからスレッドを resolve する。resolve は REST に無いので
-GraphQL を使う:
+まず未解決スレッドに絞る。resolved / unresolved は REST では返らないので GraphQL で引く:
 
 ```bash
-gh api repos/<owner>/<repo>/pulls/<PR番号>/comments/<comment_id>/replies \
-  --method POST -f body='<識別行 + 対応内容>'
-
 gh api graphql --paginate -f query='
 query($owner:String!,$name:String!,$pr:Int!,$endCursor:String){
   repository(owner:$owner,name:$name){ pullRequest(number:$pr){
     reviewThreads(first:100, after:$endCursor){
       pageInfo{ hasNextPage endCursor }
       nodes{ id isResolved comments(first:1){nodes{fullDatabaseId}} } } } } }' \
-  -F owner=<owner> -F name=<repo> -F pr=<PR番号>
+  -F owner=<owner> -F name=<repo> -F pr=<PR番号> \
+  -q '.data.repository.pullRequest.reviewThreads.nodes[]
+      | select(.isResolved | not)
+      | "\(.id)\t\(.comments.nodes[0].fullDatabaseId)"'
+```
 
+`--paginate` は `-q` か `--slurp` が無いとページごとに別の JSON を吐くので、上のように `-q` で
+必要な形に落とす。`fullDatabaseId` は `BigInt` で **JSON では文字列**、REST の `.id` は数値。
+突き合わせるときは型を揃える (`==` が黙って空になる)。ID は非推奨の `databaseId` ではなく
+`fullDatabaseId` を使う (前者は 64-bit ID を扱えない)。
+
+次に本文を読む。**3 つのエンドポイントを全部見る。** インラインだけでは足りない (Step 4 は
+サマリ表・総合・「参考 (PR 差分外)」を review body に書くので、インラインしか読まないと
+自分の投稿すら回収できない):
+
+```bash
+# インラインコメント
+gh api --paginate repos/<owner>/<repo>/pulls/<PR番号>/comments \
+  -q '.[] | "--- \(.id) \(.user.login) line=\(.line) subject=\(.subject_type)\n\(.body)"'
+# レビュー本文 (サマリ・総合はここに入る)
+gh api --paginate repos/<owner>/<repo>/pulls/<PR番号>/reviews \
+  -q '.[] | select(.body != "") | "--- review \(.id) \(.user.login) \(.state)\n\(.body)"'
+# PR の会話 (経緯コメント)
+gh api --paginate repos/<owner>/<repo>/issues/<PR番号>/comments \
+  -q '.[] | "--- issue \(.id) \(.user.login)\n\(.body)"'
+```
+
+`--paginate` を省くと 1 ページ目しか見ない。**本文を切り詰めない** (再現条件や要求されている
+対処が後半に書かれていることがあり、切ると対応済みかどうかを判断できない)。`line` が `null`
+のものは outdated (指摘対象の行がその後の push で消えた) か、ファイル単位のコメント
+(`subject_type: "file"`) のどちらか。後者は行に紐づかないだけの現役の指摘なので、outdated と
+同じ扱いにしない。
+
+### 2. 対応内容を返信する
+
+本文にはシングルクォートやバッククォートが入るのでシェルに埋め込まず、ファイルに書いて渡す:
+
+```bash
+gh api repos/<owner>/<repo>/pulls/<PR番号>/comments/<comment_id>/replies \
+  --method POST -F body=@<返信本文を書いたファイル>
+```
+
+返信にも識別行を付ける。
+
+### 3. スレッドを resolve する
+
+```bash
 gh api graphql \
   -f query='mutation($id:ID!){ resolveReviewThread(input:{threadId:$id}){ thread{ isResolved } } }' \
   -F id=<thread_id>
 ```
 
-`--paginate` と `pageInfo` の組み合わせで全ページを辿る (スレッドが 100 を超える PR で
-1 ページ目しか見ないと、後続スレッドの ID を引けず resolve できない)。コメント ID は
-`databaseId` ではなく `fullDatabaseId` を使う (前者は非推奨で 64-bit ID を扱えない)。
+**対応していない指摘を resolve しない** (見た目上だけ片付いて、次に見たときに残っていることが
+分からなくなる)。
 
-返信にも識別行を付ける。**対応していない指摘を resolve しない** (見た目上だけ片付いて、次に
-見たときに残っていることが分からなくなる)。
+**レビュア側で実行しているとき** (他人の変更を見に行くだけで、コードは直さない) は、未対応
+スレッドを resolve できない。黙って通り過ぎず、「独立に検証したがまだ有効」と返信し、Step 4 の
+投稿本文にも残課題として書く。
 
 ## 偽陽性防止
 
