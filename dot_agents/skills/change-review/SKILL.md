@@ -1,9 +1,9 @@
 ---
 name: change-review
-description: コードレビュー。security / performance / DRY / consistency の4観点でチェックし、[MUST]/[SHOULD]/[IMO]/[nits]/[Q] プレフィックス付きの指摘を出力する。対象は PR・現在のローカル差分・特定ファイル・直近コミット。Claude Code / Codex 組み込みの review コマンドと名前が衝突しないよう change-review という名前にしている。明示呼び出しは Claude Code で `/change-review`、Codex で `$change-review`。「PR をレビューして」「コードレビュー」「今の差分をレビューして」「このファイルをレビューして」「直近のコミットをレビューして」など、レビュー依頼があれば積極的に使用する。
+description: コードレビュー。security / performance / DRY / consistency の4観点でチェックし、[MUST]/[SHOULD]/[IMO]/[nits]/[Q] プレフィックス付きの指摘を出力する。対象は PR・現在のローカル差分・特定ファイル・直近コミット。PR が対象のときは結果を PR のインラインコメントとして投稿する (`--no-comment` で抑止)。Claude Code / Codex 組み込みの review コマンドと名前が衝突しないよう change-review という名前にしている。明示呼び出しは Claude Code で `/change-review`、Codex で `$change-review`。「PR をレビューして」「コードレビュー」「今の差分をレビューして」「このファイルをレビューして」「直近のコミットをレビューして」など、レビュー依頼があれば積極的に使用する。
 user-invocable: true
 allowed-tools: Bash(gh *), Bash(git *), Grep, Glob, Read
-argument-hint: "[PR番号/URL | ファイルパス | --diff | --last-commit] [--skip <観点>] [--only <観点>]"
+argument-hint: "[PR番号/URL | ファイルパス | --diff | --last-commit] [--skip <観点>] [--only <観点>] [--no-comment]"
 ---
 
 # Change Review: コードレビュー
@@ -24,6 +24,7 @@ $ARGUMENTS
 | 4   | 一貫性         | 命名・パターン・スタイルの一貫性                    |
 
 `--skip <観点名>` / `--only <観点名>` で絞り込み可能。
+対象が PR のときは Step 4 で結果を PR に投稿する。`--no-comment` を付けると投稿しない。
 
 ## Step 0: レビュー対象の取得
 
@@ -129,6 +130,50 @@ git show HEAD
 ```
 
 CRITICAL が 1 つでもあれば「ブロッカーあり」、HIGH があれば「要対応」。
+
+## Step 4: PR への投稿
+
+対象が PR のときは、Step 3 の結果を PR のインラインコメントとして**既定で投稿する**。
+`--no-comment` が指定されたときだけ投稿せず端末出力に留める。ローカル差分・特定ファイル・
+直近コミットは投稿先が無いので常に端末出力のみ。
+
+本文の冒頭に、実行したエージェントとモデルを引用行で入れる:
+
+```text
+> レビュー実施: **Claude Code** / model `claude-opus-5[1m]` (skill: `change-review`)
+```
+
+Codex から実行したなら `**Codex**` と実際のモデル名にする。人間と別エージェントの指摘を
+後から見分けるための行なので、どのモデルで実行したか分からないまま投稿しない。
+
+`event` は必ず `COMMENT` にする。**`APPROVE` は使わない** (GitHub は自分の PR に approve を
+出せない)。指摘が 1 件も無いときも `COMMENT` で投稿し、本文の総合を `LGTM` と書く。
+
+指摘は行に紐づけて `comments` に入れる。同じ行に複数の指摘を付けてよい。差分外の補足は
+行に紐づかないので、本文側に「参考 (PR 差分外)」として書く。
+
+```bash
+gh pr view <PR番号> --json headRefOid -q .headRefOid   # commit_id に使う
+gh api repos/<owner>/<repo>/pulls/<PR番号>/reviews --method POST --input <JSONファイル> \
+  -q '.html_url, .state'
+```
+
+指摘本文にはバッククォートやクォートが入るのでシェルに埋め込まず、JSON を一時ファイルに
+書き出して `--input` で渡す:
+
+```json
+{
+  "commit_id": "<headRefOid>",
+  "event": "COMMENT",
+  "body": "## レビュー結果: #<番号> <タイトル>\n\n> レビュー実施: ...\n\n<サマリ表>\n\n総合: ...",
+  "comments": [
+    {"path": "<ファイルパス>", "line": <行番号>, "side": "RIGHT", "body": "**[SHOULD] <見出し>**\n\n<本文>"}
+  ]
+}
+```
+
+`line` は変更後 (右側) の行番号で `side` は `RIGHT`。削除行に付けるときは変更前の行番号と
+`"side": "LEFT"` にする。投稿したら返ってきた `html_url` をユーザーに報告する。
 
 ## 偽陽性防止
 
