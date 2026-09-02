@@ -118,15 +118,18 @@ herdr はペイン内のエージェントを自動検出する。`herdr agent l
 herdr agent rename <pane_id> reviewer
 ```
 
-30 秒待っても検出されなければ `herdr pane read <pane_id>` で状況を見る
+30 秒待っても検出されなければ `herdr pane read <pane_id> --format ansi` で状況を見る
 (起動失敗・認証待ちなどが読める)。ポーリングを続けず、そこで報告する。
 
 **検出された = 依頼できる、ではない。** codex は起動時に自動アップデート
 (`npm install -g @openai/codex`) を始めることがあり、その間 herdr は codex として
 検出するが TUI はまだ無いので `agent prompt` が `agent_prompt_stalled` で落ちる。
 しかもアップデートは "Please restart Codex" と言って終了するため、`pane run` を
-やり直す必要がある。検出後 1 度 `herdr pane read <pane_id>` を見て、入力欄
+やり直す必要がある。検出後 1 度 `herdr pane read <pane_id> --format ansi` を見て、入力欄
 (codex なら `›` のプロンプト行) が出ていることを確かめてから依頼を送る。
+
+`pane read` は必ず `--format ansi` で読む。`text` だと Claude Code の入力欄の
+ゴーストテキスト (薄色のプレースホルダ) がユーザーの入力した文字列と区別できない。
 
 ## レビュースキルと投稿の有無を決める
 
@@ -229,7 +232,7 @@ herdr agent explain <名前 or pane_id>
 `[tui] terminal_title` など) が検出を壊していることがある。推測で送信を
 繰り返さず、根拠を見てから次の手を決める。
 
-`agent prompt` が `agent_prompt_stalled` で落ちたら、`herdr pane read <pane_id>` で
+`agent prompt` が `agent_prompt_stalled` で落ちたら、`herdr pane read <pane_id> --format ansi` で
 依頼文が相手の入力欄に残っているかを見て原因を分ける。
 
 - 入力欄に依頼文がある: 本文は入ったが Enter が確定していない (claude の
