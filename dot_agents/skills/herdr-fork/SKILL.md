@@ -61,7 +61,7 @@ herdr pane run <pane_id> "claude --resume $CLAUDE_CODE_SESSION_ID --fork-session
 
 herdr はペイン内のエージェントを自動検出する。`herdr agent list` の
 `.result.agents[]` に自分の `pane_id` を持つ要素が現れるまでポーリングして
-起動を確認する。30 秒待っても検出されなければ `herdr pane read <pane_id>` で
+起動を確認する。30 秒待っても検出されなければ `herdr pane read <pane_id> --format ansi` で
 状況を見る (起動失敗・認証待ちなどが読める)。
 
 ## resume 後の注意
