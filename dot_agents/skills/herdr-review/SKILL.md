@@ -132,8 +132,15 @@ herdr agent rename <pane_id> reviewer
 やり直す必要がある。検出後 1 度 `herdr pane read <pane_id> --format ansi` を見て、入力欄
 (codex なら `›` のプロンプト行) が出ていることを確かめてから依頼を送る。
 
-`pane read` は必ず `--format ansi` で読む。`text` だと Claude Code の入力欄の
-ゴーストテキスト (薄色のプレースホルダ) がユーザーの入力した文字列と区別できない。
+`pane read` は `--format ansi` で読む (装飾が見えるぶん判断材料が多い)。ただし
+**入力欄のゴーストテキスト (Claude Code が出す次の指示の候補) と、ユーザーが打った未送信の
+文字列は ansi でも区別できない。** どちらも装飾の付かない裸のテキストで出る (実測)。
+入力欄の文字列は、**自分が送った依頼文と一致するときだけ**「未送信の依頼」と判断する。
+一致しないものを見て、ユーザーの未送信入力だと決めつけない
+(ゴーストテキストを未送信入力と誤認し、ユーザーに要らない注意を出したことがある)。
+一致しない文字列が残っているときは、自分が起動したペインならそのまま送ってよい
+(ゴーストテキストは送信で消える)。ユーザーの既存ペインを借りているときは送らず、
+ユーザーに一声かける (打ちかけの入力だった場合、依頼文と連結されて送信される)。
 
 ## レビュースキルと投稿の有無を決める
 
@@ -148,13 +155,27 @@ herdr agent rename <pane_id> reviewer
 
 ## 依頼を送る
 
-送る前に相手が idle であることを確かめる。`--wait` は個々の依頼ターンでなく
-最初に落ち着いた状態を待つので、working 中に送ると別のターンの完了で戻ってくる。
+送る前に相手が落ち着くのを待つ。working 中に送ると別のターンに混ざる。**`agent get` を
+1 回見るだけでは足りない** — 状態は遷移の途中で一瞬 idle を返すので、ユーザーとの対話中の
+ペインを idle と読む。
 
 ```bash
+herdr agent wait reviewer --until blocked --until idle --timeout 60000
 herdr agent get reviewer
-herdr agent prompt reviewer "<依頼文>" --wait --timeout 300000
 ```
+
+`blocked` はユーザーへの質問待ち。**送らずに**画面を読み、ユーザーに一声かける
+(送っても依頼は入力欄に入らないか、ユーザーの操作に混ざる)。タイムアウトしたら相手は
+まだ working。送らずにもう一度待つか、急ぐならユーザーに確認する。
+
+`idle` なら送る。
+
+```bash
+herdr agent prompt reviewer "<依頼文>"
+```
+
+**`--wait` は付けない。** 付けると相手が落ち着くまで戻らないので、戻った時点の状態は
+idle か blocked になり、着弾を working で確認できない。送信と完了待ちは分ける (下記)。
 
 依頼文に必ず含める:
 
@@ -183,12 +204,21 @@ herdr agent prompt reviewer "<依頼文>" --wait --timeout 300000
 claude・codex どちらが相手でも同じ依頼文・同じやり方で統一できる。スキルの内容が変わっても
 herdr-review 側の追従は不要 (DRY)。
 
-依頼が長くかかりそうなら `--wait` を付けずに投げ、本流の作業に戻ってから
-拾ってもよい:
+送ったら着弾を確認してから完了を待つ:
 
 ```bash
+herdr agent wait reviewer --until working --timeout 15000     # 着弾している
 herdr agent wait reviewer --until blocked --until idle --timeout 300000
 ```
+
+`agent prompt` が成功を返しても届いていないことがある (相手がユーザーへの質問待ちで、
+依頼が入力欄に入らない)。1 つ目がタイムアウトしたら、`herdr pane read <pane_id>
+--format ansi` に自分の依頼文が出ているかを見る (短いターンだと working を跨ぎ越すことが
+あるので、状態だけでは決まらない)。ここで `agent read` は使えない — claude 相手だと
+idle のときしか深い履歴を取れず、まさにこの場面で空を返す。出ていなければ届いていない。
+**送り直さない** (入力欄に残っていた場合、二重に入力される)。
+
+2 つ目の `agent wait` は本流の作業に戻ってから呼んでもよい。
 
 ## 結果を確認する
 
@@ -197,7 +227,7 @@ herdr agent get reviewer
 herdr agent read reviewer --source recent-unwrapped --lines 80
 ```
 
-`agent get` の状態で分岐する。`--wait` も `agent wait` も blocked で戻るので、
+`agent get` の状態で分岐する。`agent wait` は blocked でも戻るので、
 戻ったこと自体は完了を意味しない。`blocked` なら結果を判定せず「blocked になったら」
 へ進む。判定に進むのは `idle` / `done` のときだけ。
 
