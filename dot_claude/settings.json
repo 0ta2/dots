@@ -42,11 +42,6 @@
       "Read(./.env.*)",
       "Read(./secrets/**)",
       "Bash(sudo:*)"
-    ],
-    "ask": [
-      "Bash(git push:*)",
-      "Bash(git merge:*)",
-      "Bash(git rebase:*)"
     ]
   },
   "hooks": {
