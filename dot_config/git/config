@@ -28,3 +28,11 @@
 [hook "worktree-copyfile"]
     event = post-checkout
     command = ~/.local/bin/git-worktree-copyfile
+
+# Claude Code が settings.json を書き戻すときのキー順の揺れを index 側で正規化
+# する。実体の変更だけが差分に出る。対象は .gitattributes で指定する。
+# 配列は「全要素が文字列のもの」だけ並べ替える。hooks のような object 配列を
+# 並べ替えるとフック実行順が変わるため、そこには触らない。
+# ref: https://zenn.dev/kawarimidoll/articles/d3f1a7542de71a
+[filter "jsonsort"]
+	clean = "jq -S \"walk(if type==\\\"array\\\" and all(.[]; type==\\\"string\\\") then sort else . end)\""
