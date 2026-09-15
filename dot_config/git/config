@@ -24,3 +24,7 @@
 [hook "no-push-main"]
     event = pre-push
     command = ~/.local/bin/git-no-push-main
+
+[hook "worktree-copyfile"]
+    event = post-checkout
+    command = ~/.local/bin/git-worktree-copyfile
