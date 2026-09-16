@@ -53,19 +53,17 @@ run = [
     "mise run brew:sync",
     "mise run skill:install",
     "mise run plugin:install",
-    "mise run herdr:plugin:install",
     "mise run sync",
 ]
 
 [tasks."update"]
-description = "全ツールの更新 (brew/mise/skill/uv tool/herdr plugin)、最後に sync"
+description = "全ツールの更新 (brew/mise/skill/uv tool)、最後に sync"
 run = [
     "brew update",
     "brew upgrade",
     "mise upgrade",
     "mise run skill:update",
     "uv tool upgrade --all",
-    "mise run herdr:plugin:install",
     "mise run sync",
 ]
 
@@ -100,10 +98,4 @@ codex plugin marketplace add heptameta/heptabase-cli-skills
 codex plugin add heptabase@heptabase-cli-skills
 codex plugin marketplace add DietrichGebert/ponytail
 codex plugin add ponytail@ponytail
-"""
-
-[tasks."herdr:plugin:install"]
-description = "herdr の plugin インストール"
-run = """
-herdr plugin install crafts69guy/herdr-switchboard --yes
 """
