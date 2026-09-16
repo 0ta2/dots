@@ -1,107 +1,107 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "env": {
-    "CLAUDE_CODE_NO_FLICKER": "1"
-  },
-  "permissions": {
-    "allow": [
-      "Bash(curl:http://localhost*)",
-      "Bash(base64:*)",
-      "Bash(gh pr view:*)",
-      "Bash(gh pr list:*)",
-      "Bash(gh pr diff:*)",
-      "Bash(gh pr checks:*)",
-      "Bash(gh issue view:*)",
-      "Bash(gh issue list:*)",
-      "Bash(gh repo view:*)",
-      "Bash(gh run view:*)",
-      "Bash(gh run list:*)",
-      "Bash(gh api:*)",
-      "Bash(gh search:*)",
-      "Bash(go test*)",
-      "Bash(rtk:*)",
-      "Bash(herdr agent:*)",
-      "Bash(herdr pane:*)",
-      "Bash(herdr tab:*)",
-      "Bash(herdr workspace:*)",
-      "Bash(herdr worktree list:*)",
-      "Bash(herdr worktree create:*)",
-      "Bash(herdr worktree open:*)",
-      "Bash(herdr session:*)",
-      "Bash(herdr terminal:*)",
-      "Bash(herdr notification:*)",
-      "Bash(herdr status:*)",
-      "Bash(git status:*)",
-      "Bash(git diff:*)",
-      "Bash(git log:*)",
-      "Bash(git branch:*)",
-      "Bash(git show:*)"
-    ],
-    "deny": [
-      "Read(./.env)",
-      "Read(./.env.*)",
-      "Read(./secrets/**)",
-      "Bash(sudo:*)"
-    ]
-  },
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "rtk hook claude"
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/herdr-agent-state.sh session",
-            "timeout": 10
-          }
-        ]
-      }
-    ]
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "python3 ~/.claude/statusline.py"
-  },
+  "agentPushNotifEnabled": true,
   "enabledPlugins": {
-    "lua-lsp@claude-plugins-official": true,
+    "discord@claude-plugins-official": true,
     "gopls-lsp@claude-plugins-official": true,
+    "heptabase@heptabase-cli-skills": true,
+    "lua-lsp@claude-plugins-official": true,
+    "ponytail@ponytail": true,
     "pyright-lsp@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
-    "typescript-lsp@claude-plugins-official": true,
-    "discord@claude-plugins-official": true,
-    "heptabase@heptabase-cli-skills": true,
-    "ponytail@ponytail": true
+    "typescript-lsp@claude-plugins-official": true
+  },
+  "env": {
+    "CLAUDE_CODE_NO_FLICKER": "1"
   },
   "extraKnownMarketplaces": {
     "heptabase-cli-skills": {
       "source": {
-        "source": "github",
-        "repo": "heptameta/heptabase-cli-skills"
+        "repo": "heptameta/heptabase-cli-skills",
+        "source": "github"
       }
     },
     "ponytail": {
       "source": {
-        "source": "github",
-        "repo": "DietrichGebert/ponytail"
+        "repo": "DietrichGebert/ponytail",
+        "source": "github"
       }
     }
   },
-  "language": "japanese",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "rtk hook claude",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "bash ~/.claude/hooks/herdr-agent-state.sh session",
+            "timeout": 10,
+            "type": "command"
+          }
+        ],
+        "matcher": "*"
+      }
+    ]
+  },
   "inputNeededNotifEnabled": true,
-  "agentPushNotifEnabled": true,
-  "voiceEnabled": true,
-  "vim": true,
+  "language": "japanese",
   "model": "opus[1m]",
-  "outputStyle": "Concise"
+  "outputStyle": "Concise",
+  "permissions": {
+    "allow": [
+      "Bash(base64:*)",
+      "Bash(curl:http://localhost*)",
+      "Bash(gh api:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh search:*)",
+      "Bash(git branch:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git status:*)",
+      "Bash(go test*)",
+      "Bash(herdr agent:*)",
+      "Bash(herdr notification:*)",
+      "Bash(herdr pane:*)",
+      "Bash(herdr session:*)",
+      "Bash(herdr status:*)",
+      "Bash(herdr tab:*)",
+      "Bash(herdr terminal:*)",
+      "Bash(herdr workspace:*)",
+      "Bash(herdr worktree create:*)",
+      "Bash(herdr worktree list:*)",
+      "Bash(herdr worktree open:*)",
+      "Bash(rtk:*)"
+    ],
+    "deny": [
+      "Bash(sudo:*)",
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)"
+    ]
+  },
+  "statusLine": {
+    "command": "python3 ~/.claude/statusline.py",
+    "type": "command"
+  },
+  "vim": true,
+  "voiceEnabled": true
 }

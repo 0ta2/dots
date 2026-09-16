@@ -1,0 +1,4 @@
+# 外部ツールが書き戻すときのキー順の揺れを index 側で吸収する。
+# 実体の変更だけが差分として出る。
+# ref: https://zenn.dev/kawarimidoll/articles/d3f1a7542de71a
+dot_claude/settings.json filter=jsonsort
