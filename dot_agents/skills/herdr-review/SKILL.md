@@ -1,6 +1,6 @@
 ---
 name: herdr-review
-description: 隣の Herdr pane に別エージェントを起動して、現在の差分・特定ファイル・直近コミットなどをレビューさせ、結果を回収して報告する。 「隣のcodexにレビューしてもらって」「隣のopusにレビューさせて」「別のエージェントにこの差分を見てもらって」のように、隣ペイン・別エージェント・レビューを明示した依頼で使う。既定は codex。claude、opus、sonnet 等が指定された場合はそのエージェントまたはモデルを使う。「レビューして」だけの依頼、または自分でレビューする依頼には使わず、自分でレビュースキルを実行する。
+description: 同じ Herdr スペースに専用タブを作って別エージェントを起動し、現在の差分・特定ファイル・直近コミットなどをレビューさせ、結果を回収して報告する。 「隣のcodexにレビューしてもらって」「隣のopusにレビューさせて」「別のエージェントにこの差分を見てもらって」のように、隣ペイン・別エージェント・レビューを明示した依頼で使う。既定は codex。claude、opus、sonnet 等が指定された場合はそのエージェントまたはモデルを使う。「レビューして」だけの依頼、または自分でレビューする依頼には使わず、自分でレビュースキルを実行する。
 disable-model-invocation: false
 user-invocable: true
 allowed-tools: Bash(herdr *), Bash(grep *), Bash(sed *), Bash(test *), Read
@@ -8,7 +8,8 @@ allowed-tools: Bash(herdr *), Bash(grep *), Bash(sed *), Bash(test *), Read
 
 # herdr-review
 
-隣のペインに別エージェントを立ててレビューさせ、結果を回収して報告する。
+同じスペースに専用タブを作って別エージェントを立て、レビューさせて結果を回収し報告する。
+1 レビュー = 1 タブ = 1 担当者。終わったらタブを閉じる。
 汎用の herdr CLI 作法は herdr 本体が提供する `herdr` skill にある。
 ここはその上の「レビューを委譲する」ワークフローだけを書く。
 
@@ -54,50 +55,40 @@ false なら Herdr の中で動いていないと伝えて終了する。外か�
 
 モデル未指定ならフラグを付けない。各 CLI の設定既定に委ねる。
 
-## 既存エージェントを使うか判定する
+## 既存のレビュータブを使うか判定する
 
-**ペインを作る前に、隣に使えるエージェントがいないか見る。** 同じ PR の再レビューなら、
-同じ会話で前回起動した reviewer が今のタブに生きていればそれを使い、いなければ前回と同じ
-エージェント種別を新しく起動する (要件はペインの同一性ではなく種別の同一性。「依頼を送る」参照)。
-探すのは今のタブの隣接ペインまでにする。ユーザーが位置や種別を明示したときはそちらが優先で、
-指定されたのが前回と違う種別なら別エージェントに 1 周目から見せる扱いになる。
+**タブを作る前に、同じスペースに使えるレビュータブがないか見る。** 1 レビュー = 1 タブ = 1 担当者。
+同じ PR の再レビュー (指摘を直したあとの 2 周目以降) は、前回と同じ担当者に最後まで見せる。
+新規に立てると前回の指摘の文脈が消える。
 
 ```bash
-herdr pane layout --current
-herdr agent list
+herdr agent list          # 自分の workspace_id を確認する
+herdr tab list --workspace <workspace_id>
 ```
 
-隣接ペインに idle のエージェントがいて、ユーザーが新規起動を求めていないなら
-それを使う (再レビューでないとき、または前回と同じ種別のとき)。`herdr agent rename <pane_id> reviewer` で命名して依頼を送るだけでよい。
-ユーザーが「隣の codex に」のように位置で指定した場合は
-`herdr pane neighbor --direction <left|right|up|down> --current` で対象を特定する。
+タブラベルが `review-<識別子>` (下記の規約) に一致するタブがあれば、そのタブにいる
+エージェントを使う。`herdr agent list` の `.result.agents[]` は `tab_id` を持つので、
+それが一致する要素を取る。
 
-**「隣」は分割ルールの計算結果ではなくユーザーが見ている画面のこと。** 既存の
-エージェントがいるのに新しいペインを別方向に作ると、ユーザーの期待と食い違う
-(過去に縦長ペインの規則どおり下に作り、右の既存 codex を使ってほしかったと
-指摘された)。新規作成は、使えるエージェントが隣にいないか、ユーザーが新しい
-エージェントの起動を求めたときだけ。
+ユーザーがエージェント種別を明示したときはそちらが優先で、指定されたのが前回と違う種別なら
+別エージェントに 1 周目から見せる扱いになる (要件はタブの同一性ではなく種別の同一性。
+「依頼を送る」参照)。ユーザーが新しいエージェントの起動を求めたときも新規に立てる。
 
-既存ペインを使うときは、そのエージェントの `cwd` がレビュー対象のリポジトリと
-違うことがある。違う場合は依頼文で対象を絶対パスで示し、`git -C <path>` を
-使うよう明記する。相手のセッションを借りたことは最後にユーザーへ伝える。
+一致するタブが無ければ次節でタブを作る。
 
-## ペインを作る
+## タブを作る
+
+現在のタブは分割しない (依頼元の表示幅が半分になる)。同じスペースに専用タブを作る。
 
 ```bash
-herdr pane layout --current
+herdr tab create --workspace <workspace_id> --cwd "$PWD" --label "review-<識別子>" --no-focus
 ```
 
-自分の rect の `width` / `height` を見て方向を決める。`width >= height * 2` なら
-`right`、そうでなければ `down`。同じ方向に分割を重ねて使えない幅にしない。
-ユーザーが方向を指定したらそれに従う。
+`.result.root_pane.pane_id` と `.result.tab.tab_id` を控える。`--no-focus` は必須
+(ユーザーの焦点を奪わない)。`--cwd "$PWD"` も必須 (省くと別のディレクトリで起動しうる)。
 
-```bash
-herdr pane split --current --direction <dir> --cwd "$PWD" --no-focus
-```
-
-`.result.pane.pane_id` を控える。`--no-focus` は必須 (ユーザーの焦点を奪わない)。
-`--cwd "$PWD"` も必須 (省くと別のディレクトリで起動しうる)。
+`<識別子>` はそのレビューを一意に指す文字列。PR が対象なら PR 番号 (`review-149`)、
+ローカル差分ならブランチ名。タブラベルに一意制約は無いので衝突しない。
 
 ## エージェントを起動して命名する
 
@@ -119,8 +110,12 @@ herdr はペイン内のエージェントを自動検出する。`herdr agent l
 現れたら命名する:
 
 ```bash
-herdr agent rename <pane_id> reviewer
+herdr agent rename <pane_id> reviewer-<識別子>
 ```
+
+**agent 名はグローバルに一意。** 別のワークスペースに残った古い agent が名前を
+占有していると `agent_name_taken` で落ちる (実測)。タブラベルと同じ識別子を付けて避ける。
+以降この skill では、この名前を `<reviewer>` と書く。
 
 30 秒待っても検出されなければ `herdr pane read <pane_id> --format ansi` で状況を見る
 (起動失敗・認証待ちなどが読める)。ポーリングを続けず、そこで報告する。
@@ -177,8 +172,8 @@ dim 以外の文字列が残っているときは、自分が送った依頼文�
 ペインを idle と読む。
 
 ```bash
-herdr agent wait reviewer --until blocked --until idle --timeout 60000
-herdr agent get reviewer
+herdr agent wait <reviewer> --until blocked --until idle --timeout 60000
+herdr agent get <reviewer>
 ```
 
 `blocked` はユーザーへの質問待ち。**送らずに**画面を読み、ユーザーに一声かける
@@ -188,7 +183,7 @@ herdr agent get reviewer
 `idle` なら送る。
 
 ```bash
-herdr agent prompt reviewer "<依頼文>"
+herdr agent prompt <reviewer> "<依頼文>"
 ```
 
 **`--wait` は付けない。** 付けると相手が落ち着くまで戻らないので、戻った時点の状態は
@@ -224,8 +219,8 @@ herdr-review 側の追従は不要 (DRY)。
 送ったら着弾を確認してから完了を待つ:
 
 ```bash
-herdr agent wait reviewer --until working --timeout 15000     # 着弾している
-herdr agent wait reviewer --until blocked --until idle --timeout 300000
+herdr agent wait <reviewer> --until working --timeout 15000     # 着弾している
+herdr agent wait <reviewer> --until blocked --until idle --timeout 300000
 ```
 
 `agent prompt` が成功を返しても届いていないことがある (相手がユーザーへの質問待ちで、
@@ -240,8 +235,8 @@ idle のときしか深い履歴を取れず、まさにこの場面で空を返
 ## 結果を確認する
 
 ```bash
-herdr agent get reviewer
-herdr agent read reviewer --source recent-unwrapped --lines 80
+herdr agent get <reviewer>
+herdr agent read <reviewer> --source recent-unwrapped --lines 80
 ```
 
 `agent get` の状態で分岐する。`agent wait` は blocked でも戻るので、
@@ -257,6 +252,18 @@ idle を待つ。
 
 **`idle` / `done` で戻ったことが保証するのは相手のターンが終わったことだけ。** 依頼した対象・観点を
 レビューが実際に網羅しているかは、本文を読んで自分で判断する。
+
+## 終わったらタブを閉じる
+
+そのレビューが終わったら、自分が作ったタブを閉じる。
+
+```bash
+herdr tab close <tab_id>
+```
+
+閉じるのは指摘が 0 件になり、依頼元がマージの判断に進む時点。指摘が残っている間は
+同じ担当者が続きを見るので閉じない。既存タブを借りただけのときも閉じない
+(借りたことは最後にユーザーへ伝える)。
 
 ## blocked になったら
 

@@ -1,6 +1,6 @@
 ---
 name: herdr-delegate
-description: 隣のペインに別のコーディングエージェント (codex/claude) を立てて実装を委譲する。「隣の codex に実装頼んで」「別のエージェントにこれ実装させて」など、委譲先が別ペインであることを明示されたときに使う。単に実装を頼まれただけでは使わない。HERDR_ENV=1 が必要。
+description: 同じ Herdr スペースに専用タブを作って別のコーディングエージェント (codex/claude) を立て、実装を委譲する。「隣の codex に実装頼んで」「別のエージェントにこれ実装させて」など、委譲先が別ペインであることを明示されたときに使う。単に実装を頼まれただけでは使わない。HERDR_ENV=1 が必要。
 disable-model-invocation: false
 user-invocable: true
 allowed-tools: Bash(herdr *), Bash(grep *), Bash(sed *), Bash(test *), Read
@@ -8,7 +8,8 @@ allowed-tools: Bash(herdr *), Bash(grep *), Bash(sed *), Bash(test *), Read
 
 # herdr-delegate
 
-隣のペインにエージェントを立てて実装を任せ、自分は本流の作業を続ける。
+同じスペースに専用タブを作ってエージェントを立て、実装を任せて自分は本流の作業を続ける。
+1 実装 = 1 タブ = 1 担当者。終わったらタブを閉じる。
 汎用の herdr CLI 作法は herdr 本体が提供する `herdr` skill にある。
 ここはその上の「実装を委譲する」ワークフローだけを書く。
 
@@ -54,45 +55,40 @@ false なら Herdr の中で動いていないと伝えて終了する。外か�
 
 モデル未指定ならフラグを付けない。各 CLI の設定既定に委ねる。
 
-## 既存エージェントを使うか判定する
+## 既存の実装タブを使うか判定する
 
-**ペインを作る前に、隣に使えるエージェントがいないか見る。**
-
-```bash
-herdr pane layout --current
-herdr agent list
-```
-
-隣接ペインに idle のエージェントがいて、ユーザーが新規起動を求めていないなら
-それを使う。`herdr agent rename <pane_id> implementer` で命名して依頼を送るだけでよい。
-ユーザーが「左の Claude」のように位置で指定した場合は
-`herdr pane neighbor --direction <left|right|up|down> --current` で対象を特定する。
-
-**「隣」は分割ルールの計算結果ではなくユーザーが見ている画面のこと。** 既存の
-エージェントがいるのに新しいペインを別方向に作ると、ユーザーの期待と食い違う。
-新規作成は、使えるエージェントが隣にいないか、ユーザーが新しいエージェントの
-起動を求めたときだけ。
-
-既存ペインを使うときは、そのエージェントの `cwd` が作業対象のリポジトリと違うことが
-ある。違う場合は依頼文で対象を絶対パスで示し、`git -C <path>` を使うよう明記する。
-相手のセッションを借りたことは最後にユーザーへ伝える。
-
-## ペインを作る
+**タブを作る前に、同じスペースに使えるタブがないか見る。** 1 実装 = 1 タブ = 1 担当者。
+同じ実装の続き (レビュー指摘の修正、追加の手直し) は、最初に着手した担当者に最後まで任せる。
+新規に立てると実装の文脈が消える。
 
 ```bash
-herdr pane layout --current
+herdr agent list          # 自分の workspace_id を確認する
+herdr tab list --workspace <workspace_id>
 ```
 
-自分の rect の `width` / `height` を見て方向を決める。`width >= height * 2` なら
-`right`、そうでなければ `down`。同じ方向に分割を重ねて使えない幅にしない。
-ユーザーが方向を指定したらそれに従う。
+タブラベルが `impl-<識別子>` (下記の規約) に一致するタブがあれば、そのタブにいる
+エージェントを使う。`herdr agent list` の `.result.agents[]` は `tab_id` を持つので、
+それが一致する要素を取る。
+
+別の実装を頼むときは、その実装の識別子で新しいタブを作る (既存タブに相乗りしない)。
+ユーザーが「左の Claude に」のように既存のペインを指定したときはそれに従う。その場合は
+そのエージェントの `cwd` が作業対象のリポジトリと違うことがあるので、違えば依頼文で対象を
+絶対パスで示し、`git -C <path>` を使うよう明記する。相手のセッションを借りたことは
+最後にユーザーへ伝える。
+
+## タブを作る
+
+現在のタブは分割しない (依頼元の表示幅が半分になる)。同じスペースに専用タブを作る。
 
 ```bash
-herdr pane split --current --direction <dir> --cwd "$PWD" --no-focus
+herdr tab create --workspace <workspace_id> --cwd "$PWD" --label "impl-<識別子>" --no-focus
 ```
 
-`.result.pane.pane_id` を控える。`--no-focus` は必須 (ユーザーの焦点を奪わない)。
-`--cwd "$PWD"` も必須 (省くと別のディレクトリで起動しうる)。
+`.result.root_pane.pane_id` と `.result.tab.tab_id` を控える。`--no-focus` は必須
+(ユーザーの焦点を奪わない)。`--cwd "$PWD"` も必須 (省くと別のディレクトリで起動しうる)。
+
+`<識別子>` はその実装を一意に指す文字列 (ブランチ名、TickTick のタスク ID など)。
+タブラベルに一意制約は無いので衝突しない。
 
 ## エージェントを起動して命名する
 
@@ -114,8 +110,12 @@ herdr はペイン内のエージェントを自動検出する。`herdr agent l
 現れたら命名する:
 
 ```bash
-herdr agent rename <pane_id> implementer
+herdr agent rename <pane_id> impl-<識別子>
 ```
+
+**agent 名はグローバルに一意。** 別のワークスペースに残った古い agent が名前を
+占有していると `agent_name_taken` で落ちる (実測)。タブラベルと同じ識別子を付けて避ける。
+以降この skill では、この名前を `<implementer>` と書く。
 
 30 秒待っても検出されなければ `herdr pane read <pane_id> --format ansi` で状況を見る
 (起動失敗・認証待ちなどが読める)。ポーリングを続けず、そこで報告する。
@@ -136,8 +136,8 @@ herdr agent rename <pane_id> implementer
 最初に落ち着いた状態を待つので、working 中に送ると別のターンの完了で戻ってくる。
 
 ```bash
-herdr agent get implementer
-herdr agent prompt implementer "<依頼文>" --wait --timeout 600000
+herdr agent get <implementer>
+herdr agent prompt <implementer> "<依頼文>" --wait --timeout 600000
 ```
 
 依頼文に必ず含める:
@@ -162,14 +162,14 @@ herdr agent prompt implementer "<依頼文>" --wait --timeout 600000
 長くかかる作業は `--wait` を付けずに投げ、本流の作業に戻ってから拾ってもよい:
 
 ```bash
-herdr agent wait implementer --until blocked --until idle --timeout 600000
+herdr agent wait <implementer> --until blocked --until idle --timeout 600000
 ```
 
 ## 結果を確認する
 
 ```bash
-herdr agent get implementer
-herdr agent read implementer --source recent-unwrapped --lines 80
+herdr agent get <implementer>
+herdr agent read <implementer> --source recent-unwrapped --lines 80
 ```
 
 `agent get` の状態で分岐する。`--wait` も `agent wait` も blocked で戻るので、
@@ -185,6 +185,17 @@ idle を待つ。
 
 **`idle` / `done` で戻ったことが保証するのは相手のターンが終わったことだけ。** 実装が受け入れ条件を
 満たしたかどうかは `git diff` と依頼文で指定したテストを自分で確認して判定する。
+
+## 終わったらタブを閉じる
+
+その実装が終わったら、自分が作ったタブを閉じる。
+
+```bash
+herdr tab close <tab_id>
+```
+
+閉じるのは実装が完了し、レビュー指摘の修正まで含めて手離れした時点。続きがある間は
+同じ担当者に任せるので閉じない。既存タブ・ユーザーのペインを借りただけのときも閉じない。
 
 ## blocked になったら
 
