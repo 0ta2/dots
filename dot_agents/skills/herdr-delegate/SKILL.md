@@ -62,33 +62,54 @@ false なら Herdr の中で動いていないと伝えて終了する。外か�
 新規に立てると実装の文脈が消える。
 
 ```bash
-herdr agent list          # 自分の workspace_id を確認する
-herdr tab list --workspace <workspace_id>
+herdr tab list --workspace "$HERDR_WORKSPACE_ID"
 ```
 
-タブラベルが `impl-<識別子>` (下記の規約) に一致するタブがあれば、そのタブにいる
-エージェントを使う。`herdr agent list` の `.result.agents[]` は `tab_id` を持つので、
-それが一致する要素を取る。
+**ワークスペースは `$HERDR_WORKSPACE_ID` で決める。** `herdr agent list` は全ワークスペースの
+agent を返し、どれが呼び出し元かを示さない (実測で `wQ` と `wT` が同時に返る)。
+
+下記の規約で組み立てたラベルに一致するタブがあれば、そのタブにいるエージェントを使う。
+`herdr agent list` の `.result.agents[]` は `tab_id` を持つので、それが一致する要素を取る。
 
 別の実装を頼むときは、その実装の識別子で新しいタブを作る (既存タブに相乗りしない)。
-ユーザーが「左の Claude に」のように既存のペインを指定したときはそれに従う。その場合は
-そのエージェントの `cwd` が作業対象のリポジトリと違うことがあるので、違えば依頼文で対象を
-絶対パスで示し、`git -C <path>` を使うよう明記する。相手のセッションを借りたことは
-最後にユーザーへ伝える。
+
+ユーザーが「左の Claude に」のように既存のペインを位置で指定したときは、それが最優先。
+`herdr pane neighbor --direction <left|right|up|down> --current` で対象を特定して使う
+(この場合はタブを作らない)。その相手の `cwd` が作業対象のリポジトリと違うことがあるので、
+違えば依頼文で対象を絶対パスで示し、`git -C <path>` を使うよう明記する。相手のセッションを
+借りたことは最後にユーザーへ伝える。
+
+### 名前の作り方
+
+タブラベルと agent 名は次で組み立てる。**agent 名はグローバルに一意**で、別ワークスペースに
+残った古い agent が名前を占有していると `agent_name_taken` で落ちる (実測)。
+
+| | 形 | 例 |
+| --- | --- | --- |
+| タブラベル | `impl-<リポジトリ名>-<識別子>-<エージェント種別>` | `impl-dots-20260917-1500-codex` |
+| agent 名 | `$HERDR_WORKSPACE_ID` を先頭に付けたタブラベル | `wT-impl-dots-20260917-1500-codex` |
+
+- リポジトリ名を入れるのは、ブランチ名やタスク ID が別リポジトリと同じになりうるため
+- エージェント種別を入れるのは、種別を変えて立て直したときに前のタブと区別するため
+  (同じ作業でも種別が変われば別の担当者)
+- ワークスペース ID を agent 名にだけ付けるのは、タブ検索が `--workspace` でスコープされる一方、
+  agent 名はグローバルに衝突するため
+
+この規約で組み立てた名前が既に使われていたら、それは同じ作業の同じ担当者なので再利用する。
+同じラベルのタブが複数見つかった場合は、想定外の状態なので再利用せずユーザーに報告する。
 
 ## タブを作る
 
 現在のタブは分割しない (依頼元の表示幅が半分になる)。同じスペースに専用タブを作る。
 
 ```bash
-herdr tab create --workspace <workspace_id> --cwd "$PWD" --label "impl-<識別子>" --no-focus
+herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$PWD" --label "<タブラベル>" --no-focus
 ```
 
 `.result.root_pane.pane_id` と `.result.tab.tab_id` を控える。`--no-focus` は必須
 (ユーザーの焦点を奪わない)。`--cwd "$PWD"` も必須 (省くと別のディレクトリで起動しうる)。
 
 `<識別子>` はその実装を一意に指す文字列 (ブランチ名、TickTick のタスク ID など)。
-タブラベルに一意制約は無いので衝突しない。
 
 ## エージェントを起動して命名する
 
@@ -110,12 +131,10 @@ herdr はペイン内のエージェントを自動検出する。`herdr agent l
 現れたら命名する:
 
 ```bash
-herdr agent rename <pane_id> impl-<識別子>
+herdr agent rename <pane_id> "<agent 名>"
 ```
 
-**agent 名はグローバルに一意。** 別のワークスペースに残った古い agent が名前を
-占有していると `agent_name_taken` で落ちる (実測)。タブラベルと同じ識別子を付けて避ける。
-以降この skill では、この名前を `<implementer>` と書く。
+名前は「名前の作り方」の規約で組み立てる。以降この skill では、この名前を `<implementer>` と書く。
 
 30 秒待っても検出されなければ `herdr pane read <pane_id> --format ansi` で状況を見る
 (起動失敗・認証待ちなどが読める)。ポーリングを続けず、そこで報告する。
