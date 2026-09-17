@@ -24,7 +24,7 @@ mise run brew:sync         # Brewfileを元にパッケージを同期
 # 日常
 mise run sync                 # chezmoi:apply + Codex設定マージ (副作用なし、何度実行しても収束する)
 mise run install               # 初回セットアップ (不足ツール・skill・plugin を導入し、最後に sync)
-mise run update                 # 全ツールの更新 (brew/mise/skill/uv tool/herdr plugin)、最後に sync
+mise run update                 # 全ツールの更新 (brew/mise/skill/uv tool)、最後に sync
 mise run security:sshd-harden  # sshd を鍵認証のみに制限 (sudo 必要、手動実行のみ)
 
 # 初回のみ (mise が無い状態から): bootstrap.sh が Homebrew と mise を用意して install へ引き渡す
