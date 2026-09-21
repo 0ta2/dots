@@ -5,6 +5,9 @@ theme = kanagawa-paper-ink
 font-family = "Moralerspace Neon HW"
 window-title-font-family = "Moralerspace Neon HW"
 font-size = 15
+font-feature = -liga
+font-feature = -calt
+font-feature = -dlig
 
 # macOS
 macos-option-as-alt = true
