@@ -11,6 +11,10 @@
     "editor.minimap.enabled": false,
     // Files
     "files.autoSave": "onFocusChange",
+    // Markdown
+    "workbench.editorAssociations": {
+        "*.md": "vscode.markdown.preview.editor"
+    },
     // Go
     "go.lintTool": "golangci-lint-v2",
     "go.lintFlags": [
