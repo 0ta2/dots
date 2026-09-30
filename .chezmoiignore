@@ -9,3 +9,10 @@ selene.toml
 bootstrap.sh
 scripts
 dot_config/nvim
+
+{{ if ne .chezmoi.username "0ta2" }}
+{{   range list "brainstorming" "change-review" "clean-commits" "commit" "executing-plans" "pr" "source-primer" "systematic-debugging" "writing-plans" }}
+.agents/skills/{{ . }}
+.claude/skills/{{ . }}
+{{   end }}
+{{ end }}
