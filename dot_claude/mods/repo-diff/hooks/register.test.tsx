@@ -8,8 +8,8 @@ const GIT: Record<string, string> = {
   'ls-files -z --others --exclude-standard': '',
   'branch --show-current': 'feat/x\n',
   'rev-list --count abc..HEAD': '2\n',
-  'diff --no-index -- /dev/null x.ts': 'diff --git a/x.ts b/x.ts\nnew file mode 100644\n--- /dev/null\n+++ b/x.ts\n@@ -0,0 +1 @@\n+new\n',
-  'diff --no-renames abc -- x.ts': 'diff --git a/x.ts b/x.ts\n--- a/x.ts\n+++ b/x.ts\n@@ -1 +1 @@\n-old\n+new\n',
+  'diff --no-index --no-textconv -- /dev/null x.ts': 'diff --git a/x.ts b/x.ts\nnew file mode 100644\n--- /dev/null\n+++ b/x.ts\n@@ -0,0 +1 @@\n+new\n',
+  'diff --no-renames --no-textconv abc -- x.ts': 'diff --git a/x.ts b/x.ts\n--- a/x.ts\n+++ b/x.ts\n@@ -1 +1 @@\n-old\n+new\n',
 }
 
 const PANE_PROPS = {
@@ -62,7 +62,7 @@ test('a repo touched by Bash shows up and its file diff opens', async ($, on) =>
   await ui.press({ key: 'ask' })
   expect(await ui.find({ text: 'asked ✓' })).toBeDefined()
   GIT['diff --numstat -z --no-renames abc'] = '0\t1\tx.ts\0'
-  GIT['diff --no-renames abc -- x.ts'] = 'diff --git a/x.ts b/x.ts\n--- a/x.ts\n+++ /dev/null\n@@ -1 +0,0 @@\n-old\n'
+  GIT['diff --no-renames --no-textconv abc -- x.ts'] = 'diff --git a/x.ts b/x.ts\n--- a/x.ts\n+++ /dev/null\n@@ -1 +0,0 @@\n-old\n'
   GIT['ls-files -z --others --exclude-standard'] = 'x.ts\0'
   await $.tool.call({ tool: 'Bash', command: 'git rm --cached x.ts' })
   await ui.press({ key: 'file:/r:untracked:x.ts' })
