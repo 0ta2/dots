@@ -95,7 +95,9 @@ async function askText($: EngineInterface, at: Asked, room: number): Promise<{ n
   const file = snap?.files.find(f => f.path === at.path)
   if (!snap || !file) return { name }
   const head = `The user attached the diff of ${at.path} in ${at.root} (since its merge base with ${snap.base}) from the repo-diff pane to this prompt:\n`
-  const fit = fitHunks(await diffOf($, snap, file), room - head.length - CUT_NOTE.length)
+  const diff = await diffOf($, snap, file)
+  const whole = fitHunks(diff, room - head.length)
+  const fit = whole?.isCut ? fitHunks(diff, room - head.length - CUT_NOTE.length) : whole
   return { name, text: fit?.source ? head + fit.source + (fit.isCut ? CUT_NOTE : '') : undefined }
 }
 
