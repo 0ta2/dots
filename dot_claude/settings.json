@@ -12,7 +12,8 @@
     "typescript-lsp@claude-plugins-official": true
   },
   "env": {
-    "CLAUDE_CODE_NO_FLICKER": "1"
+    "CLAUDE_CODE_NO_FLICKER": "1",
+    "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods/command-guard"
   },
   "extraKnownMarketplaces": {
     "heptabase-cli-skills": {

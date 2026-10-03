@@ -1,0 +1,1 @@
+{ "name": "command-guard", "version": "0.1.0", "description": "rules.json に書いたパターンでツール呼び出しを deny / ask する" }
