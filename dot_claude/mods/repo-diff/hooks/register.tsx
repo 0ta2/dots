@@ -31,10 +31,10 @@ async function track($: EngineInterface, dirs: string[]) {
 async function diffOf($: EngineInterface, snap: RepoSnapshot, file: FileChange): Promise<string> {
   if (file.isUntracked) {
     const stat = await $.fs.stat(`${snap.root}/${file.path}`).catch(() => undefined)
-    if (!stat || stat.size > UNTRACKED_LIMIT) return ''
-    return (await gitOf($, [0, 1])(snap.root, ['diff', '--no-index', '--no-textconv', '--', '/dev/null', file.path])) ?? ''
+    if (!stat || (!stat.isLink && stat.size > UNTRACKED_LIMIT)) return ''
+    return (await gitOf($, [0, 1])(snap.root, ['diff', '--no-index', '--no-textconv', '--no-ext-diff', '--', '/dev/null', file.path])) ?? ''
   }
-  return (await gitOf($)(snap.root, ['diff', '--no-renames', '--no-textconv', snap.mergeBase, '--', file.path])) ?? ''
+  return (await gitOf($)(snap.root, ['diff', '--no-renames', '--no-textconv', '--no-ext-diff', snap.mergeBase, '--', file.path])) ?? ''
 }
 
 let selection = 0
