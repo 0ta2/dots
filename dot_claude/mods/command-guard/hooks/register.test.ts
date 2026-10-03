@@ -10,12 +10,18 @@ const RULES = JSON.stringify({
   ],
 })
 
-const engine = (on: On, branch = 'main') => {
+const engine = (on: On, branch = 'main', cwd = '/repo') => {
   on('fs.read', () => ({ value: RULES }))
-  on('session.cwd', () => ({ value: '/repo' }))
+  on('session.cwd', () => ({ value: cwd }))
   on('env.get', () => ({ value: '/home/u' }))
   on('process.run', (_$, e) => ({
-    value: {
+    value: e.argv[2]?.startsWith('/missing') ? {
+      exitCode: 128,
+      stdout: '',
+      stderr: '',
+      isStdoutTruncated: false,
+      isStderrTruncated: false,
+    } : {
       exitCode: 0,
       stdout: e.argv.includes('--show-current') ? `${branch}\n` : `${e.argv[2]}\n`,
       stderr: '',
@@ -74,6 +80,21 @@ describe('command-guard', () => {
     engine(on)
     expect((await check($, 'Bash', { command: 'git -C ~/data status; git commit -m x' })).decision).toBe('deny')
     expect((await check($, 'Bash', { command: 'git status; git -C ~/data commit -m x' })).decision).toBe('allow')
+  })
+
+  test('a failed cd falls back to the session cwd', async ($, on) => {
+    engine(on)
+    expect((await check($, 'Bash', { command: 'cd /missing; git commit -m x' })).decision).toBe('deny')
+  })
+
+  test('a failed cd applies the repo exception to the session cwd', async ($, on) => {
+    engine(on, 'main', '/home/u/data')
+    expect((await check($, 'Bash', { command: 'cd /missing; git commit -m x' })).decision).toBe('allow')
+  })
+
+  test('a failed cd re-checks the branch of the session cwd', async ($, on) => {
+    engine(on, 'feat/x')
+    expect((await check($, 'Bash', { command: 'cd /missing; git commit -m x' })).decision).toBe('allow')
   })
 
   test('ask action asks', async ($, on) => {
