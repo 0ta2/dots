@@ -142,7 +142,7 @@ export const register: Register = on => {
 
   on('prompt.submit', async ($, e, next) => {
     const at = await read($, asked)
-    if (!at || carrying) return next(e)
+    if (!at || carrying || (e.origin.kind !== 'composer' && e.origin.kind !== 'bridge')) return next(e)
     carrying = true
     try {
       const context = e.context ?? []

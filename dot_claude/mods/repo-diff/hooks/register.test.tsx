@@ -68,11 +68,13 @@ test('a repo touched by Bash shows up and its file diff opens', async ($, on) =>
   await $.tool.call({ tool: 'Bash', command: 'git rm --cached x.ts' })
   await ui.press({ key: 'file:/r:untracked:x.ts' })
   expect(await ui.find({ text: 'asked ✓' })).toBeDefined()
+  await $.prompt.submit({ text: 'n', wait: false, origin: { kind: 'scheduled-trigger' } })
   await $.prompt.submit({ text: 'a', wait: false, origin: { kind: 'composer' } })
   await $.prompt.submit({ text: 'b', wait: false, origin: { kind: 'composer' } })
-  expect(contexts[0]?.[0]).toContain('x.ts in /r (since its merge base with origin/main)')
-  expect(contexts[0]?.[0]).toContain('@@ -0,0 +1,1 @@\n+new')
-  expect(contexts[1]).toBeUndefined()
+  expect(contexts[0]).toBeUndefined()
+  expect(contexts[1]?.[0]).toContain('x.ts in /r (since its merge base with origin/main)')
+  expect(contexts[1]?.[0]).toContain('@@ -0,0 +1,1 @@\n+new')
+  expect(contexts[2]).toBeUndefined()
   expect(await ui.find({ text: 'ask' })).toBeDefined()
 
   isLink = true
