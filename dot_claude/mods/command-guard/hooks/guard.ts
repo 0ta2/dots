@@ -106,12 +106,14 @@ export async function findRule(config: Config, tool: string, input: unknown, ctx
     const text = rule.scrub === false ? raw : scrub(raw)
     if (!rule.regexes.every(re => re.test(text))) continue
     if (rule.when?.branch || rule.exceptRepos) {
-      const dir = targetDir(raw, rule.regexes[0]!, ctx)
-      if (rule.when?.branch && !rule.when.branch.includes(await ctx.git(dir, ['branch', '--show-current']))) continue
-      if (rule.exceptRepos) {
-        const top = await ctx.git(dir, ['rev-parse', '--show-toplevel'])
-        if (rule.exceptRepos.some(p => expand(p, ctx.home) === top)) continue
+      let dir = targetDir(raw, rule.regexes[0]!, ctx)
+      let top = await ctx.git(dir, ['rev-parse', '--show-toplevel'])
+      if (!top && dir !== ctx.cwd) {
+        dir = ctx.cwd
+        top = await ctx.git(dir, ['rev-parse', '--show-toplevel'])
       }
+      if (rule.when?.branch && !rule.when.branch.includes(await ctx.git(dir, ['branch', '--show-current']))) continue
+      if (rule.exceptRepos?.some(p => expand(p, ctx.home) === top)) continue
     }
     return rule
   }
