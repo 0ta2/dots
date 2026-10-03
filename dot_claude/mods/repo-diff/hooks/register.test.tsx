@@ -62,7 +62,8 @@ test('a repo touched by Bash shows up and its file diff opens', async ($, on) =>
   const ui = await $.ui.mount({ plugin: 'repo-diff', surface: 'terminal', component: 'Pane', requestId: 'repo-diff', props: PANE_PROPS })
   await ui.press({ key: 'ask' })
   expect(await ui.find({ text: 'asked ✓' })).toBeDefined()
-  GIT['diff --numstat -z --no-renames abc'] = ''
+  GIT['diff --numstat -z --no-renames abc'] = '0\t1\tx.ts\0'
+  GIT['diff --no-renames abc -- x.ts'] = 'diff --git a/x.ts b/x.ts\n--- a/x.ts\n+++ /dev/null\n@@ -1 +0,0 @@\n-old\n'
   GIT['ls-files -z --others --exclude-standard'] = 'x.ts\0'
   await $.tool.call({ tool: 'Bash', command: 'git rm --cached x.ts' })
   await ui.press({ key: 'file:/r:untracked:x.ts' })

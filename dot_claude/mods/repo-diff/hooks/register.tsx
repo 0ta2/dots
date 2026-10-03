@@ -92,7 +92,7 @@ const isSame = (a: Asked | null, b: Asked | null) => !!a && !!b && a.root === b.
 async function askText($: EngineInterface, at: Asked, room: number): Promise<{ name: string; text?: string }> {
   const name = `${basename(at.root)}/${at.path}`
   const snap = await snapshot(gitOf($), at.root)
-  const file = snap?.files.find(f => f.path === at.path)
+  const file = snap?.files.findLast(f => f.path === at.path)
   if (!snap || !file) return { name }
   const head = `The user attached the diff of ${at.path} in ${at.root} (since its merge base with ${snap.base}) from the repo-diff pane to this prompt:\n`
   const diff = await diffOf($, snap, file)
