@@ -29,12 +29,16 @@ async function track($: EngineInterface, dirs: string[]) {
 }
 
 async function diffOf($: EngineInterface, snap: RepoSnapshot, file: FileChange): Promise<string> {
+  const opts = ['--no-textconv', '--no-ext-diff']
+  let diff: string | undefined
   if (file.isUntracked) {
     const stat = await $.fs.stat(`${snap.root}/${file.path}`).catch(() => undefined)
     if (!stat || (!stat.isLink && stat.size > UNTRACKED_LIMIT)) return ''
-    return (await gitOf($, [0, 1])(snap.root, ['diff', '--no-index', '--no-textconv', '--no-ext-diff', '--', '/dev/null', file.path])) ?? ''
+    diff = await gitOf($, [0, 1])(snap.root, ['diff', '--no-index', ...opts, '--', '/dev/null', file.path])
+  } else {
+    diff = await gitOf($)(snap.root, ['diff', '--no-renames', ...opts, snap.mergeBase, '--', file.path])
   }
-  return (await gitOf($)(snap.root, ['diff', '--no-renames', '--no-textconv', '--no-ext-diff', snap.mergeBase, '--', file.path])) ?? ''
+  return !diff || diff.includes('\0') ? '' : diff
 }
 
 let selection = 0
