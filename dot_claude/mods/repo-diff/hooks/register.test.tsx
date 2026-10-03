@@ -38,7 +38,8 @@ test('a repo touched by Bash shows up and its file diff opens', async ($, on) =>
   on('tool.call', () => ({ result: { stdout: '', stderr: '', interrupted: false } }))
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
   on('ui.status', () => ({ value: undefined }))
-  on('fs.stat', () => ({ value: { kind: 'file' as const, size: 4, mtimeMs: 0, isLink: false } }))
+  let isLink = false
+  on('fs.stat', () => ({ value: { kind: 'file' as const, size: 4, mtimeMs: 0, isLink } }))
   on('fs.read', () => ({ value: 'new\n' }))
   const contexts: (readonly string[] | undefined)[] = []
   on('prompt.submit', (_$, e) => {
@@ -72,5 +73,9 @@ test('a repo touched by Bash shows up and its file diff opens', async ($, on) =>
   expect(contexts[0]?.[0]).toContain('@@ -0,0 +1,1 @@\n+new')
   expect(contexts[1]).toBeUndefined()
   expect(await ui.find({ text: 'ask' })).toBeDefined()
+
+  isLink = true
+  await ui.press({ key: 'file:/r:untracked:x.ts' })
+  expect(await ui.find({ type: 'Code' })).toBeUndefined()
   await ui.unmount()
 })

@@ -32,7 +32,7 @@ async function diffOf($: EngineInterface, snap: RepoSnapshot, file: FileChange):
   if (file.isUntracked) {
     const path = `${snap.root}/${file.path}`
     const stat = await $.fs.stat(path).catch(() => undefined)
-    if (!stat || stat.size > UNTRACKED_LIMIT) return ''
+    if (!stat || stat.isLink || stat.size > UNTRACKED_LIMIT) return ''
     const text = await $.fs.read(path).catch(() => '')
     const lines = text.replace(/\n$/, '').split('\n')
     return `@@ -0,0 +1,${lines.length} @@\n${lines.map(l => `+${l}`).join('\n')}`
