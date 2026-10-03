@@ -13,7 +13,7 @@
   },
   "env": {
     "CLAUDE_CODE_NO_FLICKER": "1",
-    "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods/command-guard"
+    "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods/command-guard:~/.claude/mods/repo-diff"
   },
   "extraKnownMarketplaces": {
     "heptabase-cli-skills": {

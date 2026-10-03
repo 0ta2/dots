@@ -1,0 +1,1 @@
+{ "name": "repo-diff", "version": "0.1.0", "description": "このセッションで触った複数リポジトリのマージ前の差分をペインに並べる", "types": "./types/index.d.ts" }
