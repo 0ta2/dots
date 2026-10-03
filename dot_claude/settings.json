@@ -103,5 +103,8 @@
     "type": "command"
   },
   "vim": true,
-  "voiceEnabled": true
+  "voice": {
+    "enabled": true,
+    "mode": "tap"
+  }
 }
