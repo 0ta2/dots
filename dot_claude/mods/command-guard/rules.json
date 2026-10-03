@@ -1,0 +1,70 @@
+{
+  "vars": {
+    "G": "git(\\s+-\\S+(\\s+\\S+)?)*\\s+",
+    "MAIN": "\\s[\"']?(refs/heads/)?(main|master)[\"']?(\\s|$)"
+  },
+  "rules": [
+    {
+      "name": "commit on main/master (create a feature branch first)",
+      "pattern": "${G}commit(\\s|$)",
+      "when": {
+        "branch": [
+          "main",
+          "master"
+        ]
+      },
+      "exceptRepos": [
+        "~/ghq/github.com/0ta2/nostow-data"
+      ]
+    },
+    {
+      "name": "force push to main/master",
+      "pattern": [
+        "${G}push[^|&;]*\\s(--force(\\s|-|$)|-f(\\s|$)|--force-with-lease|-[a-zA-Z]*f[a-zA-Z]*(\\s|$)|\\+\\S+)",
+        "${MAIN}"
+      ]
+    },
+    {
+      "name": "push to main/master",
+      "pattern": "${G}push[^|&;]*\\s(\\+?[\"']?(refs/heads/)?(main|master)[\"']?|\\S*:(refs/heads/)?(main|master))(\\s|$)"
+    },
+    {
+      "name": "push from main/master without refspec",
+      "pattern": "${G}push(\\s+-\\S+)*(\\s+[^\\s;&|-][^\\s;&|]*)?(\\s+-\\S+)*\\s*($|[;&|\\n])",
+      "when": {
+        "branch": [
+          "main",
+          "master"
+        ]
+      }
+    },
+    {
+      "name": "delete remote main/master",
+      "pattern": "${G}push[^|&;]*\\s(--delete|-d)\\s+\\S+\\s+(refs/heads/)?(main|master)(\\s|$)"
+    },
+    {
+      "name": "reset --hard",
+      "pattern": "${G}reset[^|&;]*\\s--hard(\\s|$)"
+    },
+    {
+      "name": "branch force delete",
+      "pattern": [
+        "${G}branch[^|&;]*\\s(-[a-zA-Z]*[dD][a-zA-Z]*|--delete)(\\s|$)",
+        "${G}branch[^|&;]*\\s(-[a-zA-Z]*[fD][a-zA-Z]*|--force)(\\s|$)"
+      ]
+    },
+    {
+      "name": "SQL DELETE / TRUNCATE / DROP",
+      "pattern": "\\b(delete\\s+from|truncate(\\s+table)?\\s+\\w|drop\\s+(table|database|schema))\\b",
+      "flags": "i",
+      "scrub": false,
+      "action": "ask"
+    },
+    {
+      "name": "aws の削除系",
+      "pattern": "\\baws\\s+(s3\\s+(rm|rb)\\b|[^|&;]*\\s(delete|remove|terminate|deregister|purge)-[a-z-]+)",
+      "scrub": false,
+      "action": "ask"
+    }
+  ]
+}
