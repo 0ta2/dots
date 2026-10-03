@@ -37,6 +37,14 @@ test('a repo touched by Bash shows up and its file diff opens', async ($, on) =>
   })
   on('tool.call', () => ({ result: { stdout: '', stderr: '', interrupted: false } }))
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
+  on('ui.status', () => ({ value: undefined }))
+  on('fs.stat', () => ({ value: { kind: 'file' as const, size: 4, mtimeMs: 0, isLink: false } }))
+  on('fs.read', () => ({ value: 'new\n' }))
+  const contexts: (readonly string[] | undefined)[] = []
+  on('prompt.submit', (_$, e) => {
+    contexts.push(e.context)
+    return { text: e.text, context: e.context }
+  })
 
   await $.tool.call({ tool: 'Bash', command: 'cd /r && git status' })
   await $.command.run({ command: 'repo-diff', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 160 } })
@@ -49,4 +57,20 @@ test('a repo touched by Bash shows up and its file diff opens', async ($, on) =>
     expect(code?.props.source).toBe('@@ -1 +1 @@\n-old\n+new\n')
     await ui.unmount()
   }
+
+  const ui = await $.ui.mount({ plugin: 'repo-diff', surface: 'terminal', component: 'Pane', requestId: 'repo-diff', props: PANE_PROPS })
+  await ui.press({ key: 'ask' })
+  expect(await ui.find({ text: 'asked ✓' })).toBeDefined()
+  GIT['diff --numstat -z --no-renames abc'] = ''
+  GIT['ls-files -z --others --exclude-standard'] = 'x.ts\0'
+  await $.tool.call({ tool: 'Bash', command: 'git rm --cached x.ts' })
+  await ui.press({ key: 'file:/r:untracked:x.ts' })
+  expect(await ui.find({ text: 'asked ✓' })).toBeDefined()
+  await $.prompt.submit({ text: 'a', wait: false, origin: { kind: 'composer' } })
+  await $.prompt.submit({ text: 'b', wait: false, origin: { kind: 'composer' } })
+  expect(contexts[0]?.[0]).toContain('x.ts in /r (since its merge base with origin/main)')
+  expect(contexts[0]?.[0]).toContain('@@ -0,0 +1,1 @@\n+new')
+  expect(contexts[1]).toBeUndefined()
+  expect(await ui.find({ text: 'ask' })).toBeDefined()
+  await ui.unmount()
 })
