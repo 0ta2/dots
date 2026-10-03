@@ -8,6 +8,7 @@ const GIT: Record<string, string> = {
   'ls-files -z --others --exclude-standard': '',
   'branch --show-current': 'feat/x\n',
   'rev-list --count abc..HEAD': '2\n',
+  'diff --no-index -- /dev/null x.ts': 'diff --git a/x.ts b/x.ts\nnew file mode 100644\n--- /dev/null\n+++ b/x.ts\n@@ -0,0 +1 @@\n+new\n',
   'diff --no-renames abc -- x.ts': 'diff --git a/x.ts b/x.ts\n--- a/x.ts\n+++ b/x.ts\n@@ -1 +1 @@\n-old\n+new\n',
 }
 
@@ -27,7 +28,7 @@ test('a repo touched by Bash shows up and its file diff opens', async ($, on) =>
     const out = GIT[e.argv.slice(8).join(' ')]
     return {
       value: {
-        exitCode: out === undefined ? 1 : 0,
+        exitCode: out === undefined ? 128 : e.argv.includes('--no-index') ? 1 : 0,
         stdout: out ?? '',
         stderr: '',
         isStdoutTruncated: false,
@@ -38,9 +39,7 @@ test('a repo touched by Bash shows up and its file diff opens', async ($, on) =>
   on('tool.call', () => ({ result: { stdout: '', stderr: '', interrupted: false } }))
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
   on('ui.status', () => ({ value: undefined }))
-  let isLink = false
-  on('fs.stat', () => ({ value: { kind: 'file' as const, size: 4, mtimeMs: 0, isLink } }))
-  on('fs.read', () => ({ value: 'new\n' }))
+  on('fs.stat', () => ({ value: { kind: 'file' as const, size: 4, mtimeMs: 0, isLink: false } }))
   const contexts: (readonly string[] | undefined)[] = []
   on('prompt.submit', (_$, e) => {
     contexts.push(e.context)
@@ -73,12 +72,9 @@ test('a repo touched by Bash shows up and its file diff opens', async ($, on) =>
   await $.prompt.submit({ text: 'b', wait: false, origin: { kind: 'composer' } })
   expect(contexts[0]).toBeUndefined()
   expect(contexts[1]?.[0]).toContain('x.ts in /r (since its merge base with origin/main)')
-  expect(contexts[1]?.[0]).toContain('@@ -0,0 +1,1 @@\n+new')
+  expect(contexts[1]?.[0]).toContain('@@ -0,0 +1 @@\n+new\n')
   expect(contexts[2]).toBeUndefined()
   expect(await ui.find({ text: 'ask' })).toBeDefined()
 
-  isLink = true
-  await ui.press({ key: 'file:/r:untracked:x.ts' })
-  expect(await ui.find({ type: 'Code' })).toBeUndefined()
   await ui.unmount()
 })

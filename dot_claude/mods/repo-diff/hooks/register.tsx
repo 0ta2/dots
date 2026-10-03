@@ -15,9 +15,9 @@ const selected = atom({ plugin: 'repo-diff', key: 'selected' } as const, null)
 const isOpen = atom({ plugin: 'repo-diff', key: 'isOpen' } as const, false)
 const asked = atom({ plugin: 'repo-diff', key: 'asked' } as const, null)
 
-const gitOf = ($: EngineInterface): Git => async (dir, args) => {
+const gitOf = ($: EngineInterface, okCodes = [0]): Git => async (dir, args) => {
   const r = await $.process.run(['git', '-C', dir, ...GIT_ARGS, ...args]).catch(() => undefined)
-  return r?.exitCode === 0 && !r.isStdoutTruncated ? r.stdout : undefined
+  return r && okCodes.includes(r.exitCode ?? -1) && !r.isStdoutTruncated ? r.stdout : undefined
 }
 
 async function track($: EngineInterface, dirs: string[]) {
@@ -30,12 +30,9 @@ async function track($: EngineInterface, dirs: string[]) {
 
 async function diffOf($: EngineInterface, snap: RepoSnapshot, file: FileChange): Promise<string> {
   if (file.isUntracked) {
-    const path = `${snap.root}/${file.path}`
-    const stat = await $.fs.stat(path).catch(() => undefined)
-    if (!stat || stat.isLink || stat.size > UNTRACKED_LIMIT) return ''
-    const text = await $.fs.read(path).catch(() => '')
-    const lines = text.replace(/\n$/, '').split('\n')
-    return `@@ -0,0 +1,${lines.length} @@\n${lines.map(l => `+${l}`).join('\n')}`
+    const stat = await $.fs.stat(`${snap.root}/${file.path}`).catch(() => undefined)
+    if (!stat || stat.size > UNTRACKED_LIMIT) return ''
+    return (await gitOf($, [0, 1])(snap.root, ['diff', '--no-index', '--', '/dev/null', file.path])) ?? ''
   }
   return (await gitOf($)(snap.root, ['diff', '--no-renames', snap.mergeBase, '--', file.path])) ?? ''
 }
