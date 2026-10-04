@@ -4,16 +4,16 @@ import type { EngineInterface, Register } from 'claude-code'
 import type { Asked, FileChange, RepoSnapshot } from '../types'
 import { dirsInCommand, fitHunks, snapshot, type Git } from './git.ts'
 
-const PANE = 'repo-diff'
+const PANE = 'unmerged'
 const CODE_LIMIT = 10000
 const UNTRACKED_LIMIT = 1_000_000
 const CONTEXT_LIMIT = 32_000
 const GIT_ARGS = ['--no-optional-locks', '-c', 'core.quotePath=false', '-c', 'diff.relative=false']
-const repos = atom({ plugin: 'repo-diff', key: 'repos' } as const, [])
-const snapshots = atom({ plugin: 'repo-diff', key: 'snapshots' } as const, [])
-const selected = atom({ plugin: 'repo-diff', key: 'selected' } as const, null)
-const isOpen = atom({ plugin: 'repo-diff', key: 'isOpen' } as const, false)
-const asked = atom({ plugin: 'repo-diff', key: 'asked' } as const, null)
+const repos = atom({ plugin: 'unmerged', key: 'repos' } as const, [])
+const snapshots = atom({ plugin: 'unmerged', key: 'snapshots' } as const, [])
+const selected = atom({ plugin: 'unmerged', key: 'selected' } as const, null)
+const isOpen = atom({ plugin: 'unmerged', key: 'isOpen' } as const, false)
+const asked = atom({ plugin: 'unmerged', key: 'asked' } as const, null)
 
 const gitOf = ($: EngineInterface, okCodes = [0]): Git => async (dir, args) => {
   const r = await $.process.run(['git', '-C', dir, ...GIT_ARGS, ...args]).catch(() => undefined)
@@ -95,7 +95,7 @@ async function askText($: EngineInterface, at: Asked, room: number): Promise<{ n
   const snap = await snapshot(gitOf($), at.root)
   const file = snap?.files.findLast(f => f.path === at.path)
   if (!snap || !file) return { name }
-  const head = `The user attached the diff of ${at.path} in ${at.root} (since its merge base with ${snap.base}) from the repo-diff pane to this prompt:\n`
+  const head = `The user attached the diff of ${at.path} in ${at.root} (since its merge base with ${snap.base}) from the unmerged pane to this prompt:\n`
   const diff = await diffOf($, snap, file)
   const whole = fitHunks(diff, room - head.length)
   const fit = whole?.isCut ? fitHunks(diff, room - head.length - CUT_NOTE.length) : whole
@@ -107,18 +107,18 @@ const basename = (p: string) => p.slice(p.lastIndexOf('/') + 1)
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({ name: 'repo-diff', description: 'このセッションで触ったリポジトリのマージ前の差分を表示する' })
+    await $.command.register({ name: 'unmerged', description: 'このセッションで触ったリポジトリのマージ前の差分を表示する' })
     await track($, [await $.session.cwd()])
     if (await read($, isOpen)) startPolling($)
     return next(e)
   })
 
-  on('command.run', { command: 'repo-diff' }, async $ => {
+  on('command.run', { command: 'unmerged' }, async $ => {
     await refresh($)
     await update($, isOpen, () => true)
     startPolling($)
-    await $.ui.open({ id: PANE, title: 'Repo diff' })
-    return { text: 'Repo diff pane opened.' }
+    await $.ui.open({ id: PANE, title: 'Unmerged' })
+    return { text: 'Unmerged pane opened.' }
   })
 
   on('ui.close', { id: PANE }, async ($, e, next) => {
