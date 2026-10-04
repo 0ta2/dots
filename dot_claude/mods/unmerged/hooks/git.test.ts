@@ -3,7 +3,7 @@ import { dirsInCommand, fitHunks, parseNumstat, snapshot, type Git } from './git
 
 const fakeGit = (answers: Record<string, string | undefined>): Git => async (_dir, args) => answers[args.join(' ')]
 
-describe('repo-diff git helpers', () => {
+describe('unmerged git helpers', () => {
   test('resolves relative -C and --cwd against every directory the command may be in', () => {
     expect(dirsInCommand('cd ~/a && git -C "../b c" status; (cd /x) | cat', '/w', '/h')).toEqual(['/h/a', '/x', '/w/../b c', '/h/a/../b c'])
     expect(dirsInCommand('git -C sub status && cd /p && git -C ../q add f', '/w', '/h')).toEqual(['/p', '/w/sub', '/w/../q', '/p/../q'])

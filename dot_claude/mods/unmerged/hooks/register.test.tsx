@@ -13,7 +13,7 @@ const GIT: Record<string, string> = {
 }
 
 const PANE_PROPS = {
-  title: 'Repo diff',
+  title: 'Unmerged',
   isFocused: false,
   bodyColumns: 60,
   placement: 'dock' as const,
@@ -47,10 +47,10 @@ test('a repo touched by Bash shows up and its file diff opens', async ($, on) =>
   })
 
   await $.tool.call({ tool: 'Bash', command: 'cd /r && git status' })
-  await $.command.run({ command: 'repo-diff', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 160 } })
+  await $.command.run({ command: 'unmerged', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 160 } })
 
   for (const surface of ['terminal', 'desktop'] as const) {
-    const ui = await $.ui.mount({ plugin: 'repo-diff', surface, component: 'Pane', requestId: 'repo-diff', props: PANE_PROPS })
+    const ui = await $.ui.mount({ plugin: 'unmerged', surface, component: 'Pane', requestId: 'unmerged', props: PANE_PROPS })
     expect(await ui.find({ text: /feat\/x · 2 commits ahead of origin\/main/ })).toBeDefined()
     await ui.press({ key: 'file:/r:tracked:x.ts' })
     const code = await ui.find({ type: 'Code' })
@@ -58,7 +58,7 @@ test('a repo touched by Bash shows up and its file diff opens', async ($, on) =>
     await ui.unmount()
   }
 
-  const ui = await $.ui.mount({ plugin: 'repo-diff', surface: 'terminal', component: 'Pane', requestId: 'repo-diff', props: PANE_PROPS })
+  const ui = await $.ui.mount({ plugin: 'unmerged', surface: 'terminal', component: 'Pane', requestId: 'unmerged', props: PANE_PROPS })
   await ui.press({ key: 'ask' })
   expect(await ui.find({ text: 'asked ✓' })).toBeDefined()
   GIT['diff --numstat -z --no-renames abc'] = '0\t1\tx.ts\0'

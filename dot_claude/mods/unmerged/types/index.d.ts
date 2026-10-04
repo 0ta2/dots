@@ -8,6 +8,6 @@ export type Selection = { root: string; path: string; isUntracked: boolean; diff
 
 declare module 'claude-code' {
   interface PluginState {
-    'repo-diff': { repos: string[]; snapshots: RepoSnapshot[]; selected: Selection | null; isOpen: boolean; asked: Asked | null }
+    'unmerged': { repos: string[]; snapshots: RepoSnapshot[]; selected: Selection | null; isOpen: boolean; asked: Asked | null }
   }
 }
