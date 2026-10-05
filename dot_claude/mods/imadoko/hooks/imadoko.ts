@@ -624,7 +624,7 @@ export const rebuild = (rows: readonly SessionMessage[]): Imadoko => {
       if (use.tool === 'AskUserQuestion') {
         return answerQuestions(askQuestions(current, questionsOf(use.input)), answersOf(use.result), freeTextOf(use.result))
       }
-      const line = activityOf(use.tool, use.input)
+      const line = use.isError === true ? undefined : activityOf(use.tool, use.input)
 
       return line === undefined ? current : recordActivity(current, line)
     }, imadoko)

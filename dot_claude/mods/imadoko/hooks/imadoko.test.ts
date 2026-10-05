@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { EMPTY, activityOf, completeTurn, fallbackSummary, localeFor, parseSections, startTurn, statusFilePath, storedImadokoOf, summaryRequest, underHistory } from './imadoko'
+import { EMPTY, activityOf, completeTurn, fallbackSummary, localeFor, parseSections, rebuild, startTurn, statusFilePath, storedImadokoOf, summaryRequest, underHistory } from './imadoko'
 
 describe('fallbackSummary は最終回答の最初の本文行を現状の代わりにする', () => {
   const cases: [string, string, string | undefined][] = [
@@ -151,4 +151,22 @@ describe('statusFilePath は herdr のワークスペースとペインが分か
       expect(statusFilePath(home, workspace, pane)).toBe(expected)
     })
   }
+})
+
+describe('rebuild は失敗した操作を作業記録に入れない', () => {
+  test('isError の付いた呼び出しは数えない', () => {
+    const rebuilt = rebuild([
+      { role: 'user', text: 'push して', toolUses: [] },
+      {
+        role: 'assistant',
+        text: '',
+        toolUses: [
+          { tool_use_id: 'a', tool: 'Bash', input: { command: 'git push --force', description: 'Force push' }, text: 'denied', isError: true },
+          { tool_use_id: 'b', tool: 'Bash', input: { command: 'git push', description: 'Push the commits' }, text: 'ok' },
+        ],
+      },
+      { role: 'assistant', text: '終わりました', toolUses: [] },
+    ])
+    expect(rebuilt.turns[0]?.activity).toEqual(['Bash: Push the commits'])
+  })
 })
