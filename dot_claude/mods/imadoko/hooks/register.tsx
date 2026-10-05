@@ -130,7 +130,10 @@ const summarize = async ($: EngineInterface, locale: Locale) => {
 
 // One summary at a time: each starts from the one before it, so a turn that
 // ends while Haiku still answers for the last is not summarized without it.
+// A summary not yet started reads the conversation when it starts, so one
+// waiting covers every turn that ends meanwhile.
 let summaries: Promise<void> = Promise.resolve()
+let isQueued = false
 
 /**
  * Starts the summary on a timer: it runs outside the dispatch that asked, so
@@ -139,8 +142,14 @@ let summaries: Promise<void> = Promise.resolve()
  */
 const summarizeLater = ($: EngineInterface, locale: Locale) => {
   $.clock.after(0, () => {
+    if (isQueued) return
+    isQueued = true
     summaries = summaries
-      .then(() => summarize($, locale))
+      .then(() => {
+        isQueued = false
+
+        return summarize($, locale)
+      })
       .catch((error: unknown) => $.ui.log(`imadoko: summary failed: ${String(error)}`, { to: 'debug' }))
   })
 }
@@ -148,7 +157,9 @@ const summarizeLater = ($: EngineInterface, locale: Locale) => {
 /**
  * Opens the conversation the session now holds: reads it back, and shows the
  * imadoko summary the store kept for it when nothing has happened since; otherwise
- * analyzes it now, when there is anything to analyze.
+ * analyzes it now, when there is anything to analyze. A turn begun after a
+ * /clear or /resume, before the new session was known, stays after the
+ * history the session already held.
  */
 const openSession = async ($: EngineInterface, locale: Locale) => {
   const sessionId = await $.session.id()
@@ -156,23 +167,44 @@ const openSession = async ($: EngineInterface, locale: Locale) => {
   const stored = storedImadokoOf(await $.store.get(storeKey(sessionId)))
   const isUpToDate = stored !== undefined && stored.turnKey === turnKeyOf(rebuilt)
 
-  await update($, imadoko, current => ({
-    ...rebuilt,
-    sessionId,
-    epoch: current.epoch,
-    // The calls counted so far go on, whether or not the imadoko summary is up to date.
-    ...(stored === undefined ? {} : { usage: stored.usage }),
-    ...(isUpToDate ? { sections: stored.sections, sectionsTurn: rebuilt.turns.at(-1)?.turn ?? 0 } : {}),
-  }))
-  if (!isUpToDate && (rebuilt.turns.length > 0 || rebuilt.background !== null)) summarizeLater($, locale)
+  let isJoined = false
+  let shouldSummarize = false
+  await update($, imadoko, current => {
+    if (current.sessionId === null && current.turns.length > 0) {
+      const known = { ...current, sessionId }
+      const joined = underHistory(known, rebuilt, stored)
+      const usage = stored?.usage ?? EMPTY.usage
+      isJoined = true
+      shouldSummarize = joined !== known && !joined.isWorking
+
+      return {
+        ...joined,
+        usage: {
+          calls: joined.usage.calls + usage.calls,
+          inputTokens: joined.usage.inputTokens + usage.inputTokens,
+          outputTokens: joined.usage.outputTokens + usage.outputTokens,
+        },
+      }
+    }
+
+    return {
+      ...rebuilt,
+      sessionId,
+      epoch: current.epoch,
+      // The calls counted so far go on, whether or not the imadoko summary is up to date.
+      ...(stored === undefined ? {} : { usage: stored.usage }),
+      ...(isUpToDate ? { sections: stored.sections, sectionsTurn: rebuilt.turns.at(-1)?.turn ?? 0 } : {}),
+    }
+  })
+  if (isJoined ? shouldSummarize : !isUpToDate && (rebuilt.turns.length > 0 || rebuilt.background !== null)) {
+    summarizeLater($, locale)
+  }
 }
 
 /**
  * After a /clear or an in-process /resume no session.start comes, and the
  * session that follows is not there yet when the old one ends: watch for the
- * id to change, then open that session. When a turn has already begun in it,
- * keep that turn after the history the session already held, and learn the
- * id, so its imadoko summary is saved under it.
+ * id to change, then open that session.
  */
 const followNextSession = ($: EngineInterface, endedId: string, locale: Locale) => {
   let tries = 0
@@ -187,36 +219,7 @@ const followNextSession = ($: EngineInterface, endedId: string, locale: Locale) 
           return
         }
         timer.cancel()
-        const current = await read($, imadoko)
-        if (current.sessionId !== null) return
-        if (current.turns.length === 0) {
-          await openSession($, locale)
-
-          return
-        }
-        const rebuilt = rebuild(await $.session.messages())
-        const stored = storedImadokoOf(await $.store.get(storeKey(sessionId)))
-        let joined: Imadoko | undefined
-        await update($, imadoko, latest => {
-          if (latest.sessionId !== null) return latest
-
-          const usage = stored?.usage ?? EMPTY.usage
-          const known = { ...latest, sessionId }
-          joined = underHistory(known, rebuilt, stored)
-          if (joined === known) joined = undefined
-
-          const next = joined ?? known
-
-          return {
-            ...next,
-            usage: {
-              calls: next.usage.calls + usage.calls,
-              inputTokens: next.usage.inputTokens + usage.inputTokens,
-              outputTokens: next.usage.outputTokens + usage.outputTokens,
-            },
-          }
-        })
-        if (joined !== undefined && !joined.isWorking) summarizeLater($, locale)
+        if ((await read($, imadoko)).sessionId === null) await openSession($, locale)
       })
       .catch((error: unknown) => $.ui.log(`imadoko: following the session failed: ${String(error)}`, { to: 'debug' }))
   })

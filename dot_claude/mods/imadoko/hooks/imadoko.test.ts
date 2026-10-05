@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { activityOf, fallbackSummary, localeFor, parseSections, storedImadokoOf } from './imadoko'
+import { EMPTY, activityOf, fallbackSummary, localeFor, parseSections, startTurn, storedImadokoOf } from './imadoko'
 
 describe('fallbackSummary は最終回答の最初の本文行を現状の代わりにする', () => {
   const cases: [string, string, string | undefined][] = [
@@ -85,6 +85,20 @@ describe('storedImadokoOf は保存した概要の使用量の累計を読み、
     test(name, () => {
       const stored = { sections, turnKey: 'v1:x', savedAt: 1, ...(usage === undefined ? {} : { usage }) }
       expect(storedImadokoOf(stored)).toEqual({ sections, turnKey: 'v1:x', savedAt: 1, usage: expected })
+    })
+  }
+})
+
+describe('startTurn はエンジンが書き込んだタグだけを依頼でないとみなす', () => {
+  const cases: [string, string, string | null][] = [
+    ['タグで始まる依頼は依頼として読む', '<task>implement this</task>', '<task>implement this</task>'],
+    ['system-reminder は依頼でない', '<system-reminder>注入</system-reminder>', null],
+    ['task-notification は依頼でない', '<task-notification>done</task-notification>', null],
+    ['local-command-stdout は依頼でない', '<local-command-stdout>ok</local-command-stdout>', null],
+  ]
+  for (const [name, text, ask] of cases) {
+    test(name, () => {
+      expect(startTurn(EMPTY, text).turns[0]?.ask).toBe(ask)
     })
   }
 })

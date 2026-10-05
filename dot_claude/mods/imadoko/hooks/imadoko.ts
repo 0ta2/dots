@@ -130,6 +130,11 @@ const PASTED = /<\/?pasted_content\b[^>]*>/g
 // How a compaction's summary of the turns before it opens.
 const COMPACTED = 'This session is being continued from a previous conversation'
 
+// The tags the engine wraps text in when it writes into a user turn; a
+// prompt the person typed may open with a tag of its own.
+const INJECTED_TAG =
+  /^<(system-reminder|task-notification|local-command-[a-z]+|bash-[a-z]+|command-[a-z]+|user-prompt-submit-hook|cross-session-message|teammate-message)\b/
+
 // Text the engine writes into a user turn that the person did not type.
 const INJECTED = [
   'Another Claude session sent a message:',
@@ -142,14 +147,14 @@ const INJECTED = [
  * The request a turn's text carries, or undefined when it carries none. A
  * prompt command arrives as its markup and reads as `/name args`; pasted text
  * keeps its content without the tags; a continuation starts with no text; and
- * what the engine injects opens with a tag or one of its fixed phrases.
+ * what the engine injects opens with one of its tags or fixed phrases.
  */
 const requestOf = (text: string): string | undefined => {
   const command = PROMPT_COMMAND.exec(text)
   if (command) return [command[1], command[2]?.trim()].filter(Boolean).join(' ')
 
   const trimmed = text.replace(PASTED, '').trim()
-  const isInjected = trimmed.startsWith('<') || INJECTED.some(phrase => trimmed.startsWith(phrase))
+  const isInjected = INJECTED_TAG.test(trimmed) || INJECTED.some(phrase => trimmed.startsWith(phrase))
 
   return trimmed === '' || isInjected ? undefined : trimmed
 }

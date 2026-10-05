@@ -92,10 +92,15 @@ const standInForEngine = (
   session: { id: string } = { id: 'sess-1' },
   storeEntries: Readonly<Record<string, unknown>> = {},
   isCommandRefused = false,
+  beforeStoreGet: (key: string) => Promise<void> = async () => {},
 ) => {
   // The plugin's own store, kept in memory so a test can read what was saved.
   const store = new Map<string, unknown>(Object.entries(storeEntries))
-  on('store.get', (_$, e) => ({ value: store.get(e.key) }))
+  on('store.get', async (_$, e) => {
+    await beforeStoreGet(e.key)
+
+    return { value: store.get(e.key) }
+  })
   on('store.set', (_$, e) => {
     store.set(e.key, JSON.parse(JSON.stringify(e.value)))
 
@@ -1451,9 +1456,39 @@ test('Haiku が答える前に次のターンが終わったら、前の概要�
   await clock.settle()
 
   expect(whileWaiting).toBe(1)
+  expect(requests).toHaveLength(2)
   expect(JSON.parse(blockOf(requests[1]?.prompt, 'previous_imadoko') ?? '').purpose).toBe('一つ目の後の目的')
   expect(blockOf(requests[1]?.prompt, 'turns_since_previous_imadoko')).toBe('\n- T2 二つ目 → 二つ目の回答\n')
   expect(blockOf(requests[1]?.prompt, 'latest_request')).toBe('三つ目')
+})
+
+test('/resume の後、新しいセッションを読み込んでいる間に始まった依頼も、再開した履歴の後ろに残す', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  const transcript: SessionMessage[] = []
+  const session = { id: 'sess-1' }
+  let isStarted = false
+  standInForEngine(on, transcript, {}, [], session, {}, false, async key => {
+    if (key !== 'imadoko:sess-2' || isStarted) return
+    isStarted = true
+    await $.turn.start({ text: '読み込み中の依頼', turnId: 't2' })
+  })
+  const requests = recordModelCalls(on)
+
+  await startInteractive($)
+  await runTurn($, clock, '前のセッションの依頼', '前のセッションの回答', 't1')
+  await $.session.end({ reason: 'resume', sessionId: 'sess-1', resume: { id: 'sess-1' } })
+  session.id = 'sess-2'
+  transcript.push(...RESUMED)
+  await clock.advance(1_000)
+  await completeTurn($, '読み込み中の回答', 't2')
+  await clock.settle()
+
+  const prompt = requests.at(-1)?.prompt
+  expect([isStarted, blockOf(prompt, 'earlier_requests'), blockOf(prompt, 'latest_request')]).toEqual([
+    true,
+    '\n- T1 最初の依頼\n- T2 次の依頼\n',
+    '読み込み中の依頼',
+  ])
 })
 
 test('Pane の閉じるボタンは Pane を閉じる (ctrl+x b の 2 回目で閉じるための受け口)', async ($, on) => {
