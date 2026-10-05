@@ -1,4 +1,4 @@
-export type FileChange = { path: string; added: number | null; removed: number | null; isUntracked: boolean }
+export type FileChange = { path: string; status: string; added: number | null; removed: number | null; isUntracked: boolean }
 
 export type RepoSnapshot = { root: string; branch: string; base: string; ahead: number; mergeBase: string; files: FileChange[] }
 
