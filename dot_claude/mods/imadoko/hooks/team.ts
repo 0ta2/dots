@@ -73,9 +73,12 @@ export function parseTabs(stdout: string): Tab[] {
   })
 }
 
+/** Other words herdr and its older versions use for the same states. */
+const ALIASES: Readonly<Record<string, MemberState>> = { busy: 'working', running: 'working', waiting: 'blocked', finished: 'done' }
+
 export function stateOf(raw: unknown): MemberState {
   const s = str(raw)?.toLowerCase()
-  return STATES.find(x => x === s) ?? 'unknown'
+  return STATES.find(x => x === s) ?? (s !== undefined && Object.hasOwn(ALIASES, s) ? ALIASES[s] : undefined) ?? 'unknown'
 }
 
 export function parseAgents(stdout: string): Agent[] {
@@ -84,7 +87,7 @@ export function parseAgents(stdout: string): Agent[] {
     const tabId = str(a.tab_id)
     if (!paneId || !tabId) return []
     const kind = str(a.agent)?.toLowerCase()
-    return [{ paneId, tabId, status: stateOf(a.agent_status ?? a.status), ...(kind && { kind }) }]
+    return [{ paneId, tabId, status: stateOf(a.agent_status ?? a.status ?? a.state), ...(kind && { kind }) }]
   })
 }
 
@@ -231,9 +234,9 @@ export function summary(list: TeamMember[], words: TeamWords): string | undefine
 }
 
 export function needsNote(was: MemberState | undefined, m: TeamMember, lastAt: number | undefined, now: number): boolean {
-  if (!m.paneId || m.status === 'absent' || m.status === 'unknown') return false
+  if (!m.paneId || m.status === 'absent') return false
   if (was !== m.status) return true
-  return m.status === 'working' && (lastAt === undefined || now - lastAt >= NOTE_EVERY_MS)
+  return (m.status === 'working' || m.status === 'unknown') && (lastAt === undefined || now - lastAt >= NOTE_EVERY_MS)
 }
 
 export function notePrompt(m: TeamMember, screen: string, language: string): { system: string; prompt: string } {

@@ -287,3 +287,12 @@ test('a member whose agent left drops the line a read in flight would have given
   expect(await ui.find({ text: /ログイン方式について質問中/ })).toBeUndefined()
   await ui.unmount()
 })
+
+test('a member whose state herdr cannot tell is still read off its screen', async ($, on) => {
+  const seen = standIn(on, 'main', ENV, { agents: AGENTS.replace('"blocked"', '"unknown"') })
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await seen.clock.settle()
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /不明 · ログイン方式について質問中/ })).toBeDefined()
+  await ui.unmount()
+})

@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
-import { cells, pixels, SIZE } from './sprite'
-import { assignMarks, changes, cleanNote, EMPTY_BOOK, freshStatus, isLead, marksOf, members, needsNote, notePrompt, parseAgents, parseTabs, roleOf, savedBooksOf, summary, teamWordsFor, withBook } from './team'
+import { cells, HEIGHT, pixels, WIDTH } from './sprite'
+import { assignMarks, changes, cleanNote, EMPTY_BOOK, freshStatus, isLead, marksOf, members, needsNote, notePrompt, parseAgents, parseTabs, roleOf, savedBooksOf, stateOf, summary, teamWordsFor, withBook } from './team'
 
 const TABS = JSON.stringify({
   result: {
@@ -98,9 +98,9 @@ test('every sprite is a full grid, animates, and differs by agent', () => {
     for (const role of ['impl', 'review', 'member'] as const) {
       for (const status of ['working', 'blocked', 'idle', 'done', 'unknown', 'absent'] as const) {
         const rows = pixels(role, status, 0, kind)
-        expect(rows.length).toBe(SIZE)
-        expect(rows.every(r => r.length === SIZE)).toBe(true)
-        expect(cells(role, status, 0, kind).length).toBe(Math.ceil((SIZE * (SIZE / 2) * 12) / 3) * 4)
+        expect(rows.length).toBe(HEIGHT)
+        expect(rows.every(r => r.length === WIDTH)).toBe(true)
+        expect(cells(role, status, 0, kind).length).toBe(Math.ceil((WIDTH * (HEIGHT / 2) * 12) / 3) * 4)
       }
     }
   }
@@ -121,4 +121,10 @@ test('saved mark books drop what does not parse and keep the most recently chang
   expect(Object.keys(saved).length).toBe(20)
   expect(Object.keys(saved)).not.toContain('w4')
   expect(Object.keys(saved)).toContain('w24')
+})
+
+test('the state is read from other field names and words herdr uses', () => {
+  expect(['working', 'Busy', 'waiting', 'finished', 'idle', 'constructor', undefined].map(stateOf)).toEqual(['working', 'working', 'blocked', 'done', 'idle', 'unknown', 'unknown'])
+  const one = (agent: Record<string, string>) => parseAgents(JSON.stringify({ result: { agents: [{ pane_id: 'p', tab_id: 't', ...agent }] } }))[0]?.status
+  expect([one({ agent_status: 'idle' }), one({ status: 'busy' }), one({ state: 'waiting' })]).toEqual(['idle', 'working', 'blocked'])
 })
