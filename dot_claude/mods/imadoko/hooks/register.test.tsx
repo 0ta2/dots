@@ -1545,6 +1545,93 @@ test('Haiku が答える前に次のターンが終わったら、前の概要�
   expect(blockOf(requests[1]?.prompt, 'latest_request')).toBe('三つ目')
 })
 
+test('新しいセッションの読み込みが一度失敗しても、次のポーリングで読み直す', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  const transcript: SessionMessage[] = []
+  const session = { id: 'sess-1' }
+  let failures = 0
+  standInForEngine(on, transcript, {}, [], session, {}, false, async key => {
+    if (key !== 'imadoko:sess-2' || failures > 0) return
+    failures += 1
+    throw new Error('store unavailable')
+  })
+  const requests = recordModelCalls(on)
+
+  await startInteractive($)
+  await runTurn($, clock, '前のセッションの依頼', '前のセッションの回答', 't1')
+  await $.session.end({ reason: 'resume', sessionId: 'sess-1', resume: { id: 'sess-1' } })
+  session.id = 'sess-2'
+  transcript.push(...RESUMED)
+  await clock.advance(2_000)
+  await clock.settle()
+
+  expect([failures, blockOf(requests.at(-1)?.prompt, 'latest_request')]).toEqual([1, '次の依頼'])
+})
+
+test('compact の要約だけの履歴をつないだら、その前に始まった概要の呼び出しは捨てて作り直す', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  const transcript: SessionMessage[] = []
+  const session = { id: 'sess-1' }
+  const compacted = 'This session is being continued from a previous conversation that ran out of context.\nSummary: 前の要約'
+  standInForEngine(on, transcript, {}, [], session)
+  let release = (_reply: { value: ModelCompleteResult }) => {}
+  const requests = recordModelCalls(on, call =>
+    call === 2
+      ? (new Promise(resolve => {
+          release = resolve
+        }) as never)
+      : imadokoReply({ ...IMADOKO, purpose: `呼び出し ${call}` }),
+  )
+
+  await startInteractive($)
+  await runTurn($, clock, '前のセッションの依頼', '前のセッションの回答', 't1')
+  await $.session.end({ reason: 'resume', sessionId: 'sess-1', resume: { id: 'sess-1' } })
+  await $.turn.start({ text: '再開直後の依頼', turnId: 't2' })
+  await completeTurn($, '再開直後の回答', 't2')
+  await clock.advance(0)
+  session.id = 'sess-2'
+  transcript.push({ role: 'user', text: compacted, toolUses: [] })
+  await clock.advance(1_000)
+  release(imadokoReply({ ...IMADOKO, purpose: '要約を知らない目的' }))
+  await clock.settle()
+
+  expect(requests).toHaveLength(3)
+  expect(blockOf(requests[2]?.prompt, 'earlier_context')).toBe(compacted)
+  expect((await bandRows($))[0]).toBe('Purpose: 呼び出し 3')
+})
+
+test('Haiku が答える前に終わった間のターンは、質問の答えと操作も渡す', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  standInForEngine(on)
+  let release = (_reply: { value: ModelCompleteResult }) => {}
+  const requests = recordModelCalls(on, call =>
+    call === 1
+      ? (new Promise(resolve => {
+          release = resolve
+        }) as never)
+      : imadokoReply(),
+  )
+  on('tool.call', { tool: 'AskUserQuestion' }, () => ANSWERED)
+  on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: '', stderr: '', interrupted: false } }))
+
+  await startInteractive($)
+  await $.turn.start({ text: '一つ目', turnId: 't1' })
+  await completeTurn($, '一つ目の回答', 't1')
+  await clock.advance(0)
+  await $.turn.start({ text: '二つ目', turnId: 't2' })
+  await $.tool.call({ tool: 'AskUserQuestion', questions: QUESTIONS })
+  await $.tool.call({ tool: 'Bash', command: 'git push', description: 'Push the commits' })
+  await completeTurn($, '二つ目の回答', 't2')
+  await $.turn.start({ text: '三つ目', turnId: 't3' })
+  await completeTurn($, '三つ目の回答', 't3')
+  release(imadokoReply())
+  await clock.settle()
+
+  expect(blockOf(requests[1]?.prompt, 'turns_since_previous_imadoko')).toBe(
+    '\n- T2 二つ目 → 二つ目の回答\n  - Q1: 一覧で見たいですか? → B: 切り替え先で分かれば良い\n  - Bash: Push the commits\n',
+  )
+})
+
 test('/resume の後、新しいセッションを読み込んでいる間に始まった依頼も、再開した履歴の後ろに残す', async ($, on) => {
   const clock = mock.clock(on, { now: START })
   const transcript: SessionMessage[] = []

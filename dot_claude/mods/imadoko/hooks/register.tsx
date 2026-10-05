@@ -224,20 +224,23 @@ const openSession = async ($: EngineInterface, locale: Locale) => {
  */
 const followNextSession = ($: EngineInterface, endedId: string, locale: Locale) => {
   let tries = 0
+  let isOpening = false
   const timer = $.clock.every(SESSION_POLL_MS, () => {
+    if (isOpening) return
     tries += 1
+    isOpening = true
     $.session
       .id()
       .then(async sessionId => {
-        if (sessionId === endedId) {
-          if (tries >= SESSION_POLL_TRIES) timer.cancel()
-
-          return
-        }
-        timer.cancel()
+        if (sessionId === endedId) return
         if ((await read($, imadoko)).sessionId === null) await openSession($, locale)
+        timer.cancel()
       })
       .catch((error: unknown) => $.ui.log(`imadoko: following the session failed: ${String(error)}`, { to: 'debug' }))
+      .finally(() => {
+        isOpening = false
+        if (tries >= SESSION_POLL_TRIES) timer.cancel()
+      })
   })
 }
 

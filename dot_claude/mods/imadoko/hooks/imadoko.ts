@@ -206,7 +206,9 @@ export const underHistory = (current: Imadoko, rebuilt: Imadoko, stored: StoredI
   const earlier = rebuilt.turns.slice(0, rebuilt.turns.length - overlap)
   const offset = earlier.at(-1)?.turn ?? 0
   if (offset === 0) {
-    return current.background !== null || rebuilt.background === null ? current : { ...current, background: rebuilt.background }
+    return current.background !== null || rebuilt.background === null
+      ? current
+      : { ...current, background: rebuilt.background, epoch: current.epoch + 1 }
   }
 
   const isFresh = stored !== undefined && stored.turnKey === turnKeyOf({ ...rebuilt, turns: earlier })
@@ -329,6 +331,11 @@ const listBlock = (tag: string, lines: readonly string[], none: string): string[
   `</${tag}>`,
 ]
 
+const answeredIn = (imadoko: Imadoko, turn: TurnEntry, words: Words): string[] =>
+  imadoko.questions
+    .filter(one => one.turn === turn.turn)
+    .map(one => `${one.question} → ${one.answer === null || one.answer === '' ? words.noAnswer : one.answer}`)
+
 /**
  * The history the first imadoko summary is written from, when there is no imadoko summary to
  * carry on: what a compaction kept, and the requests before the last turn.
@@ -341,9 +348,12 @@ const historyLines = (imadoko: Imadoko, words: Words): string[] => {
       ? []
       : listBlock(
           'turns_since_previous_imadoko',
-          missed.map(
-            turn =>
+          missed.map(turn =>
+            [
               `T${turn.turn} ${turn.ask === null ? words.continued : clip(headLine(turn.ask), EARLIER_CHARS)} → ${clip(headLine(turn.answer ?? ''), EARLIER_CHARS)}`,
+              ...answeredIn(imadoko, turn, words).map(line => `  - ${line}`),
+              ...turn.activity.map(line => `  - ${line}`),
+            ].join('\n'),
           ),
           words.none,
         )
@@ -374,9 +384,7 @@ export const summaryRequest = (
   members: readonly Member[] = [],
 ): { system: string; prompt: string } => {
   const turn = lastTurn(imadoko)
-  const answered = imadoko.questions
-    .filter(one => turn !== undefined && one.turn === turn.turn)
-    .map(one => `${one.question} → ${one.answer === null || one.answer === '' ? words.noAnswer : one.answer}`)
+  const answered = turn === undefined ? [] : answeredIn(imadoko, turn, words)
   const prompt = [
     `<previous_imadoko>${imadoko.sections === null ? '(none)' : JSON.stringify(imadoko.sections)}</previous_imadoko>`,
     ...historyLines(imadoko, words),
