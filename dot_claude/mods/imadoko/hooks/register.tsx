@@ -23,7 +23,7 @@ import {
   startOver,
   startTurn,
   storedImadokoOf,
-  taskKey,
+  taskKeys,
   taskMeta,
   summaryRequest,
   turnKeyOf,
@@ -50,7 +50,7 @@ import {
 import type { Imadoko, MemberState, Task, TaskState, TeamMember } from '../types'
 
 const imadoko = atom({ plugin: 'imadoko', key: 'imadoko' } as const, EMPTY)
-// The tasks the person opened on the timeline, by taskKey.
+// The tasks the person opened on the timeline, by taskKeys.
 const expanded = atom({ plugin: 'imadoko', key: 'expanded' } as const, [] as string[])
 // The other agents in this herdr space, shown when this session is its main tab's PM.
 const team = atom({ plugin: 'imadoko', key: 'team' } as const, [] as TeamMember[])
@@ -247,20 +247,23 @@ const openSession = async ($: EngineInterface, locale: Locale) => {
  */
 const followNextSession = ($: EngineInterface, endedId: string, locale: Locale) => {
   let tries = 0
+  let isOpening = false
   const timer = $.clock.every(SESSION_POLL_MS, () => {
+    if (isOpening) return
     tries += 1
+    isOpening = true
     $.session
       .id()
       .then(async sessionId => {
-        if (sessionId === endedId) {
-          if (tries >= SESSION_POLL_TRIES) timer.cancel()
-
-          return
-        }
-        timer.cancel()
+        if (sessionId === endedId) return
         if ((await read($, imadoko)).sessionId === null) await openSession($, locale)
+        timer.cancel()
       })
       .catch((error: unknown) => $.ui.log(`imadoko: following the session failed: ${String(error)}`, { to: 'debug' }))
+      .finally(() => {
+        isOpening = false
+        if (tries >= SESSION_POLL_TRIES) timer.cancel()
+      })
   })
 }
 
@@ -503,9 +506,12 @@ export const register: Register = on => {
 
   on('tool.call', async ($, e, next) => {
     const line = isInteractive && e.agentId === undefined ? activityOf(String(e.tool), e) : undefined
-    if (line !== undefined) await update($, imadoko, current => recordActivity(current, line))
+    const ran = await next(e)
+    if (line !== undefined && ran.deny === undefined && ran.isError !== true) {
+      await update($, imadoko, current => recordActivity(current, line))
+    }
 
-    return next(e)
+    return ran
   })
 
   on('command.run', { command: 'imadoko' }, async ($, e) => {
@@ -518,6 +524,7 @@ export const register: Register = on => {
     const current = await read($, imadoko)
     const opened = await read($, expanded)
     const tasks: readonly Task[] = current.sections?.tasks ?? []
+    const keys = taskKeys(tasks)
     const elements = $.ui.resolve(e)
     const { Box, Button, Text } = elements
     const mates = (await read($, lead)) ? await read($, team) : []
@@ -580,7 +587,7 @@ export const register: Register = on => {
           </Text>
           {tasks.length === 0 ? <Text wrap="wrap">{locale.words.none}</Text> : null}
           {tasks.map((task, index) => {
-            const key = taskKey(task)
+            const key = keys[index] ?? ''
             const isOpen = opened.includes(key)
             const after = tasks[index + 1]
             const rail = after === undefined ? ' ' : after.state === 'done' || after.state === 'doing' ? '│' : '┆'

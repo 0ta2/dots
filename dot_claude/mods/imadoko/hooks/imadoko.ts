@@ -192,7 +192,7 @@ export const startTurn = (imadoko: Imadoko, text: string): Imadoko => {
  * at its end, and they keep their place after the history, renumbered. A
  * summary written before then never saw the history: it is dropped, and the
  * stored one stands in when it was written after the history's last turn.
- * Calls still out for the old numbers land below sectionsTurn and are dropped.
+ * The epoch moves on, so calls still out for the old numbers are dropped.
  */
 export const underHistory = (current: Imadoko, rebuilt: Imadoko, stored: StoredImadoko | undefined): Imadoko => {
   // A transcript's copy of a live turn has its request and, so far, no other
@@ -206,7 +206,9 @@ export const underHistory = (current: Imadoko, rebuilt: Imadoko, stored: StoredI
   const earlier = rebuilt.turns.slice(0, rebuilt.turns.length - overlap)
   const offset = earlier.at(-1)?.turn ?? 0
   if (offset === 0) {
-    return current.background !== null || rebuilt.background === null ? current : { ...current, background: rebuilt.background }
+    return current.background !== null || rebuilt.background === null
+      ? current
+      : { ...current, background: rebuilt.background, epoch: current.epoch + 1 }
   }
 
   const isFresh = stored !== undefined && stored.turnKey === turnKeyOf({ ...rebuilt, turns: earlier })
@@ -219,7 +221,8 @@ export const underHistory = (current: Imadoko, rebuilt: Imadoko, stored: StoredI
       ...current.questions.map(one => ({ ...one, turn: one.turn + offset })),
     ],
     sections: isFresh ? stored.sections : null,
-    sectionsTurn: (lastTurn(current)?.turn ?? 0) + offset,
+    sectionsTurn: offset,
+    epoch: current.epoch + 1,
     background: current.background ?? rebuilt.background,
   }
 }
@@ -328,6 +331,11 @@ const listBlock = (tag: string, lines: readonly string[], none: string): string[
   `</${tag}>`,
 ]
 
+const answeredIn = (imadoko: Imadoko, turn: TurnEntry, words: Words): string[] =>
+  imadoko.questions
+    .filter(one => one.turn === turn.turn)
+    .map(one => `${one.question} → ${one.answer === null || one.answer === '' ? words.noAnswer : one.answer}`)
+
 /**
  * The history the first imadoko summary is written from, when there is no imadoko summary to
  * carry on: what a compaction kept, and the requests before the last turn.
@@ -340,9 +348,12 @@ const historyLines = (imadoko: Imadoko, words: Words): string[] => {
       ? []
       : listBlock(
           'turns_since_previous_imadoko',
-          missed.map(
-            turn =>
+          missed.map(turn =>
+            [
               `T${turn.turn} ${turn.ask === null ? words.continued : clip(headLine(turn.ask), EARLIER_CHARS)} → ${clip(headLine(turn.answer ?? ''), EARLIER_CHARS)}`,
+              ...answeredIn(imadoko, turn, words).map(line => `  - ${line}`),
+              ...turn.activity.map(line => `  - ${line}`),
+            ].join('\n'),
           ),
           words.none,
         )
@@ -373,9 +384,7 @@ export const summaryRequest = (
   members: readonly Member[] = [],
 ): { system: string; prompt: string } => {
   const turn = lastTurn(imadoko)
-  const answered = imadoko.questions
-    .filter(one => turn !== undefined && one.turn === turn.turn)
-    .map(one => `${one.question} → ${one.answer === null || one.answer === '' ? words.noAnswer : one.answer}`)
+  const answered = turn === undefined ? [] : answeredIn(imadoko, turn, words)
   const prompt = [
     `<previous_imadoko>${imadoko.sections === null ? '(none)' : JSON.stringify(imadoko.sections)}</previous_imadoko>`,
     ...historyLines(imadoko, words),
@@ -560,8 +569,21 @@ export const paneSections = (imadoko: Imadoko, words: Words): { title: string; r
   ]
 }
 
-/** A task's key on the timeline: what keeps it open across summaries that rewrite its detail. */
-export const taskKey = (task: Task): string => `${task.state === 'done' ? 'done' : 'open'}:${task.title}`
+/**
+ * Each task's key on the timeline: what keeps it open across summaries that
+ * rewrite its detail. Tasks that share a title count up so each opens alone.
+ */
+export const taskKeys = (tasks: readonly Task[]): string[] => {
+  const seen = new Map<string, number>()
+
+  return tasks.map(task => {
+    const key = `${task.state === 'done' ? 'done' : 'open'}:${task.title}`
+    const count = (seen.get(key) ?? 0) + 1
+    seen.set(key, count)
+
+    return count === 1 ? key : `${key}#${count}`
+  })
+}
 
 /** Who has a task and what it waits on, when either is known. */
 export const taskMeta = (task: Task, words: Words): string =>
