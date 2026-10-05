@@ -19,19 +19,30 @@ export function dirsInCommand(cmd: string, cwd: string, home: string): string[] 
   return [...new Set([...bases.slice(1), ...dirs])]
 }
 
-export function parseNumstat(out: string): FileChange[] {
+export function parseNumstat(out: string, statuses = new Map<string, string>()): FileChange[] {
   return out
     .split('\0')
     .filter(Boolean)
     .map(record => {
       const [added, removed, ...rest] = record.split('\t')
+      const path = rest.join('\t')
       return {
-        path: rest.join('\t'),
+        path,
+        status: statuses.get(path) ?? 'M',
         added: added === '-' ? null : Number(added),
         removed: removed === '-' ? null : Number(removed),
         isUntracked: false,
       }
     })
+}
+
+export function parseNameStatus(out: string): Map<string, string> {
+  const fields = out.split('\0')
+  const statuses = new Map<string, string>()
+  for (let i = 0; i + 1 < fields.length; i += 2) {
+    if (fields[i]) statuses.set(fields[i + 1]!, fields[i]![0]!)
+  }
+  return statuses
 }
 
 export function fitHunks(diff: string, limit: number): { source: string; isCut: boolean } | undefined {
@@ -59,11 +70,12 @@ export async function snapshot(git: Git, root: string): Promise<RepoSnapshot | u
   const base = await baseRef(git, root)
   const mergeBase = base && (await git(root, ['merge-base', 'HEAD', base]))?.trim()
   if (!base || !mergeBase) return undefined
-  const tracked = parseNumstat((await git(root, ['diff', '--numstat', '-z', '--no-renames', mergeBase])) ?? '')
+  const statuses = parseNameStatus((await git(root, ['diff', '--name-status', '-z', '--no-renames', mergeBase])) ?? '')
+  const tracked = parseNumstat((await git(root, ['diff', '--numstat', '-z', '--no-renames', mergeBase])) ?? '', statuses)
   const untracked = ((await git(root, ['ls-files', '-z', '--others', '--exclude-standard'])) ?? '')
     .split('\0')
     .filter(Boolean)
-    .map(path => ({ path, added: null, removed: null, isUntracked: true }))
+    .map(path => ({ path, status: '?', added: null, removed: null, isUntracked: true }))
   const files = [...tracked, ...untracked]
   if (files.length === 0) return undefined
   return {

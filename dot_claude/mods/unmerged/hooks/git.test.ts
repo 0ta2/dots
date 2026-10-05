@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'claude-code/testing'
-import { dirsInCommand, fitHunks, parseNumstat, pickLines, snapshot, type Git } from './git.ts'
+import { dirsInCommand, fitHunks, parseNameStatus, parseNumstat, pickLines, snapshot, type Git } from './git.ts'
 
 const fakeGit = (answers: Record<string, string | undefined>): Git => async (_dir, args) => answers[args.join(' ')]
 
@@ -14,10 +14,11 @@ describe('unmerged git helpers', () => {
   })
 
   test('parses NUL-separated numstat with binaries and odd names', () => {
-    expect(parseNumstat('3\t1\ta.ts\0-\t-\timg.png\0' + '1\t0\tta\tb\nc 日本.md\0')).toEqual([
-      { path: 'a.ts', added: 3, removed: 1, isUntracked: false },
-      { path: 'img.png', added: null, removed: null, isUntracked: false },
-      { path: 'ta\tb\nc 日本.md', added: 1, removed: 0, isUntracked: false },
+    const statuses = parseNameStatus('A\0img.png\0D\0ta\tb\nc 日本.md\0')
+    expect(parseNumstat('3\t1\ta.ts\0-\t-\timg.png\0' + '1\t0\tta\tb\nc 日本.md\0', statuses)).toEqual([
+      { path: 'a.ts', status: 'M', added: 3, removed: 1, isUntracked: false },
+      { path: 'img.png', status: 'A', added: null, removed: null, isUntracked: false },
+      { path: 'ta\tb\nc 日本.md', status: 'D', added: 1, removed: 0, isUntracked: false },
     ])
   })
 
@@ -32,6 +33,7 @@ describe('unmerged git helpers', () => {
     const git = fakeGit({
       'rev-parse --abbrev-ref origin/HEAD': 'origin/main\n',
       'merge-base HEAD origin/main': 'abc\n',
+      'diff --name-status -z --no-renames abc': 'A\0x.ts\0',
       'diff --numstat -z --no-renames abc': '2\t0\tx.ts\0',
       'ls-files -z --others --exclude-standard': 'new.md\0',
       'branch --show-current': 'feat/x\n',
@@ -40,8 +42,8 @@ describe('unmerged git helpers', () => {
     expect(await snapshot(git, '/r')).toEqual({
       root: '/r', base: 'origin/main', mergeBase: 'abc', branch: 'feat/x', ahead: 3,
       files: [
-        { path: 'x.ts', added: 2, removed: 0, isUntracked: false },
-        { path: 'new.md', added: null, removed: null, isUntracked: true },
+        { path: 'x.ts', status: 'A', added: 2, removed: 0, isUntracked: false },
+        { path: 'new.md', status: '?', added: null, removed: null, isUntracked: true },
       ],
     })
   })

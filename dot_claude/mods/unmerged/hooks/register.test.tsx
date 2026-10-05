@@ -108,7 +108,7 @@ test('the band shows what is attached and its button takes it off', async ($, on
   const pane = await $.ui.mount({ plugin: 'unmerged', surface: 'terminal', component: 'Pane', requestId: 'unmerged', props: PANE_PROPS })
   await pane.press({ key: 'file:/r:tracked:x.ts' })
   await pane.press({ key: 'ask' })
-  expect((await pane.find({ key: 'file:/r:tracked:x.ts' }))?.props.label).toBe('📎 +1 -1  x.ts')
+  expect((await pane.find({ key: 'file:/r:tracked:x.ts' }))?.props.label).toBe('📎 x.ts')
   expect((await pane.find({ key: 'repo:/r' }))?.props.label).toBe('▾ r (1)')
 
   const band = await $.ui.mount({ plugin: 'unmerged', surface: 'terminal', component: 'AbovePrompt', props: BAND_PROPS })
@@ -169,5 +169,25 @@ test('several repos start folded and open one at a time', async ($, on) => {
   await pane.press({ key: 'repo:/r' })
   expect(await pane.find({ key: 'file:/r:tracked:x.ts' })).toBeUndefined()
   expect((await pane.find({ key: 'repo:/r' }))?.props.label).toBe('▸ r (1) 📎 (表示中)')
+  await pane.unmount()
+})
+
+test('each file row shows its kind and line counts in color', async ($, on) => {
+  fake(on, {
+    ...GIT,
+    'diff --name-status -z --no-renames abc': 'M\0x.ts\0D\0gone.ts\0',
+    'diff --numstat -z --no-renames abc': '1\t1\tx.ts\0' + '0\t45\tgone.ts\0',
+    'ls-files -z --others --exclude-standard': 'notes.md\0',
+  })
+  await $.tool.call({ tool: 'Bash', command: 'cd /r && git status' })
+  await $.command.run({ command: 'unmerged', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 160 } })
+  const pane = await $.ui.mount({ plugin: 'unmerged', surface: 'terminal', component: 'Pane', requestId: 'unmerged', props: PANE_PROPS })
+  expect((await pane.find({ type: 'Text', text: /^M$/ }))?.props.color).toBe('warning')
+  expect((await pane.find({ type: 'Text', text: /^D$/ }))?.props.color).toBe('error')
+  expect((await pane.find({ type: 'Text', text: /^\?$/ }))?.props.dimColor).toBe(true)
+  expect((await pane.find({ type: 'Text', text: /^\+1$/ }))?.props.color).toBe('success')
+  expect((await pane.find({ type: 'Text', text: /^-45$/ }))?.props.color).toBe('error')
+  expect((await pane.find({ key: 'file:/r:tracked:gone.ts' }))?.props.label).toBe('gone.ts')
+  expect((await pane.find({ key: 'file:/r:untracked:notes.md' }))?.props.label).toBe('notes.md')
   await pane.unmount()
 })
