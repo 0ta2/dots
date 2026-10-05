@@ -68,9 +68,9 @@ export type Imadoko = {
 export type StoredImadoko = {
   sections: Sections
   /**
-   * A fingerprint of the last turn's request and answer the imadoko summary was written
-   * after; a different one means the session moved on. It leaves out the turn
-   * number, which a compaction starts over.
+   * A fingerprint of the last turn's request, answer and transcript position
+   * the imadoko summary was written after; a different one means the session
+   * moved on.
    */
   turnKey: string
   savedAt: number

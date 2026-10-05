@@ -62,10 +62,9 @@ const CLOSE_MARK_CELLS = 3
 const PANE_SHARE = 0.66
 const PANE_MIN_COLUMNS = 40
 
-// Both buttons answer this action, so its chord (ctrl+x b in the README's
-// key bindings) opens the pane from the band and closes it from the pane: a
-// pane's button wins over the band's. The engine handles the action itself
-// only inside the diff panel.
+// Both buttons answer this action: it opens the pane from the band and closes
+// it from the pane. A pane's button wins over the band's. The engine handles
+// the action itself only inside the diff panel.
 const TOGGLE_ACTION = 'app:cycleDiffBase'
 
 // How many sessions' imadoko summaries the store keeps, the newest; one is a few KB.
@@ -283,6 +282,8 @@ export const register: Register = on => {
   // Set by session.start, which fires again on every reload of this module.
   let isInteractive = false
   let locale = localeFor(undefined)
+  // ponytail: image-only prompts are recognized live only; preserve attachment metadata in SessionMessage to rebuild them after reload.
+  let imagePromptQueued = false
   const pane = (terminalColumns: number) =>
     ({
       id: PANE_ID,
@@ -329,8 +330,16 @@ export const register: Register = on => {
     return next(e)
   })
 
+  on('prompt.submit', ($, e, next) => {
+    imagePromptQueued ||= e.text.trim() === '' && e.attachments?.some(attachment => attachment.type === 'image') === true
+
+    return next(e)
+  })
+
   on('turn.start', async ($, e, next) => {
-    if (isInteractive) await update($, imadoko, current => startTurn(current, e.text))
+    const hasImage = imagePromptQueued && e.text.trim() === ''
+    imagePromptQueued &&= !hasImage
+    if (isInteractive) await update($, imadoko, current => startTurn(current, e.text, hasImage))
 
     return next(e)
   })

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { EMPTY, activityOf, completeTurn, fallbackSummary, localeFor, parseSections, rebuild, startTurn, statusFilePath, storedImadokoOf, summaryRequest, underHistory } from './imadoko'
+import { EMPTY, activityOf, completeTurn, fallbackSummary, localeFor, parseSections, rebuild, startTurn, statusFilePath, storedImadokoOf, summaryRequest, turnKeyOf, underHistory } from './imadoko'
 
 describe('fallbackSummary は最終回答の最初の本文行を現状の代わりにする', () => {
   const cases: [string, string, string | undefined][] = [
@@ -121,9 +121,41 @@ describe('underHistory は再開したセッションの履歴の後ろに、読
     expect(underHistory(live, history, undefined).turns.map(turn => turn.ask)).toEqual(['前の依頼', '同じ依頼'])
   })
 
+  test('同じ依頼と回答が完了していても、履歴のターンは重ねない', () => {
+    const current = completeTurn(startTurn(EMPTY, '同じ依頼'), '同じ回答')
+    const history = completeTurn(startTurn(EMPTY, '同じ依頼'), '同じ回答')
+
+    expect(underHistory(current, history, undefined).turns.map(turn => [turn.turn, turn.ask, turn.answer])).toEqual([
+      [1, '同じ依頼', '同じ回答'],
+      [2, '同じ依頼', '同じ回答'],
+    ])
+  })
+
   test('compact の要約だけの履歴でも、その要約を引き継ぐ', () => {
     expect(underHistory(live, { ...EMPTY, background: '要約' }, undefined).background).toBe('要約')
   })
+
+  test('50 件を超えた履歴の保存キーも、履歴をつないだ時に引き継ぐ', () => {
+    const history = Array.from({ length: 51 }, () => undefined).reduce(
+      current => completeTurn(startTurn(current, '同じ依頼'), '同じ回答'),
+      EMPTY,
+    )
+    const sections = { purpose: '保存した目的', status: '保存した現状', tasks: [], decisions: [], pending: [] }
+    const stored = { sections, turnKey: turnKeyOf(history), savedAt: 1, usage: { calls: 0, inputTokens: 0, outputTokens: 0 } }
+
+    expect(underHistory(startTurn(EMPTY, '新しい依頼'), history, stored).sections).toEqual(sections)
+  })
+})
+
+test('turnKeyOf は 50 件を超えても同じ依頼と回答をターン番号で区別する', () => {
+  const first = completeTurn(startTurn(EMPTY, '同じ依頼'), '同じ回答')
+  const repeated = Array.from({ length: 50 }, () => undefined).reduce(
+    current => completeTurn(startTurn(current, '同じ依頼'), '同じ回答'),
+    first,
+  )
+
+  expect(turnKeyOf(first)).not.toBe(turnKeyOf(repeated))
+  expect(repeated.turns.at(-1)?.turn).toBe(51)
 })
 
 describe('summaryRequest はメンバーの一覧があるときだけ記号と説明を渡す', () => {

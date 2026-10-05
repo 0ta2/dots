@@ -115,6 +115,7 @@ const standInForEngine = (
   })
   on('store.keys', () => ({ value: [...store.keys()] }))
   on('session.start', (_$, e) => ({ cwd: e.cwd }))
+  on('prompt.submit', (_$, e) => ({ text: e.text, context: e.context, origin: e.origin }))
   on('session.id', () => ({ value: session.id }))
   on('ui.panes', () => ({ value: [...panes] }))
   on('session.messages', () => ({ value: [...transcript] }))
@@ -919,6 +920,20 @@ test('依頼の判定: / コマンドと貼り付けは依頼に、通知・中�
   ])
 })
 
+test('画像だけの prompt は空の継続ではなく新しいターンにする', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  standInForEngine(on)
+  const requests = recordModelCalls(on)
+
+  await startInteractive($)
+  await $.prompt.submit({ text: '', attachments: [{ type: 'image' }], wait: false, origin: { kind: 'composer' } })
+  await $.turn.start({ text: '', turnId: 't1' })
+  await completeTurn($, '画像を確認しました', 't1')
+  await clock.settle()
+
+  expect(blockOf(requests.at(-1)?.prompt, 'latest_request')).toBe('[image]')
+})
+
 test('/imadoko と帯の詳細ボタンは Pane を開き、/imadoko は会話に行を残さない', async ($, on) => {
   const clock = mock.clock(on, { now: START })
   standInForEngine(on)
@@ -1145,7 +1160,7 @@ test('概要を作ったら、最後の依頼と一緒にセッション ID ご�
   await startInteractive($)
   await runTurn($, clock, 'パネルを作りたい', '作りました', 't1')
 
-  expect(store.get('imadoko:sess-1')).toEqual({ sections: IMADOKO, turnKey: turnKey('パネルを作りたい', '作りました'), savedAt: START, usage: { calls: 1, inputTokens: 0, outputTokens: 0 } })
+  expect(store.get('imadoko:sess-1')).toEqual({ sections: IMADOKO, turnKey: turnKey('パネルを作りたい', '作りました', 1), savedAt: START, usage: { calls: 1, inputTokens: 0, outputTokens: 0 } })
 })
 
 test('Haiku を呼ぶたびに、呼び出し回数と入力・出力トークンの累計をセッションごとに保存する', async ($, on) => {
@@ -1159,7 +1174,7 @@ test('Haiku を呼ぶたびに、呼び出し回数と入力・出力トーク�
 
   expect(store.get('imadoko:sess-1')).toEqual({
     sections: IMADOKO,
-    turnKey: turnKey('公開して', '公開しました'),
+    turnKey: turnKey('公開して', '公開しました', 2),
     savedAt: START,
     usage: { calls: 2, inputTokens: 2_700, outputTokens: 850 },
   })
@@ -1190,7 +1205,7 @@ test('Haiku の返答が使えなかった呼び出しも累計に数え、概�
 
   const fallback = {
     sections: { ...IMADOKO, status: '直しました' },
-    turnKey: turnKey('直して', '直しました'),
+    turnKey: turnKey('直して', '直しました', 2),
     savedAt: START,
     usage: { calls: 2, inputTokens: 1_900, outputTokens: 320 },
   }
@@ -1199,7 +1214,7 @@ test('Haiku の返答が使えなかった呼び出しも累計に数え、概�
     fallback,
     {
       sections: IMADOKO,
-      turnKey: turnKey('公開して', '公開しました'),
+      turnKey: turnKey('公開して', '公開しました', 4),
       savedAt: START,
       usage: { calls: 4, inputTokens: 3_000, outputTokens: 640 },
     },
@@ -1208,9 +1223,9 @@ test('Haiku の返答が使えなかった呼び出しも累計に数え、概�
 
 const SAVED_USAGE_CASES = [
   // Up to date: opening calls no Haiku, so only the turn's call is added.
-  { name: '最新の概要', saved: turnKey('次の依頼', '実装しました'), usage: { calls: 5, inputTokens: 6_300, outputTokens: 2_010 } },
+  { name: '最新の概要', saved: turnKey('次の依頼', '実装しました', 2), usage: { calls: 5, inputTokens: 6_300, outputTokens: 2_010 } },
   // Out of date: opening analyzes the session again, and that call counts too.
-  { name: '古い概要', saved: turnKey('最初の依頼', '方針を決めました'), usage: { calls: 6, inputTokens: 7_600, outputTokens: 2_420 } },
+  { name: '古い概要', saved: turnKey('最初の依頼', '方針を決めました', 1), usage: { calls: 6, inputTokens: 7_600, outputTokens: 2_420 } },
 ] as const
 
 for (const { name, saved, usage } of SAVED_USAGE_CASES) {
@@ -1230,7 +1245,7 @@ for (const { name, saved, usage } of SAVED_USAGE_CASES) {
     await clock.settle()
     await runTurn($, clock, '続けて', '続けました', 't9')
 
-    expect(store.get('imadoko:sess-1')).toEqual({ sections: IMADOKO, turnKey: turnKey('続けて', '続けました'), savedAt: START, usage })
+    expect(store.get('imadoko:sess-1')).toEqual({ sections: IMADOKO, turnKey: turnKey('続けて', '続けました', 3), savedAt: START, usage })
   })
 }
 
@@ -1248,8 +1263,8 @@ test('/clear の後の新しい会話は、使用量を 0 から数え直す', a
   await runTurn($, clock, 'クリア後の依頼', 'クリア後の回答', 't2')
 
   expect([store.get('imadoko:sess-1'), store.get('imadoko:sess-2')]).toEqual([
-    { sections: IMADOKO, turnKey: turnKey('クリア前の依頼', 'クリア前の回答'), savedAt: START, usage: { calls: 1, inputTokens: 1_200, outputTokens: 400 } },
-    { sections: IMADOKO, turnKey: turnKey('クリア後の依頼', 'クリア後の回答'), savedAt: START + 1_000, usage: { calls: 1, inputTokens: 700, outputTokens: 250 } },
+    { sections: IMADOKO, turnKey: turnKey('クリア前の依頼', 'クリア前の回答', 1), savedAt: START, usage: { calls: 1, inputTokens: 1_200, outputTokens: 400 } },
+    { sections: IMADOKO, turnKey: turnKey('クリア後の依頼', 'クリア後の回答', 1), savedAt: START + 1_000, usage: { calls: 1, inputTokens: 700, outputTokens: 250 } },
   ])
 })
 
@@ -1281,7 +1296,7 @@ test('/clear の前に始まった呼び出しが後から届いても、新し�
 
   expect([store.get('imadoko:sess-1'), store.get('imadoko:sess-2')]).toEqual([
     undefined,
-    { sections: IMADOKO, turnKey: turnKey('もう一つの依頼', 'もう一つの回答'), savedAt: START + 6_000, usage: { calls: 2, inputTokens: 1_300, outputTokens: 450 } },
+    { sections: IMADOKO, turnKey: turnKey('もう一つの依頼', 'もう一つの回答', 2), savedAt: START + 6_000, usage: { calls: 2, inputTokens: 1_300, outputTokens: 450 } },
   ])
 })
 
@@ -1308,7 +1323,7 @@ test('前のターンの呼び出しが後から届いて概要を捨てても�
 
   expect(store.get('imadoko:sess-1')).toEqual({
     sections: IMADOKO,
-    turnKey: turnKey('三つ目', '三つ目の回答'),
+    turnKey: turnKey('三つ目', '三つ目の回答', 3),
     savedAt: START + 10_000,
     usage: { calls: 3, inputTokens: 3_300, outputTokens: 970 },
   })
@@ -1316,7 +1331,7 @@ test('前のターンの呼び出しが後から届いて概要を捨てても�
 
 test('開いたセッションの概要が保存済みで最後の依頼も同じなら、Haiku を呼ばずにそのまま出す', async ($, on) => {
   const clock = mock.clock(on, { now: START })
-  standInForEngine(on, RESUMED, {}, [], undefined, { 'imadoko:sess-1': { sections: IMADOKO, turnKey: turnKey('次の依頼', '実装しました'), savedAt: START - 1000 } })
+  standInForEngine(on, RESUMED, {}, [], undefined, { 'imadoko:sess-1': { sections: IMADOKO, turnKey: turnKey('次の依頼', '実装しました', 2), savedAt: START - 1000 } })
   const requests = recordModelCalls(on)
 
   await startInteractive($)
@@ -1326,9 +1341,26 @@ test('開いたセッションの概要が保存済みで最後の依頼も同�
   expect(await bandRows($)).toEqual([`Purpose: ${IMADOKO.purpose}`, `Status: ${IMADOKO.status}`])
 })
 
+test('50 件を超えた保存済みの概要も、最後のターン番号が同じなら作り直さない', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  const transcript: SessionMessage[] = Array.from({ length: 51 }, () => [
+    { role: 'user' as const, text: '同じ依頼', toolUses: [] },
+    { role: 'assistant' as const, text: '同じ回答', toolUses: [] },
+  ]).flat()
+  standInForEngine(on, transcript, {}, [], undefined, {
+    'imadoko:sess-1': { sections: IMADOKO, turnKey: turnKey('同じ依頼', '同じ回答', 51), savedAt: START - 1000 },
+  })
+  const requests = recordModelCalls(on)
+
+  await startInteractive($)
+  await clock.settle()
+
+  expect(requests).toHaveLength(0)
+})
+
 test('保存済みの概要の後に会話が進んでいたら、開いた時点で解析し直す', async ($, on) => {
   const clock = mock.clock(on, { now: START })
-  standInForEngine(on, RESUMED, {}, [], undefined, { 'imadoko:sess-1': { sections: { ...IMADOKO, purpose: '古い概要' }, turnKey: turnKey('最初の依頼', '方針を決めました'), savedAt: START - 1000 } })
+  standInForEngine(on, RESUMED, {}, [], undefined, { 'imadoko:sess-1': { sections: { ...IMADOKO, purpose: '古い概要' }, turnKey: turnKey('最初の依頼', '方針を決めました', 1), savedAt: START - 1000 } })
   const requests = recordModelCalls(on)
 
   await startInteractive($)
@@ -1411,7 +1443,7 @@ test('/clear の後の新しい会話の概要も、新しいセッション ID 
   await clock.advance(1_000)
   await runTurn($, clock, 'クリア後の依頼', 'クリア後の回答', 't2')
 
-  expect(store.get('imadoko:sess-2')).toEqual({ sections: IMADOKO, turnKey: turnKey('クリア後の依頼', 'クリア後の回答'), savedAt: START + 1_000, usage: { calls: 1, inputTokens: 0, outputTokens: 0 } })
+  expect(store.get('imadoko:sess-2')).toEqual({ sections: IMADOKO, turnKey: turnKey('クリア後の依頼', 'クリア後の回答', 1), savedAt: START + 1_000, usage: { calls: 1, inputTokens: 0, outputTokens: 0 } })
 })
 
 test('/clear の直後に依頼を始めても、その後に分かった新しいセッション ID でターンを消さない', async ($, on) => {
@@ -1429,10 +1461,10 @@ test('/clear の直後に依頼を始めても、その後に分かった新し�
   await completeTurn($, 'クリア直後の回答', 't2')
   await clock.settle()
 
-  expect(store.get('imadoko:sess-2')).toEqual({ sections: IMADOKO, turnKey: turnKey('クリア直後の依頼', 'クリア直後の回答'), savedAt: START + 1_000, usage: { calls: 1, inputTokens: 0, outputTokens: 0 } })
+  expect(store.get('imadoko:sess-2')).toEqual({ sections: IMADOKO, turnKey: turnKey('クリア直後の依頼', 'クリア直後の回答', 1), savedAt: START + 1_000, usage: { calls: 1, inputTokens: 0, outputTokens: 0 } })
 })
 
-test('/clear の後、新しいセッション ID が分かる前にできた概要も、分かった時点で保存する', async ($, on) => {
+test('/clear の後、新しいセッション ID が分かる前にできた概要も、履歴を読み直して保存する', async ($, on) => {
   const clock = mock.clock(on, { now: START })
   const transcript: SessionMessage[] = []
   const session = { id: 'sess-1' }
@@ -1450,7 +1482,7 @@ test('/clear の後、新しいセッション ID が分かる前にできた概
   await clock.advance(1_000)
   await clock.settle()
 
-  expect(store.get('imadoko:sess-2')).toEqual({ sections: IMADOKO, turnKey: turnKey('クリア直後の依頼', 'クリア直後の回答'), savedAt: START + 500, usage: { calls: 1, inputTokens: 0, outputTokens: 0 } })
+  expect(store.get('imadoko:sess-2')).toEqual({ sections: IMADOKO, turnKey: turnKey('クリア直後の依頼', 'クリア直後の回答', 2), savedAt: START + 500, usage: { calls: 2, inputTokens: 0, outputTokens: 0 } })
 })
 
 test('同じプロセス内の /resume の直後に依頼を始めても、再開したセッションの履歴を残す', async ($, on) => {
@@ -1478,8 +1510,8 @@ test('同じプロセス内の /resume の直後に依頼を始めても、再�
 })
 
 for (const { name, saved, previous } of [
-  { name: '再開前の最後のターンの後に保存した概要は引き継ぐ', saved: turnKey('次の依頼', '実装しました'), previous: JSON.stringify({ ...IMADOKO, purpose: '保存した目的' }) },
-  { name: '再開前の最後のターンより古い概要は使わない', saved: turnKey('最初の依頼', '方針を決めました'), previous: '(none)' },
+  { name: '再開前の最後のターンの後に保存した概要は引き継ぐ', saved: turnKey('次の依頼', '実装しました', 2), previous: JSON.stringify({ ...IMADOKO, purpose: '保存した目的' }) },
+  { name: '再開前の最後のターンより古い概要は使わない', saved: turnKey('最初の依頼', '方針を決めました', 1), previous: '(none)' },
 ]) {
   test(`同じプロセス内の /resume の直後に依頼を始めたとき、${name}`, async ($, on) => {
     const clock = mock.clock(on, { now: START })
@@ -1504,12 +1536,12 @@ for (const { name, saved, previous } of [
   })
 }
 
-test('/resume の後、履歴を足す前に終わったターンが 2 つ以上あっても、引き継いだ概要の後のターンを全部渡す', async ($, on) => {
+test('/resume の後、同じ完了ターンを履歴と決め打ちせずに概要を作り直す', async ($, on) => {
   const clock = mock.clock(on, { now: START })
   const transcript: SessionMessage[] = []
   const session = { id: 'sess-1' }
   standInForEngine(on, transcript, {}, [], session, {
-    'imadoko:sess-2': { sections: { ...IMADOKO, purpose: '保存した目的' }, turnKey: turnKey('次の依頼', '実装しました'), savedAt: 1 },
+    'imadoko:sess-2': { sections: { ...IMADOKO, purpose: '保存した目的' }, turnKey: turnKey('次の依頼', '実装しました', 2), savedAt: 1 },
   })
   const requests = recordModelCalls(on)
 
@@ -1533,11 +1565,7 @@ test('/resume の後、履歴を足す前に終わったターンが 2 つ以上
   await clock.settle()
 
   const prompt = requests.at(-1)?.prompt
-  expect([
-    JSON.parse(blockOf(prompt, 'previous_imadoko') ?? '{}').purpose,
-    blockOf(prompt, 'turns_since_previous_imadoko'),
-    blockOf(prompt, 'latest_request'),
-  ]).toEqual(['保存した目的', '\n- T3 再開後の一つ目 → 一つ目の回答\n', '再開後の二つ目'])
+  expect([blockOf(prompt, 'previous_imadoko'), blockOf(prompt, 'latest_request')]).toEqual(['(none)', '再開後の二つ目'])
 })
 
 test('/resume の前に始まった概要の呼び出しが、履歴を足した後に届いても捨てて作り直す', async ($, on) => {
@@ -1567,7 +1595,7 @@ test('/resume の前に始まった概要の呼び出しが、履歴を足した
   await clock.settle()
 
   expect(requests).toHaveLength(3)
-  expect(blockOf(requests[2]?.prompt, 'earlier_requests')).toBe('\n- T1 最初の依頼\n- T2 次の依頼\n')
+  expect(blockOf(requests[2]?.prompt, 'earlier_requests')).toBe('\n- T1 最初の依頼\n- T2 次の依頼\n- T3 再開直後の依頼\n')
   expect((await bandRows($))[0]).toBe('Purpose: 呼び出し 3')
 })
 
@@ -1801,7 +1829,7 @@ test('/imadoko の登録が拒否されても、開いたセッションを解�
   expect(await bandRows($)).toEqual([`Purpose: ${IMADOKO.purpose}`, `Status: ${IMADOKO.status}`])
 })
 
-test('compact でターン番号が振り直されても、最後の依頼と回答が同じなら保存済みの概要を使う', async ($, on) => {
+test('compact 後に同じ依頼と回答があっても、transcript 上の位置が違えば概要を作り直す', async ($, on) => {
   const clock = mock.clock(on, { now: START })
   const transcript: SessionMessage[] = []
   const session = { id: 'sess-1' }
@@ -1824,6 +1852,6 @@ test('compact でターン番号が振り直されても、最後の依頼と回
   )
   await clock.advance(1_000)
 
-  expect(requests).toHaveLength(3)
+  expect(requests).toHaveLength(4)
   expect(await bandRows($)).toEqual([`Purpose: ${IMADOKO.purpose}`, `Status: ${IMADOKO.status}`])
 })

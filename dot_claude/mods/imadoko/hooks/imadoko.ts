@@ -149,14 +149,16 @@ const INJECTED = [
  * keeps its content without the tags; a continuation starts with no text; and
  * what the engine injects opens with one of its tags or fixed phrases.
  */
-const requestOf = (text: string): string | undefined => {
+const IMAGE_REQUEST = '[image]'
+
+const requestOf = (text: string, hasImage = false): string | undefined => {
   const command = PROMPT_COMMAND.exec(text)
   if (command) return [command[1], command[2]?.trim()].filter(Boolean).join(' ')
 
   const trimmed = text.replace(PASTED, '').trim()
   const isInjected = INJECTED_TAG.test(trimmed) || INJECTED.some(phrase => trimmed.startsWith(phrase))
 
-  return trimmed === '' || isInjected ? undefined : trimmed
+  return trimmed === '' ? (hasImage ? IMAGE_REQUEST : undefined) : isInjected ? undefined : trimmed
 }
 
 const lastTurn = (imadoko: Imadoko): TurnEntry | undefined => imadoko.turns.at(-1)
@@ -168,8 +170,8 @@ const withLastTurn = (imadoko: Imadoko, change: (turn: TurnEntry) => TurnEntry):
  * Starts a turn: a new one for a request, or the last one again for a turn
  * that carries none (its answer and activity then add to the last one's).
  */
-export const startTurn = (imadoko: Imadoko, text: string): Imadoko => {
-  const request = requestOf(text)
+export const startTurn = (imadoko: Imadoko, text: string, hasImage = false): Imadoko => {
+  const request = requestOf(text, hasImage)
   const turns =
     request !== undefined || imadoko.turns.length === 0
       ? [
@@ -195,10 +197,9 @@ export const startTurn = (imadoko: Imadoko, text: string): Imadoko => {
  * The epoch moves on, so calls still out for the old numbers are dropped.
  */
 export const underHistory = (current: Imadoko, rebuilt: Imadoko, stored: StoredImadoko | undefined): Imadoko => {
-  // A transcript's copy of a live turn has its request and, so far, no other
-  // answer: a finished turn that only repeats the request is history.
-  const isCopy = (copy: TurnEntry, live: TurnEntry) =>
-    copy.ask === live.ask && (copy.answer === null || copy.answer === live.answer)
+  // A transcript's copy of a live turn has its request but no answer yet.
+  // A completed matching turn may be an earlier, repeated request.
+  const isCopy = (copy: TurnEntry, live: TurnEntry) => copy.ask === live.ask && copy.answer === null
   const overlap =
     Array.from({ length: Math.min(rebuilt.turns.length, current.turns.length) }, (_, index) => index + 1)
       .reverse()
@@ -496,23 +497,24 @@ export const fallbackSections = (imadoko: Imadoko, turn: TurnEntry | undefined, 
 }
 
 /**
- * A short fingerprint of a turn's request and answer (FNV-1a over both): what
- * the store keeps to tell whether a saved imadoko summary is still up to date.
+ * A short fingerprint of a turn's request, answer and transcript position
+ * (FNV-1a): what the store keeps to tell whether a saved imadoko summary is
+ * still up to date.
  */
-export const turnKey = (ask: string | null, answer: string | null): string => {
+export const turnKey = (ask: string | null, answer: string | null, position: number = 0): string => {
   let hash = 0x811c9dc5
-  for (const char of `${ask ?? ''}\u0000${answer ?? ''}`) {
+  for (const char of `${position}\u0000${ask ?? ''}\u0000${answer ?? ''}`) {
     hash = Math.imul(hash ^ (char.codePointAt(0) ?? 0), 0x01000193) >>> 0
   }
 
-  return `v1:${hash.toString(16).padStart(8, '0')}`
+  return `v2:${hash.toString(16).padStart(8, '0')}`
 }
 
-/** The last turn's fingerprint, '' with no turn. */
+/** The last turn's fingerprint and its position, '' with no turn. */
 export const turnKeyOf = (imadoko: Imadoko): string => {
   const turn = lastTurn(imadoko)
 
-  return turn === undefined ? '' : turnKey(turn.ask, turn.answer)
+  return turn === undefined ? '' : turnKey(turn.ask, turn.answer, turn.turn)
 }
 
 /** Counts one Haiku call, with the tokens the engine reports for it. */
