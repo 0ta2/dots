@@ -31,7 +31,7 @@ const AGENTS = JSON.stringify({
   },
 })
 
-type World = { agents: string; paneGet?: string; space?: string; screenReply?: (n: number) => Promise<string> }
+type World = { agents: string; paneGet?: string; space?: string; screenReply?: (n: number) => Promise<string>; store?: Record<string, unknown>; files?: Record<string, string> }
 
 function standIn(on: On, selfLabel: string, env: Record<string, string>, world: World = { agents: AGENTS }) {
   const prompts: string[] = []
@@ -39,9 +39,13 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
   const toasts: string[] = []
   mock.env(on, env)
   const clock = mock.clock(on, { now: 1_790_000_000_000 })
-  on('store.get', () => ({ value: undefined }))
-  on('store.set', () => ({ value: undefined }))
-  on('store.keys', () => ({ value: [] }))
+  const store = new Map<string, unknown>(Object.entries(world.store ?? {}))
+  on('store.get', (_$, e) => ({ value: store.get(e.key) }))
+  on('store.set', (_$, e) => {
+    store.set(e.key, JSON.parse(JSON.stringify(e.value)))
+    return { value: undefined }
+  })
+  on('store.keys', () => ({ value: [...store.keys()] }))
   on('session.start', (_$, e) => ({ cwd: e.cwd }))
   on('session.id', () => ({ value: 'sess-1' }))
   on('session.messages', () => ({ value: [] }))
@@ -67,10 +71,9 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
     }
     return { value: { exitCode: key in out ? 0 : 1, stdout: out[key] ?? '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
   })
-  on('fs.list', (_$, e) =>
-    e.path?.endsWith('/herdr-team/wW') ? { value: [{ name: 't2.json', kind: 'file' as const, size: 10, mtimeMs: 0, isLink: false }] } : { value: [] },
-  )
   on('fs.read', (_$, e) => {
+    const file = Object.entries(world.files ?? {}).find(([end]) => e.path.endsWith(end))
+    if (file) return { value: file[1] }
     if (e.path.endsWith('/herdr-team/wW/t2.json')) return { value: '{"task":"ログイン画面を直す"}' }
     if (e.path.endsWith('/imadoko/wW/p3.json')) return { value: JSON.stringify({ status: 'レビュー指摘を読んでいる', savedAt: 1_790_000_000_000 - 1000 }) }
     throw new Error('ENOENT')
@@ -90,7 +93,7 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
     const { Box } = $.ui.resolve(e)
     return <Box />
   })
-  return { prompts, statuses, toasts, clock }
+  return { prompts, statuses, toasts, clock, store }
 }
 
 const ENV = { HERDR_ENV: '1', HERDR_WORKSPACE_ID: 'wW', HERDR_PANE_ID: 'p1', HOME: '/h' }
@@ -158,6 +161,36 @@ test('a summary that comes back after the member moved on is dropped and the mem
   await seen.clock.settle()
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await ui.find({ text: /待機中 · 返答を待って待機中/ })).toBeDefined()
+  expect(await ui.find({ text: /ログイン方式について質問中/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('marks come back from the store after a /resume emptied the session state', async ($, on) => {
+  const book = { marks: { t9: 'I1', t2: 'I2' }, next: { impl: 2 } }
+  const seen = standIn(on, 'main', ENV, { agents: AGENTS, store: { 'imadoko-marks': { wW: { book, savedAt: 1 } } } })
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /I2 · 実装 · codex/ })).toBeDefined()
+  expect(await ui.find({ text: /R1 · レビュー · claude/ })).toBeDefined()
+  await ui.unmount()
+  expect(seen.store.get('imadoko-marks')).toEqual({ wW: { book: { marks: { t9: 'I1', t2: 'I2', t3: 'R1' }, next: { impl: 2, review: 1 } }, savedAt: 1_790_000_000_000 } })
+})
+
+test('a status file the member wrote wins over a screen summary still in flight', async ($, on) => {
+  let release: (text: string) => void = () => {}
+  const first = new Promise<string>(resolve => {
+    release = resolve
+  })
+  const world: World = { agents: AGENTS, screenReply: async () => first, files: {} }
+  const seen = standIn(on, 'main', ENV, world)
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await seen.clock.advance(0)
+  world.files = { '/imadoko/wW/p2.json': JSON.stringify({ status: 'ログイン方式を決めて実装中', savedAt: 1_790_000_000_000 }) }
+  await seen.clock.advance(3000)
+  release('ログイン方式について質問中')
+  await seen.clock.settle()
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /ログイン方式を決めて実装中/ })).toBeDefined()
   expect(await ui.find({ text: /ログイン方式について質問中/ })).toBeUndefined()
   await ui.unmount()
 })

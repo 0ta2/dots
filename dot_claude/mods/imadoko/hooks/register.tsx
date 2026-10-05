@@ -42,10 +42,14 @@ import {
   notePrompt,
   assignMarks,
   EMPTY_BOOK,
+  type MarkBook,
+  type Tab,
   paneOf,
   parseAgents,
   parseTabs,
   parseTask,
+  savedBooksOf,
+  withBook,
   summary,
   teamWordsFor,
 } from './team'
@@ -60,7 +64,9 @@ const lead = atom({ plugin: 'imadoko', key: 'isLead' } as const, false)
 // One line per member, by tab: what it is doing, from its own status file or its screen.
 const notes = atom({ plugin: 'imadoko', key: 'notes' } as const, {} as Record<string, string>)
 const frame = atom({ plugin: 'imadoko', key: 'frame' } as const, 0)
-const markBook = atom({ plugin: 'imadoko', key: 'marks' } as const, EMPTY_BOOK)
+// Each workspace's mark book; the store keeps a copy, since a /resume empties this.
+const markBooks = atom({ plugin: 'imadoko', key: 'marks' } as const, {} as Record<string, MarkBook>)
+const MARKS_KEY = 'imadoko-marks'
 
 const PANE_ID = 'imadoko'
 
@@ -291,16 +297,21 @@ const herdr = async ($: EngineInterface, args: string[]) => {
   return r?.exitCode === 0 && !r.isStdoutTruncated ? r.stdout : undefined
 }
 
-/** The one-line tasks herdr-delegate and herdr-review leave for the tabs they open. */
-const taskRecords = async ($: EngineInterface, at: Where): Promise<Record<string, string>> => {
+/** The one-line tasks herdr-delegate and herdr-review left for the tabs open now. */
+const taskRecords = async ($: EngineInterface, at: Where, tabs: Tab[]): Promise<Record<string, string>> => {
   const dir = `${at.home}/.local/state/herdr-team/${at.workspace}`
-  const entries = await $.fs.list(dir).catch(() => [])
-  const pairs = await Promise.all(
-    entries
-      .filter(f => f.kind === 'file' && f.name.endsWith('.json'))
-      .map(async f => [f.name.slice(0, -'.json'.length), parseTask(await $.fs.read(`${dir}/${f.name}`).catch(() => ''))] as const),
-  )
+  const pairs = await Promise.all(tabs.map(async t => [t.tabId, parseTask(await $.fs.read(`${dir}/${t.tabId}.json`).catch(() => ''))] as const))
   return Object.fromEntries(pairs.filter((p): p is readonly [string, string] => p[1] !== undefined))
+}
+
+/** This workspace's mark book: the session's own, else the one the store kept. */
+const bookFor = async ($: EngineInterface, space: string): Promise<MarkBook> =>
+  (await read($, markBooks))[space] ?? savedBooksOf(await $.store.get(MARKS_KEY))[space]?.book ?? EMPTY_BOOK
+
+const keepBook = async ($: EngineInterface, space: string, book: MarkBook, was: MarkBook) => {
+  await update($, markBooks, all => ({ ...all, [space]: book }))
+  if (JSON.stringify(book) === JSON.stringify(was)) return
+  await $.store.set(MARKS_KEY, withBook(savedBooksOf(await $.store.get(MARKS_KEY)), space, book, await $.clock.now()))
 }
 
 let seen = new Map<string, MemberState>()
@@ -360,6 +371,11 @@ const noteMembers = async ($: EngineInterface, at: Where, before: Map<string, Me
       }),
     ),
   }))
+  list.forEach((m, i) => {
+    if (own[i] === undefined) return
+    again.delete(m.tabId)
+    generations.set(m.tabId, (generations.get(m.tabId) ?? 0) + 1)
+  })
   const due = list.filter((m, i) => own[i] === undefined && needsNote(before.get(m.tabId), m, notedAt.get(m.tabId), now))
   for (const m of due) {
     notedAt.set(m.tabId, now)
@@ -396,9 +412,10 @@ const refreshTeam = async ($: EngineInterface, language: string) => {
     return
   }
   const words = teamWordsFor(language)
-  const marked = assignMarks(members(tabs, agents, await taskRecords($, at), selfTab), await read($, markBook))
+  const book = await bookFor($, at.space)
+  const marked = assignMarks(members(tabs, agents, await taskRecords($, at, tabs), selfTab), book)
   const list = marked.list
-  await update($, markBook, () => marked.book)
+  await keepBook($, at.space, marked.book, book)
   for (const line of changes(seen, list, words)) $.ui.toast(line, { timeoutMs: 6000 })
   const before = seen
   seen = new Map(list.map(m => [m.tabId, m.status]))

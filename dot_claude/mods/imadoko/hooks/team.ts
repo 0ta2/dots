@@ -112,6 +112,39 @@ export type MarkBook = { marks: Record<string, string>; next: Partial<Record<Rol
 
 export const EMPTY_BOOK: MarkBook = { marks: {}, next: {} }
 
+/** The mark books kept in the store, one per workspace, each with when it last changed. */
+export type SavedBooks = Record<string, { book: MarkBook; savedAt: number }>
+
+const KEPT_BOOKS = 20
+
+const bookOf = (value: unknown): MarkBook | undefined => {
+  if (!value || typeof value !== 'object') return undefined
+  const { marks, next } = value as Json
+  if (!marks || typeof marks !== 'object' || !next || typeof next !== 'object') return undefined
+  const strings = Object.entries(marks as Json).filter((e): e is [string, string] => typeof e[1] === 'string')
+  const numbers = Object.entries(next as Json).filter((e): e is [Role, number] => ROLE_ORDER.includes(e[0] as Role) && typeof e[1] === 'number')
+  return { marks: Object.fromEntries(strings), next: Object.fromEntries(numbers) }
+}
+
+export function savedBooksOf(value: unknown): SavedBooks {
+  if (!value || typeof value !== 'object') return {}
+  return Object.fromEntries(
+    Object.entries(value as Json).flatMap(([space, entry]) => {
+      const book = entry && typeof entry === 'object' ? bookOf((entry as Json).book) : undefined
+      const savedAt = entry && typeof entry === 'object' ? (entry as Json).savedAt : undefined
+      return book && typeof savedAt === 'number' ? [[space, { book, savedAt }]] : []
+    }),
+  )
+}
+
+/** Puts a workspace's book in the saved ones, keeping the most recently changed few. */
+export const withBook = (saved: SavedBooks, space: string, book: MarkBook, now: number): SavedBooks =>
+  Object.fromEntries(
+    Object.entries({ ...saved, [space]: { book, savedAt: now } })
+      .sort((a, b) => b[1].savedAt - a[1].savedAt)
+      .slice(0, KEPT_BOOKS),
+  )
+
 /**
  * The space's members other than this session: the tabs herdr-delegate and
  * herdr-review opened, and any other tab an agent runs in.

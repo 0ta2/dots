@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { cells, pixels, SIZE } from './sprite'
-import { assignMarks, changes, cleanNote, EMPTY_BOOK, freshStatus, isLead, marksOf, members, needsNote, notePrompt, parseAgents, parseTabs, roleOf, summary, teamWordsFor } from './team'
+import { assignMarks, changes, cleanNote, EMPTY_BOOK, freshStatus, isLead, marksOf, members, needsNote, notePrompt, parseAgents, parseTabs, roleOf, savedBooksOf, summary, teamWordsFor, withBook } from './team'
 
 const TABS = JSON.stringify({
   result: {
@@ -107,4 +107,18 @@ test('every sprite is a full grid, animates, and differs by agent', () => {
   expect(pixels('impl', 'working', 0, 'codex')).not.toEqual(pixels('impl', 'working', 1, 'codex'))
   expect(pixels('review', 'blocked', 0, 'claude')).not.toEqual(pixels('review', 'blocked', 1, 'claude'))
   expect(pixels('impl', 'idle', 0, 'claude')).not.toEqual(pixels('impl', 'idle', 0, 'codex'))
+})
+
+test('saved mark books drop what does not parse and keep the most recently changed', () => {
+  const book = { marks: { t2: 'I1' }, next: { impl: 1 } }
+  expect(savedBooksOf({ wA: { book, savedAt: 5 }, wB: { book: 'x', savedAt: 1 }, wC: { book: { marks: { t: 1 }, next: { bad: 2 } }, savedAt: 2 } })).toEqual({
+    wA: { book, savedAt: 5 },
+    wC: { book: { marks: {}, next: {} }, savedAt: 2 },
+  })
+  expect(savedBooksOf('nope')).toEqual({})
+  let saved = {}
+  for (let i = 0; i < 25; i++) saved = withBook(saved, `w${i}`, book, i)
+  expect(Object.keys(saved).length).toBe(20)
+  expect(Object.keys(saved)).not.toContain('w4')
+  expect(Object.keys(saved)).toContain('w24')
 })
