@@ -1338,6 +1338,95 @@ test('同じプロセス内の /resume の直後に依頼を始めても、再�
   ])
 })
 
+for (const { name, saved, previous } of [
+  { name: '再開前の最後のターンの後に保存した概要は引き継ぐ', saved: turnKey('次の依頼', '実装しました'), previous: JSON.stringify({ ...IMADOKO, purpose: '保存した目的' }) },
+  { name: '再開前の最後のターンより古い概要は使わない', saved: turnKey('最初の依頼', '方針を決めました'), previous: '(none)' },
+]) {
+  test(`同じプロセス内の /resume の直後に依頼を始めたとき、${name}`, async ($, on) => {
+    const clock = mock.clock(on, { now: START })
+    const transcript: SessionMessage[] = []
+    const session = { id: 'sess-1' }
+    standInForEngine(on, transcript, {}, [], session, {
+      'imadoko:sess-2': { sections: { ...IMADOKO, purpose: '保存した目的' }, turnKey: saved, savedAt: 1 },
+    })
+    const requests = recordModelCalls(on)
+
+    await startInteractive($)
+    await runTurn($, clock, '前のセッションの依頼', '前のセッションの回答', 't1')
+    await $.session.end({ reason: 'resume', sessionId: 'sess-1', resume: { id: 'sess-1' } })
+    await $.turn.start({ text: '再開直後の依頼', turnId: 't2' })
+    session.id = 'sess-2'
+    transcript.push(...RESUMED, { role: 'user', text: '再開直後の依頼', toolUses: [] })
+    await clock.advance(1_000)
+    await completeTurn($, '再開直後の回答', 't2')
+    await clock.settle()
+
+    expect(blockOf(requests.at(-1)?.prompt, 'previous_imadoko')).toBe(previous)
+  })
+}
+
+test('/resume の前に始まった概要の呼び出しが、履歴を足した後に届いても捨てて作り直す', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  const transcript: SessionMessage[] = []
+  const session = { id: 'sess-1' }
+  standInForEngine(on, transcript, {}, [], session)
+  let release = (_reply: { value: ModelCompleteResult }) => {}
+  const requests = recordModelCalls(on, call =>
+    call === 2
+      ? (new Promise(resolve => {
+          release = resolve
+        }) as never)
+      : imadokoReply({ ...IMADOKO, purpose: `呼び出し ${call}` }),
+  )
+
+  await startInteractive($)
+  await runTurn($, clock, '前のセッションの依頼', '前のセッションの回答', 't1')
+  await $.session.end({ reason: 'resume', sessionId: 'sess-1', resume: { id: 'sess-1' } })
+  await $.turn.start({ text: '再開直後の依頼', turnId: 't2' })
+  await completeTurn($, '再開直後の回答', 't2')
+  await clock.advance(0)
+  session.id = 'sess-2'
+  transcript.push(...RESUMED, { role: 'user', text: '再開直後の依頼', toolUses: [] }, { role: 'assistant', text: '再開直後の回答', toolUses: [] })
+  await clock.advance(1_000)
+  release(imadokoReply({ ...IMADOKO, purpose: '履歴を知らない目的' }))
+  await clock.settle()
+
+  expect(requests).toHaveLength(3)
+  expect(blockOf(requests[2]?.prompt, 'earlier_requests')).toBe('\n- T1 最初の依頼\n- T2 次の依頼\n')
+  expect((await bandRows($))[0]).toBe('Purpose: 呼び出し 3')
+})
+
+test('Haiku が答える前に次のターンが終わったら、前の概要を待ってから、間のターンも渡して作る', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  standInForEngine(on)
+  let release = (_reply: { value: ModelCompleteResult }) => {}
+  const requests = recordModelCalls(on, call =>
+    call === 1
+      ? (new Promise(resolve => {
+          release = resolve
+        }) as never)
+      : imadokoReply({ ...IMADOKO, purpose: `呼び出し ${call}` }),
+  )
+
+  await startInteractive($)
+  await $.turn.start({ text: '一つ目', turnId: 't1' })
+  await completeTurn($, '一つ目の回答', 't1')
+  await clock.advance(0)
+  await $.turn.start({ text: '二つ目', turnId: 't2' })
+  await completeTurn($, '二つ目の回答', 't2')
+  await $.turn.start({ text: '三つ目', turnId: 't3' })
+  await completeTurn($, '三つ目の回答', 't3')
+  await clock.advance(0)
+  const whileWaiting = requests.length
+  release(imadokoReply({ ...IMADOKO, purpose: '一つ目の後の目的' }))
+  await clock.settle()
+
+  expect(whileWaiting).toBe(1)
+  expect(JSON.parse(blockOf(requests[1]?.prompt, 'previous_imadoko') ?? '').purpose).toBe('一つ目の後の目的')
+  expect(blockOf(requests[1]?.prompt, 'turns_since_previous_imadoko')).toBe('\n- T2 二つ目 → 二つ目の回答\n')
+  expect(blockOf(requests[1]?.prompt, 'latest_request')).toBe('三つ目')
+})
+
 test('Pane の閉じるボタンは Pane を閉じる (ctrl+x b の 2 回目で閉じるための受け口)', async ($, on) => {
   const clock = mock.clock(on, { now: START })
   standInForEngine(on)

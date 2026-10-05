@@ -114,6 +114,10 @@ const summarize = async ($: EngineInterface, locale: Locale) => {
   }
 }
 
+// One summary at a time: each starts from the one before it, so a turn that
+// ends while Haiku still answers for the last is not summarized without it.
+let summaries: Promise<void> = Promise.resolve()
+
 /**
  * Starts the summary on a timer: it runs outside the dispatch that asked, so
  * no turn is held up by the model call and the call is not cut short when
@@ -121,9 +125,9 @@ const summarize = async ($: EngineInterface, locale: Locale) => {
  */
 const summarizeLater = ($: EngineInterface, locale: Locale) => {
   $.clock.after(0, () => {
-    summarize($, locale).catch((error: unknown) =>
-      $.ui.log(`imadoko: summary failed: ${String(error)}`, { to: 'debug' }),
-    )
+    summaries = summaries
+      .then(() => summarize($, locale))
+      .catch((error: unknown) => $.ui.log(`imadoko: summary failed: ${String(error)}`, { to: 'debug' }))
   })
 }
 
@@ -178,22 +182,27 @@ const followNextSession = ($: EngineInterface, endedId: string, locale: Locale) 
         }
         const rebuilt = rebuild(await $.session.messages())
         const stored = storedImadokoOf(await $.store.get(storeKey(sessionId)))
+        let joined: Imadoko | undefined
         await update($, imadoko, latest => {
           if (latest.sessionId !== null) return latest
 
-          const joined = underHistory({ ...latest, sessionId }, rebuilt)
           const usage = stored?.usage ?? EMPTY.usage
+          const known = { ...latest, sessionId }
+          joined = underHistory(known, rebuilt, stored)
+          if (joined === known) joined = undefined
+
+          const next = joined ?? known
 
           return {
-            ...joined,
-            ...(joined.sections === null && stored !== undefined ? { sections: stored.sections } : {}),
+            ...next,
             usage: {
-              calls: joined.usage.calls + usage.calls,
-              inputTokens: joined.usage.inputTokens + usage.inputTokens,
-              outputTokens: joined.usage.outputTokens + usage.outputTokens,
+              calls: next.usage.calls + usage.calls,
+              inputTokens: next.usage.inputTokens + usage.inputTokens,
+              outputTokens: next.usage.outputTokens + usage.outputTokens,
             },
           }
         })
+        if (joined !== undefined && !joined.isWorking) summarizeLater($, locale)
       })
       .catch((error: unknown) => $.ui.log(`imadoko: following the session failed: ${String(error)}`, { to: 'debug' }))
   })

@@ -180,9 +180,12 @@ export const startTurn = (imadoko: Imadoko, text: string): Imadoko => {
 /**
  * Puts the turns a resumed session already held under the ones begun in it
  * before its id was known: the transcript may already carry those new turns
- * at its end, and they keep their place after the history, renumbered.
+ * at its end, and they keep their place after the history, renumbered. A
+ * summary written before then never saw the history: it is dropped, and the
+ * stored one stands in when it was written after the history's last turn.
+ * Calls still out for the old numbers land below sectionsTurn and are dropped.
  */
-export const underHistory = (current: Imadoko, rebuilt: Imadoko): Imadoko => {
+export const underHistory = (current: Imadoko, rebuilt: Imadoko, stored: StoredImadoko | undefined): Imadoko => {
   const asks = (turns: readonly TurnEntry[]) => turns.map(turn => turn.ask)
   const overlap =
     Array.from({ length: Math.min(rebuilt.turns.length, current.turns.length) }, (_, index) => index + 1)
@@ -193,6 +196,9 @@ export const underHistory = (current: Imadoko, rebuilt: Imadoko): Imadoko => {
       ) ?? 0
   const earlier = rebuilt.turns.slice(0, rebuilt.turns.length - overlap)
   const offset = earlier.at(-1)?.turn ?? 0
+  if (offset === 0) return current
+
+  const isFresh = stored !== undefined && stored.turnKey === turnKeyOf({ ...rebuilt, turns: earlier })
 
   return {
     ...current,
@@ -201,7 +207,8 @@ export const underHistory = (current: Imadoko, rebuilt: Imadoko): Imadoko => {
       ...rebuilt.questions.filter(one => one.turn <= offset),
       ...current.questions.map(one => ({ ...one, turn: one.turn + offset })),
     ],
-    sectionsTurn: current.sections === null ? 0 : current.sectionsTurn + offset,
+    sections: isFresh ? stored.sections : null,
+    sectionsTurn: (lastTurn(current)?.turn ?? 0) + offset,
     background: current.background ?? rebuilt.background,
   }
 }
@@ -307,7 +314,20 @@ const listBlock = (tag: string, lines: readonly string[], none: string): string[
  * carry on: what a compaction kept, and the requests before the last turn.
  */
 const historyLines = (imadoko: Imadoko, words: Words): string[] => {
-  if (imadoko.sections !== null) return []
+  if (imadoko.sections !== null) {
+    const missed = imadoko.turns.slice(0, -1).filter(turn => turn.turn > imadoko.sectionsTurn)
+
+    return missed.length === 0
+      ? []
+      : listBlock(
+          'turns_since_previous_imadoko',
+          missed.map(
+            turn =>
+              `T${turn.turn} ${turn.ask === null ? words.continued : clip(headLine(turn.ask), EARLIER_CHARS)} → ${clip(headLine(turn.answer ?? ''), EARLIER_CHARS)}`,
+          ),
+          words.none,
+        )
+  }
 
   const earlier = imadoko.turns.slice(0, -1).slice(-EARLIER_TURNS)
 
