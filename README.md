@@ -1,5 +1,7 @@
 # dots
 
+> [unmerged 確認用] 冒頭への追加行。
+
 ## セットアップ (初回のみ、2段階)
 
 ### 1. chezmoi を導入し dots を取得する (反映はしない)
@@ -20,11 +22,9 @@ Homebrew・mise を導入した後 `mise run install` (ドットファイル反�
 ## 日常のコマンド
 
 ```bash
-mise run sync    # ドットファイル反映 + Codex設定マージ (副作用なし、何度実行しても収束する)
+mise run sync    # ドットファイル反映 + Codex設定マージ (unmerged 確認で変更)
 mise run update  # brew/mise/skill/uv tool の更新、最後に sync
 ```
-
-直接 chezmoi コマンドを実行する場合は下記の通り:
 
 ```bash
 ~/.local/bin/chezmoi --source=~/ghq/github.com/0ta2/dots apply
