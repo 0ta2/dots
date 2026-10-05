@@ -20,17 +20,17 @@ import {
   setSections,
   startOver,
   startTurn,
-  storedRecapPlusOf,
+  storedImadokoOf,
   summaryRequest,
   turnKeyOf,
   underHistory,
-} from './recap-plus'
-import type { Locale } from './recap-plus'
-import type { RecapPlus } from '../types'
+} from './imadoko'
+import type { Locale } from './imadoko'
+import type { Imadoko } from '../types'
 
-const recapPlus = atom({ plugin: 'recap-plus', key: 'recap-plus' } as const, EMPTY)
+const imadoko = atom({ plugin: 'imadoko', key: 'imadoko' } as const, EMPTY)
 
-const PANE_ID = 'recap-plus'
+const PANE_ID = 'imadoko'
 
 // The color of the headings: the band's labels and the pane's section titles.
 const HEADING_COLOR = '#ffa500'
@@ -52,29 +52,29 @@ const PANE_MIN_COLUMNS = 40
 // only inside the diff panel.
 const TOGGLE_ACTION = 'app:cycleDiffBase'
 
-// How many sessions' recap-plus summaries the store keeps, the newest; one is a few KB.
+// How many sessions' imadoko summaries the store keeps, the newest; one is a few KB.
 const STORED_SESSIONS = 200
-const storeKey = (sessionId: string): string => `recap-plus:${sessionId}`
+const storeKey = (sessionId: string): string => `imadoko:${sessionId}`
 
 // How long a /clear or an in-process /resume is watched for the session it starts.
 const SESSION_POLL_MS = 500
 const SESSION_POLL_TRIES = 20
 
-/** Why a reply holds no recap-plus summary, for the debug log: the engine's reason, or a reply that is not the JSON asked for. */
-const whyNoRecapPlus = (reply: ModelCompleteResult): string => {
+/** Why a reply holds no imadoko summary, for the debug log: the engine's reason, or a reply that is not the JSON asked for. */
+const whyNoImadoko = (reply: ModelCompleteResult): string => {
   if (reply.isAnswered) return 'unreadable-reply'
 
   return reply.reason === 'api-error' ? `api-error status=${reply.status} error=${reply.error}` : reply.reason
 }
 
 /**
- * Asks Haiku to rewrite the recap-plus summary after the last turn and keeps it; when the
+ * Asks Haiku to rewrite the imadoko summary after the last turn and keeps it; when the
  * model gives nothing usable (a backend without Haiku, an error, a reply that
  * is not the JSON asked for), the answer's own first line stands in. Every
- * call counts toward the conversation's usage, saved with the recap-plus summary.
+ * call counts toward the conversation's usage, saved with the imadoko summary.
  */
 const summarize = async ($: EngineInterface, locale: Locale) => {
-  const current = await read($, recapPlus)
+  const current = await read($, imadoko)
   const request = summaryRequest(current, locale)
   const turn = current.turns.at(-1)
   const turnNumber = turn?.turn ?? 0
@@ -88,14 +88,14 @@ const summarize = async ($: EngineInterface, locale: Locale) => {
     timeoutMs: 30_000,
   })
   const written = reply.isAnswered ? parseSections(reply.text) : undefined
-  if (written === undefined) $.ui.log(`recap-plus: Haiku gave no recap-plus: ${whyNoRecapPlus(reply)}`, { to: 'debug' })
+  if (written === undefined) $.ui.log(`imadoko: Haiku gave no imadoko: ${whyNoImadoko(reply)}`, { to: 'debug' })
   const sections = written ?? fallbackSections(current, turn, locale.words)
 
   // A /clear or /resume while the model answered started another conversation,
-  // and a later turn's recap-plus summary may have landed first. A call whose recap-plus summary is not
-  // kept still counts; the next recap-plus summary saved carries it.
-  let applied: RecapPlus | undefined
-  await update($, recapPlus, latest => {
+  // and a later turn's imadoko summary may have landed first. A call whose imadoko summary is not
+  // kept still counts; the next imadoko summary saved carries it.
+  let applied: Imadoko | undefined
+  await update($, imadoko, latest => {
     if (latest.epoch !== epoch) return latest
 
     const counted = addUsage(latest, reply.usage)
@@ -122,27 +122,27 @@ const summarize = async ($: EngineInterface, locale: Locale) => {
 const summarizeLater = ($: EngineInterface, locale: Locale) => {
   $.clock.after(0, () => {
     summarize($, locale).catch((error: unknown) =>
-      $.ui.log(`recap-plus: summary failed: ${String(error)}`, { to: 'debug' }),
+      $.ui.log(`imadoko: summary failed: ${String(error)}`, { to: 'debug' }),
     )
   })
 }
 
 /**
  * Opens the conversation the session now holds: reads it back, and shows the
- * recap-plus summary the store kept for it when nothing has happened since; otherwise
+ * imadoko summary the store kept for it when nothing has happened since; otherwise
  * analyzes it now, when there is anything to analyze.
  */
 const openSession = async ($: EngineInterface, locale: Locale) => {
   const sessionId = await $.session.id()
   const rebuilt = rebuild(await $.session.messages())
-  const stored = storedRecapPlusOf(await $.store.get(storeKey(sessionId)))
+  const stored = storedImadokoOf(await $.store.get(storeKey(sessionId)))
   const isUpToDate = stored !== undefined && stored.turnKey === turnKeyOf(rebuilt)
 
-  await update($, recapPlus, current => ({
+  await update($, imadoko, current => ({
     ...rebuilt,
     sessionId,
     epoch: current.epoch,
-    // The calls counted so far go on, whether or not the recap-plus summary is up to date.
+    // The calls counted so far go on, whether or not the imadoko summary is up to date.
     ...(stored === undefined ? {} : { usage: stored.usage }),
     ...(isUpToDate ? { sections: stored.sections, sectionsTurn: rebuilt.turns.at(-1)?.turn ?? 0 } : {}),
   }))
@@ -154,7 +154,7 @@ const openSession = async ($: EngineInterface, locale: Locale) => {
  * session that follows is not there yet when the old one ends: watch for the
  * id to change, then open that session. When a turn has already begun in it,
  * keep that turn after the history the session already held, and learn the
- * id, so its recap-plus summary is saved under it.
+ * id, so its imadoko summary is saved under it.
  */
 const followNextSession = ($: EngineInterface, endedId: string, locale: Locale) => {
   let tries = 0
@@ -169,7 +169,7 @@ const followNextSession = ($: EngineInterface, endedId: string, locale: Locale) 
           return
         }
         timer.cancel()
-        const current = await read($, recapPlus)
+        const current = await read($, imadoko)
         if (current.sessionId !== null) return
         if (current.turns.length === 0) {
           await openSession($, locale)
@@ -177,8 +177,8 @@ const followNextSession = ($: EngineInterface, endedId: string, locale: Locale) 
           return
         }
         const rebuilt = rebuild(await $.session.messages())
-        const stored = storedRecapPlusOf(await $.store.get(storeKey(sessionId)))
-        await update($, recapPlus, latest => {
+        const stored = storedImadokoOf(await $.store.get(storeKey(sessionId)))
+        await update($, imadoko, latest => {
           if (latest.sessionId !== null) return latest
 
           const joined = underHistory({ ...latest, sessionId }, rebuilt)
@@ -195,17 +195,17 @@ const followNextSession = ($: EngineInterface, endedId: string, locale: Locale) 
           }
         })
       })
-      .catch((error: unknown) => $.ui.log(`recap-plus: following the session failed: ${String(error)}`, { to: 'debug' }))
+      .catch((error: unknown) => $.ui.log(`imadoko: following the session failed: ${String(error)}`, { to: 'debug' }))
   })
 }
 
-/** Keeps the newest recap-plus summaries in the store; the oldest go first. */
+/** Keeps the newest imadoko summaries in the store; the oldest go first. */
 const pruneStore = async ($: EngineInterface) => {
-  const keys = (await $.store.keys()).filter(key => key.startsWith('recap-plus:'))
+  const keys = (await $.store.keys()).filter(key => key.startsWith('imadoko:'))
   if (keys.length <= STORED_SESSIONS) return
 
   const saved = await Promise.all(
-    keys.map(async key => ({ key, savedAt: storedRecapPlusOf(await $.store.get(key))?.savedAt ?? 0 })),
+    keys.map(async key => ({ key, savedAt: storedImadokoOf(await $.store.get(key))?.savedAt ?? 0 })),
   )
   const oldest = saved.sort((a, b) => a.savedAt - b.savedAt).slice(0, keys.length - STORED_SESSIONS)
   await Promise.all(oldest.map(one => $.store.delete(one.key)))
@@ -231,16 +231,16 @@ export const register: Register = on => {
     locale = localeFor((await $.settings.read()).language)
     // Command registration can be refused; the pane must still open from its button.
     try {
-      await $.command.register({ name: 'recap-plus', description: locale.words.command, immediate: true })
+      await $.command.register({ name: 'imadoko', description: locale.words.command, immediate: true })
     } catch (error: unknown) {
-      $.ui.log(`recap-plus: /recap-plus was not registered: ${String(error)}`, { to: 'debug' })
+      $.ui.log(`imadoko: /imadoko was not registered: ${String(error)}`, { to: 'debug' })
     }
 
     // No session id yet means the mod meets this conversation for the first
     // time: a resumed session, one that ran before the mod was installed, or a
     // new one. A reload of this module finds its state kept, and analyzes it
-    // only when no recap-plus summary was written yet.
-    const current = await read($, recapPlus)
+    // only when no imadoko summary was written yet.
+    const current = await read($, imadoko)
     if (current.sessionId === null) await openSession($, locale)
     else if (current.sections === null && (current.turns.length > 0 || current.background !== null)) {
       summarizeLater($, locale)
@@ -254,7 +254,7 @@ export const register: Register = on => {
     // A /clear starts a new conversation and an in-process /resume moves to
     // another one; neither raises session.start again, so start over here.
     if (isInteractive && (e.reason === 'clear' || e.reason === 'resume')) {
-      await update($, recapPlus, startOver)
+      await update($, imadoko, startOver)
       followNextSession($, e.sessionId, locale)
     }
 
@@ -262,14 +262,14 @@ export const register: Register = on => {
   })
 
   on('turn.start', async ($, e, next) => {
-    if (isInteractive) await update($, recapPlus, current => startTurn(current, e.text))
+    if (isInteractive) await update($, imadoko, current => startTurn(current, e.text))
 
     return next(e)
   })
 
   on('turn.complete', async ($, e, next) => {
     if (isInteractive && e.agentId === undefined) {
-      await update($, recapPlus, current => completeTurn(current, e.answer))
+      await update($, imadoko, current => completeTurn(current, e.answer))
       summarizeLater($, locale)
     }
 
@@ -279,7 +279,7 @@ export const register: Register = on => {
   on('tool.call', { tool: 'AskUserQuestion' }, async ($, e, next) => {
     if (!isInteractive) return next(e)
 
-    await update($, recapPlus, current =>
+    await update($, imadoko, current =>
       askQuestions(
         current,
         e.questions.map(one => ({ header: one.header, question: one.question })),
@@ -287,26 +287,26 @@ export const register: Register = on => {
     )
     const ran = await next(e)
     const answered = ran.deny === undefined && ran.isError !== true ? ran.result : undefined
-    await update($, recapPlus, current => answerQuestions(current, answersOf(answered), freeTextOf(answered)))
+    await update($, imadoko, current => answerQuestions(current, answersOf(answered), freeTextOf(answered)))
 
     return ran
   })
 
   on('tool.call', async ($, e, next) => {
     const line = isInteractive && e.agentId === undefined ? activityOf(String(e.tool), e) : undefined
-    if (line !== undefined) await update($, recapPlus, current => recordActivity(current, line))
+    if (line !== undefined) await update($, imadoko, current => recordActivity(current, line))
 
     return next(e)
   })
 
-  on('command.run', { command: 'recap-plus' }, async ($, e) => {
+  on('command.run', { command: 'imadoko' }, async ($, e) => {
     await $.ui.open(pane(e.presentation.columns))
 
     return {}
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE_ID }, async ($, e) => {
-    const current = await read($, recapPlus)
+    const current = await read($, imadoko)
     const { Box, Text } = $.ui.resolve(e)
 
     const { Button } = $.ui.resolve(e)
@@ -339,7 +339,7 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    const current = await read($, recapPlus)
+    const current = await read($, imadoko)
     const isEmpty = current.turns.length === 0 && current.sections === null
     if (!isInteractive || e.props.hasSurvey || isEmpty) return next(e)
     // The pane holds the same purpose and status; a band beside a docked pane

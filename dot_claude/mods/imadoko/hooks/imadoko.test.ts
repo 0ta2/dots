@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { activityOf, fallbackSummary, localeFor, parseSections, storedRecapPlusOf } from './recap-plus'
+import { activityOf, fallbackSummary, localeFor, parseSections, storedImadokoOf } from './imadoko'
 
 describe('fallbackSummary は最終回答の最初の本文行を現状の代わりにする', () => {
   const cases: [string, string, string | undefined][] = [
@@ -18,13 +18,13 @@ describe('fallbackSummary は最終回答の最初の本文行を現状の代わ
 })
 
 describe('parseSections は Haiku の返答から概要を取り出す', () => {
-  const recapPlus = { purpose: 'p', status: 's', done: ['d'], decisions: [], pending: [], next: 'n', upcoming: [] }
+  const imadoko = { purpose: 'p', status: 's', done: ['d'], decisions: [], pending: [], next: 'n', upcoming: [] }
   const cases: [string, string, unknown][] = [
-    ['JSON だけの返答', JSON.stringify(recapPlus), recapPlus],
-    ['前後に文があっても JSON の部分を読む', `Here it is:\n${JSON.stringify(recapPlus)}\nDone.`, recapPlus],
-    ['目的が無ければ使えない', JSON.stringify({ ...recapPlus, purpose: '' }), undefined],
-    ['現状が無ければ使えない', JSON.stringify({ ...recapPlus, status: 3 }), undefined],
-    ['リストでない値は空にし、文字列でない項目を落とす', JSON.stringify({ ...recapPlus, done: 'x', pending: ['a', 1] }), { ...recapPlus, done: [], pending: ['a'] }],
+    ['JSON だけの返答', JSON.stringify(imadoko), imadoko],
+    ['前後に文があっても JSON の部分を読む', `Here it is:\n${JSON.stringify(imadoko)}\nDone.`, imadoko],
+    ['目的が無ければ使えない', JSON.stringify({ ...imadoko, purpose: '' }), undefined],
+    ['現状が無ければ使えない', JSON.stringify({ ...imadoko, status: 3 }), undefined],
+    ['リストでない値は空にし、文字列でない項目を落とす', JSON.stringify({ ...imadoko, done: 'x', pending: ['a', 1] }), { ...imadoko, done: [], pending: ['a'] }],
     ['壊れた JSON は使えない', '{"purpose": "p", ', undefined],
   ]
   for (const [name, reply, expected] of cases) {
@@ -66,7 +66,7 @@ describe('localeFor は Claude Code の language 設定から見出しの言語�
   }
 })
 
-describe('storedRecapPlusOf は保存した概要の使用量の累計を読み、記録を始める前のものは 0 から数える', () => {
+describe('storedImadokoOf は保存した概要の使用量の累計を読み、記録を始める前のものは 0 から数える', () => {
   const sections = { purpose: 'p', status: 's', done: [], decisions: [], pending: [], next: '', upcoming: [] }
   const ZERO = { calls: 0, inputTokens: 0, outputTokens: 0 }
   const kept = { calls: 3, inputTokens: 4_200, outputTokens: 1_300 }
@@ -81,7 +81,7 @@ describe('storedRecapPlusOf は保存した概要の使用量の累計を読み�
   for (const [name, usage, expected] of cases) {
     test(name, () => {
       const stored = { sections, turnKey: 'v1:x', savedAt: 1, ...(usage === undefined ? {} : { usage }) }
-      expect(storedRecapPlusOf(stored)).toEqual({ sections, turnKey: 'v1:x', savedAt: 1, usage: expected })
+      expect(storedImadokoOf(stored)).toEqual({ sections, turnKey: 'v1:x', savedAt: 1, usage: expected })
     })
   }
 })
