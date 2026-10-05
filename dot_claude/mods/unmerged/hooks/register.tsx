@@ -241,7 +241,11 @@ export const register: Register = on => {
                         key={`file:${id}`}
                         plain
                         label={`${at?.root === snap.root && at.path === f.path ? '📎 ' : ''}${f.path}`}
-                        onPress={() => select($, snap, f)}
+                        onPress={() =>
+                          sel?.root === snap.root && sel.path === f.path && sel.isUntracked === f.isUntracked
+                            ? unselect($)
+                            : select($, snap, f)
+                        }
                       />
                     </Box>
                   )
