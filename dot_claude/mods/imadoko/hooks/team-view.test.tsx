@@ -31,7 +31,9 @@ const AGENTS = JSON.stringify({
   },
 })
 
-function standIn(on: On, selfLabel: string, env: Record<string, string>) {
+type World = { agents: string; paneGet?: string; space?: string; screenReply?: (n: number) => Promise<string> }
+
+function standIn(on: On, selfLabel: string, env: Record<string, string>, world: World = { agents: AGENTS }) {
   const prompts: string[] = []
   const statuses: (string | undefined)[] = []
   const toasts: string[] = []
@@ -58,9 +60,10 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>) {
   on('process.run', (_$, e) => {
     const key = e.argv.slice(1).join(' ')
     const out: Record<string, string> = {
-      'tab list --workspace wW': tabsOut(selfLabel),
-      'agent list': AGENTS,
+      [`tab list --workspace ${world.space ?? 'wW'}`]: tabsOut(selfLabel),
+      'agent list': world.agents,
       'pane read p2': '? Which login provider should I use?',
+      ...(world.paneGet === undefined ? {} : { 'pane get p1': world.paneGet }),
     }
     return { value: { exitCode: key in out ? 0 : 1, stdout: out[key] ?? '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
   })
@@ -73,9 +76,12 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>) {
     throw new Error('ENOENT')
   })
   on('fs.write', () => ({ value: undefined }))
-  on('model.complete', (_$, e) => {
+  let screens = 0
+  on('model.complete', async (_$, e) => {
     prompts.push(e.prompt)
-    const text = e.prompt.includes('<screen>') ? 'ログイン方式について質問中' : JSON.stringify(SUMMARY)
+    const isScreen = e.prompt.includes('<screen>')
+    if (isScreen) screens += 1
+    const text = !isScreen ? JSON.stringify(SUMMARY) : world.screenReply ? await world.screenReply(screens) : 'ログイン方式について質問中'
     return { value: { isAnswered: true as const, text, usage: NO_USAGE } }
   })
   on('turn.start', (_$, e) => ({ turnId: e.turnId }))
@@ -126,4 +132,32 @@ test('a tab other than main keeps no team', async ($, on) => {
   expect(await ui.find({ text: /I1 · 実装/ })).toBeUndefined()
   await ui.unmount()
   expect(seen.statuses.filter(Boolean)).toEqual([])
+})
+
+test('a pane moved to another workspace reads the team of the workspace it is in now', async ($, on) => {
+  standIn(on, 'main', ENV, { agents: AGENTS, space: 'wX', paneGet: JSON.stringify({ result: { pane: { tab_id: 't1', workspace_id: 'wX' } } }) })
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /I1 · 実装 · codex/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a summary that comes back after the member moved on is dropped and the member is read again', async ($, on) => {
+  let release: (text: string) => void = () => {}
+  const first = new Promise<string>(resolve => {
+    release = resolve
+  })
+  const world: World = { agents: AGENTS, screenReply: async n => (n === 1 ? first : '返答を待って待機中') }
+  const seen = standIn(on, 'main', ENV, world)
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await seen.clock.advance(0)
+  expect(seen.prompts.filter(p => p.includes('<screen>')).length).toBe(1)
+  world.agents = AGENTS.replace('"blocked"', '"idle"')
+  await seen.clock.advance(3000)
+  release('ログイン方式について質問中')
+  await seen.clock.settle()
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /待機中 · 返答を待って待機中/ })).toBeDefined()
+  expect(await ui.find({ text: /ログイン方式について質問中/ })).toBeUndefined()
+  await ui.unmount()
 })

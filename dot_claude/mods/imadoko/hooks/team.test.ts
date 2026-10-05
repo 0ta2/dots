@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { cells, pixels, SIZE } from './sprite'
-import { changes, cleanNote, freshStatus, isLead, marksOf, members, needsNote, notePrompt, parseAgents, parseTabs, roleOf, summary, teamWordsFor } from './team'
+import { assignMarks, changes, cleanNote, EMPTY_BOOK, freshStatus, isLead, marksOf, members, needsNote, notePrompt, parseAgents, parseTabs, roleOf, summary, teamWordsFor } from './team'
 
 const TABS = JSON.stringify({
   result: {
@@ -33,7 +33,7 @@ test('roles come from the tab label, the main tab leads and is left out, and eac
   expect(roleOf('review-dots-163-claude')).toEqual({ role: 'review', kind: 'claude' })
   expect(isLead(parseTabs(TABS), 't1')).toBe(true)
   expect(isLead(parseTabs(TABS), 't2')).toBe(false)
-  const list = members(parseTabs(TABS), parseAgents(AGENTS), { t2: 'ログイン画面を直す' }, 't1')
+  const { list } = assignMarks(members(parseTabs(TABS), parseAgents(AGENTS), { t2: 'ログイン画面を直す' }, 't1'), EMPTY_BOOK)
   expect(list.map(m => [m.mark, m.role, m.status, m.paneId])).toEqual([
     ['I1', 'impl', 'blocked', 'p2'],
     ['R1', 'review', 'absent', undefined],
@@ -42,13 +42,26 @@ test('roles come from the tab label, the main tab leads and is left out, and eac
   expect(marksOf(list, JA)[0]).toEqual({ mark: 'I1', about: '実装 · codex · ログイン画面を直す' })
 })
 
+test('a mark stays with its tab and is never handed to another one', () => {
+  const tabs = parseTabs(TABS)
+  const first = assignMarks(members(tabs, parseAgents(AGENTS), {}, 't1'), EMPTY_BOOK)
+  const extra = [...tabs.filter(t => t.tabId !== 't2'), { tabId: 't6', label: 'impl-dots-later-claude' }, { tabId: 't7', label: 'impl-dots-a-codex' }]
+  const second = assignMarks(members(extra, parseAgents(AGENTS), {}, 't1'), first.book)
+  expect(second.list.map(m => [m.tabId, m.mark])).toEqual([
+    ['t7', 'I2'],
+    ['t6', 'I3'],
+    ['t3', 'R1'],
+    ['t5', 'M1'],
+  ])
+})
+
 test('broken herdr output gives no members', () => {
   expect(parseTabs('not json')).toEqual([])
   expect(parseAgents('{"result":{}}')).toEqual([])
 })
 
 test('a member turning blocked or finishing is announced once', () => {
-  const list = members(parseTabs(TABS), parseAgents(AGENTS), {}, 't1')
+  const { list } = assignMarks(members(parseTabs(TABS), parseAgents(AGENTS), {}, 't1'), EMPTY_BOOK)
   const before = new Map(list.map(m => [m.tabId, m.status] as const))
   expect(changes(new Map(), list, JA)).toEqual([])
   before.set('t2', 'working')

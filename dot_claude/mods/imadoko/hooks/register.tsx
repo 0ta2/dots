@@ -40,7 +40,9 @@ import {
   members,
   needsNote,
   notePrompt,
-  paneTabOf,
+  assignMarks,
+  EMPTY_BOOK,
+  paneOf,
   parseAgents,
   parseTabs,
   parseTask,
@@ -58,6 +60,7 @@ const lead = atom({ plugin: 'imadoko', key: 'isLead' } as const, false)
 // One line per member, by tab: what it is doing, from its own status file or its screen.
 const notes = atom({ plugin: 'imadoko', key: 'notes' } as const, {} as Record<string, string>)
 const frame = atom({ plugin: 'imadoko', key: 'frame' } as const, 0)
+const markBook = atom({ plugin: 'imadoko', key: 'marks' } as const, EMPTY_BOOK)
 
 const PANE_ID = 'imadoko'
 
@@ -273,11 +276,14 @@ const TEAM_POLL_MS = 3000
 const LEAD_CHECK_MS = 30_000
 const FRAME_MS = 600
 
-type Where = { workspace: string; pane: string; home: string }
+// `workspace` is the one this process started in, which herdr-delegate and
+// herdr-review also key their task records by; `space` is where the pane is
+// now, which a pane move changes while the environment keeps the old one.
+type Where = { workspace: string; space: string; pane: string; home: string }
 
 const whereAmI = async ($: EngineInterface): Promise<Where | undefined> => {
   const [workspace, pane, home] = await Promise.all([$.env.get('HERDR_WORKSPACE_ID'), $.env.get('HERDR_PANE_ID'), $.env.get('HOME')])
-  return workspace && pane && home ? { workspace, pane, home } : undefined
+  return workspace && pane && home ? { workspace, space: workspace, pane, home } : undefined
 }
 
 const herdr = async ($: EngineInterface, args: string[]) => {
@@ -302,19 +308,32 @@ const notedAt = new Map<string, number>()
 const noting = new Set<string>()
 let lastLeadCheck = -Infinity
 
+// Each state change a member's line must follow bumps its generation; a
+// summary that comes back after a newer one was asked for is dropped, and the
+// member is read again for the state it is in now.
+const generations = new Map<string, number>()
+const again = new Set<string>()
+
 /** Reads a member's screen and has Haiku say in one line what it is doing. */
-const noteFromScreen = async ($: EngineInterface, m: TeamMember, language: string) => {
-  if (m.paneId === undefined || noting.has(m.tabId)) return
-  noting.add(m.tabId)
+const noteFromScreen = async ($: EngineInterface, tabId: string, language: string): Promise<void> => {
+  if (noting.has(tabId)) {
+    again.add(tabId)
+    return
+  }
+  noting.add(tabId)
+  const generation = generations.get(tabId) ?? 0
   try {
+    const m = (await read($, team)).find(one => one.tabId === tabId)
+    if (m?.paneId === undefined) return
     const screen = await herdr($, ['pane', 'read', m.paneId])
     if (!screen?.trim()) return
     const reply = await $.model.complete({ model: 'haiku', ...notePrompt(m, screen, language), maxTokens: 100, effort: 'low', timeoutMs: 30_000 })
     const line = reply.isAnswered ? cleanNote(reply.text) : undefined
-    if (line !== undefined) await update($, notes, now => ({ ...now, [m.tabId]: line }))
+    if (line !== undefined && generations.get(tabId) === generation) await update($, notes, now => ({ ...now, [tabId]: line }))
   } finally {
-    noting.delete(m.tabId)
+    noting.delete(tabId)
   }
+  if (again.delete(tabId)) await noteFromScreen($, tabId, language)
 }
 
 /**
@@ -328,7 +347,7 @@ const noteMembers = async ($: EngineInterface, at: Where, before: Map<string, Me
     list.map(async m =>
       m.paneId === undefined
         ? undefined
-        : freshStatus(await $.fs.read(`${at.home}/.local/state/imadoko/${at.workspace}/${m.paneId}.json`).catch(() => ''), now),
+        : freshStatus(await $.fs.read(`${at.home}/.local/state/imadoko/${at.space}/${m.paneId}.json`).catch(() => ''), now),
     ),
   )
   const alive = new Set(list.map(m => m.tabId))
@@ -342,8 +361,11 @@ const noteMembers = async ($: EngineInterface, at: Where, before: Map<string, Me
     ),
   }))
   const due = list.filter((m, i) => own[i] === undefined && needsNote(before.get(m.tabId), m, notedAt.get(m.tabId), now))
-  for (const m of due) notedAt.set(m.tabId, now)
-  void Promise.all(due.map(m => noteFromScreen($, m, language).catch(() => undefined)))
+  for (const m of due) {
+    notedAt.set(m.tabId, now)
+    generations.set(m.tabId, (generations.get(m.tabId) ?? 0) + 1)
+  }
+  void Promise.all(due.map(m => noteFromScreen($, m.tabId, language).catch(() => undefined)))
 }
 
 const clearTeam = async ($: EngineInterface) => {
@@ -360,19 +382,23 @@ const refreshTeam = async ($: EngineInterface, language: string) => {
   const now = await $.clock.now()
   if (!isLeading && now - lastLeadCheck < LEAD_CHECK_MS) return
   lastLeadCheck = now
-  const at = await whereAmI($)
-  if (at === undefined) return
-  const [tabsOut, agentsOut] = await Promise.all([herdr($, ['tab', 'list', '--workspace', at.workspace]), herdr($, ['agent', 'list'])])
+  const started = await whereAmI($)
+  if (started === undefined) return
+  const here = paneOf((await herdr($, ['pane', 'get', started.pane])) ?? '')
+  const at = { ...started, space: here.workspaceId ?? started.workspace }
+  const [tabsOut, agentsOut] = await Promise.all([herdr($, ['tab', 'list', '--workspace', at.space]), herdr($, ['agent', 'list'])])
   if (tabsOut === undefined || agentsOut === undefined) return
   const tabs = parseTabs(tabsOut)
   const agents = parseAgents(agentsOut)
-  const selfTab = agents.find(a => a.paneId === at.pane)?.tabId ?? paneTabOf((await herdr($, ['pane', 'get', at.pane])) ?? '')
+  const selfTab = here.tabId ?? agents.find(a => a.paneId === at.pane)?.tabId
   if (!isLead(tabs, selfTab)) {
     if (isLeading) await clearTeam($)
     return
   }
   const words = teamWordsFor(language)
-  const list = members(tabs, agents, await taskRecords($, at), selfTab)
+  const marked = assignMarks(members(tabs, agents, await taskRecords($, at), selfTab), await read($, markBook))
+  const list = marked.list
+  await update($, markBook, () => marked.book)
   for (const line of changes(seen, list, words)) $.ui.toast(line, { timeoutMs: 6000 })
   const before = seen
   seen = new Map(list.map(m => [m.tabId, m.status]))

@@ -88,10 +88,12 @@ export function parseAgents(stdout: string): Agent[] {
   })
 }
 
-/** The tab a `herdr pane get` answer places the pane in. */
-export const paneTabOf = (stdout: string): string | undefined => {
+/** Where a `herdr pane get` answer places the pane now: its tab and workspace, which a pane move changes. */
+export const paneOf = (stdout: string): { tabId?: string; workspaceId?: string } => {
   const pane = resultOf(stdout)?.pane
-  return pane && typeof pane === 'object' ? str((pane as Json).tab_id) : undefined
+  if (!pane || typeof pane !== 'object') return {}
+  const { tab_id, workspace_id } = pane as Json
+  return { ...(str(tab_id) && { tabId: str(tab_id) }), ...(str(workspace_id) && { workspaceId: str(workspace_id) }) }
 }
 
 export function roleOf(label: string): { role: Role; kind?: string } {
@@ -105,10 +107,14 @@ export function roleOf(label: string): { role: Role; kind?: string } {
 export const isLead = (tabs: Tab[], selfTab: string | undefined): boolean =>
   LEAD_LABELS.includes(tabs.find(t => t.tabId === selfTab)?.label ?? '')
 
+/** The marks handed out so far: kept for the session, so a task's owner never comes to name another member. */
+export type MarkBook = { marks: Record<string, string>; next: Partial<Record<Role, number>> }
+
+export const EMPTY_BOOK: MarkBook = { marks: {}, next: {} }
+
 /**
  * The space's members other than this session: the tabs herdr-delegate and
- * herdr-review opened, and any other tab an agent runs in, each with a short
- * mark (I1, R1, M1) the summary's task owners name them by.
+ * herdr-review opened, and any other tab an agent runs in.
  */
 export function members(tabs: Tab[], agents: Agent[], tasks: Record<string, string>, selfTab?: string): TeamMember[] {
   const list = tabs.flatMap(tab => {
@@ -122,12 +128,26 @@ export function members(tabs: Tab[], agents: Agent[], tasks: Record<string, stri
     const k = kind ?? mine.find(a => a.kind)?.kind
     return [{ tabId: tab.tabId, label: tab.label, role, status, mark: '', ...(paneId && { paneId }), ...(k && { kind: k }), ...(task && { task }) }]
   })
-  const sorted = list.sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role) || a.label.localeCompare(b.label))
-  const counts: Partial<Record<Role, number>> = {}
-  return sorted.map(m => {
-    const n = (counts[m.role] = (counts[m.role] ?? 0) + 1)
-    return { ...m, mark: n <= 9 ? `${MARK_LETTERS[m.role]}${n}` : '' }
+  return list.sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role) || a.label.localeCompare(b.label))
+}
+
+/**
+ * Gives each member its short mark (I1, R1, M1): the one its tab already had,
+ * else the next number of its role. A mark is never handed to another tab,
+ * even after its own closes, and none is given past nine of a role.
+ */
+export function assignMarks(list: TeamMember[], book: MarkBook): { list: TeamMember[]; book: MarkBook } {
+  const marks = { ...book.marks }
+  const next = { ...book.next }
+  const marked = list.map(m => {
+    if (marks[m.tabId] === undefined) {
+      const n = (next[m.role] ?? 0) + 1
+      next[m.role] = n
+      marks[m.tabId] = n <= 9 ? `${MARK_LETTERS[m.role]}${n}` : ''
+    }
+    return { ...m, mark: marks[m.tabId]! }
   })
+  return { list: marked, book: { marks, next } }
 }
 
 export const marksOf = (list: TeamMember[], words: TeamWords): MemberMark[] =>
