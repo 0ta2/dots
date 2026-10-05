@@ -75,3 +75,68 @@ export async function snapshot(git: Git, root: string): Promise<RepoSnapshot | u
     ahead: Number((await git(root, ['rev-list', '--count', `${mergeBase}..HEAD`]))?.trim() ?? 0),
   }
 }
+
+type DiffLine = { hunk: number; kind: string; text: string; old: number; new: number }
+
+function diffLines(diff: string): DiffLine[] {
+  const at = diff.search(/^@@ /m)
+  if (at === -1) return []
+  const lines: DiffLine[] = []
+  diff
+    .slice(at)
+    .split(/(?=^@@ )/m)
+    .forEach((hunk, i) => {
+      const [header = '', ...body] = hunk.split('\n')
+      const m = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(header)
+      if (!m) return
+      let old = Number(m[1])
+      let now = Number(m[2])
+      for (const line of body) {
+        const kind = line[0]
+        if (kind !== ' ' && kind !== '+' && kind !== '-') continue
+        lines.push({ hunk: i, kind, text: line.slice(1), old, new: now })
+        if (kind !== '+') old++
+        if (kind !== '-') now++
+      }
+    })
+  return lines
+}
+
+const GUTTER = /^\s*(\d+\s+){0,2}[+-]?\s?/
+
+function isSameLine(picked: string, line: string): boolean {
+  const p = picked.trim()
+  const l = line.trim()
+  if (!l) return !/[^\d\s+-]/.test(p)
+  if (!p) return false
+  const bare = p.replace(GUTTER, '').trim()
+  return p.includes(l) || (bare.length > 0 && l.includes(bare))
+}
+
+export type PickedLines = { source: string; from: number; to: number; isOld: boolean }
+
+export function pickLines(diff: string, picked: string): PickedLines | undefined {
+  const lines = diffLines(diff)
+  const want = picked
+    .split('\n')
+    .filter(l => !l.startsWith('@@'))
+    .join('\n')
+    .replace(/^\s*\n|\n\s*$/g, '')
+    .split('\n')
+  if (!want.join('').trim()) return undefined
+  const start = lines.findIndex((_, i) => want.every((w, j) => lines[i + j] && isSameLine(w, lines[i + j]!.text)))
+  if (start === -1) return undefined
+  const chosen = lines.slice(start, start + want.length)
+  let source = ''
+  for (const hunk of new Set(chosen.map(l => l.hunk))) {
+    const part = chosen.filter(l => l.hunk === hunk)
+    const olds = part.filter(l => l.kind !== '+').length
+    const news = part.filter(l => l.kind !== '-').length
+    const old = olds ? part[0]!.old : part[0]!.old - 1
+    const now = news ? part[0]!.new : part[0]!.new - 1
+    source += `@@ -${old},${olds} +${now},${news} @@\n${part.map(l => l.kind + l.text + '\n').join('')}`
+  }
+  const added = chosen.filter(l => l.kind !== '-')
+  const side = added.length ? added.map(l => l.new) : chosen.map(l => l.old)
+  return { source, from: side[0]!, to: side[side.length - 1]!, isOld: added.length === 0 }
+}

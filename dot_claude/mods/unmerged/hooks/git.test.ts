@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'claude-code/testing'
-import { dirsInCommand, fitHunks, parseNumstat, snapshot, type Git } from './git.ts'
+import { dirsInCommand, fitHunks, parseNumstat, pickLines, snapshot, type Git } from './git.ts'
 
 const fakeGit = (answers: Record<string, string | undefined>): Git => async (_dir, args) => answers[args.join(' ')]
 
@@ -54,5 +54,24 @@ describe('unmerged git helpers', () => {
       'ls-files -z --others --exclude-standard': '',
     })
     expect(await snapshot(git, '/r')).toBeUndefined()
+  })
+
+  test('picks the selected lines out of a diff, gutters and partial ends included', () => {
+    const diff = 'diff --git a/x b/x\n@@ -1,3 +1,3 @@\n one\n-two\n+TWO\n three\n@@ -10,2 +10,2 @@\n ten\n-eleven\n+ELEVEN\n'
+    expect(pickLines(diff, '   1    1   one\n   2      - two\n        2 + TW')).toEqual({
+      source: '@@ -1,2 +1,2 @@\n one\n-two\n+TWO\n',
+      from: 1,
+      to: 2,
+      isOld: false,
+    })
+    expect(pickLines(diff, 'three\n@@ -10,2 +10,2 @@\nten')).toEqual({
+      source: '@@ -3,1 +3,1 @@\n three\n@@ -10,1 +10,1 @@\n ten\n',
+      from: 3,
+      to: 10,
+      isOld: false,
+    })
+    expect(pickLines(diff, '-eleven')).toEqual({ source: '@@ -11,1 +10,0 @@\n-eleven\n', from: 11, to: 11, isOld: true })
+    expect(pickLines(diff, 'nowhere in the diff')).toBeUndefined()
+    expect(pickLines(diff, '\n  \n')).toBeUndefined()
   })
 })
