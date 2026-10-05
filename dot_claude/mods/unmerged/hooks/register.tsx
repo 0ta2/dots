@@ -107,6 +107,10 @@ async function askText($: EngineInterface, at: Asked, room: number): Promise<{ n
 const askedName = (at: Asked) =>
   `${basename(at.root)}/${at.path}${at.range ? `（${at.range.isOld ? '削除した ' : ''}${spanOf(at.range)} 行）` : ''}`
 const spanOf = (r: { from: number; to: number }) => (r.from === r.to ? `${r.from}` : `${r.from}–${r.to}`)
+const STATUS_COLORS: Record<string, string> = { A: 'success', M: 'warning', T: 'warning', D: 'error', U: 'error' }
+const countsText = (f: FileChange) =>
+  f.isUntracked ? '' : f.added === null ? 'bin' : [f.added && `+${f.added}`, f.removed && `-${f.removed}`].filter(Boolean).join(' ')
+
 const dirname = (p: string) => p.slice(0, p.lastIndexOf('/')) || '/'
 const basename = (p: string) => p.slice(p.lastIndexOf('/') + 1)
 
@@ -192,6 +196,7 @@ export const register: Register = on => {
         {snaps.length === 0 && <Text dimColor>マージ前の変更はありません</Text>}
         {snaps.map(snap => {
           const isOpenRepo = isExpanded(snap.root)
+          const width = Math.max(...snap.files.map(f => countsText(f).length))
           const marks = isOpenRepo ? '' : `${at?.root === snap.root ? ' 📎' : ''}${sel?.root === snap.root ? ' (表示中)' : ''}`
           return (
             <Box key={`group:${snap.root}`} flexDirection="column" marginBottom={isOpenRepo ? 1 : 0}>
@@ -207,14 +212,29 @@ export const register: Register = on => {
                 </Text>
               )}
               {isOpenRepo &&
-                snap.files.map(f => (
-                  <Button
-                    key={`file:${snap.root}:${f.isUntracked ? 'untracked' : 'tracked'}:${f.path}`}
-                    plain
-                    label={`${at?.root === snap.root && at.path === f.path ? '📎 ' : ''}${f.isUntracked ? 'new' : f.added === null ? 'bin' : `+${f.added} -${f.removed}`}  ${f.path}`}
-                    onPress={() => select($, snap, f)}
-                  />
-                ))}
+                snap.files.map(f => {
+                  const id = `${snap.root}:${f.isUntracked ? 'untracked' : 'tracked'}:${f.path}`
+                  return (
+                    <Box key={`row:${id}`} flexDirection="row" gap={1}>
+                      <Text color={STATUS_COLORS[f.status]} dimColor={f.isUntracked}>
+                        {f.status}
+                      </Text>
+                      {width > 0 && (
+                        <Box width={width} flexShrink={0} flexDirection="row" gap={1}>
+                          {f.added === null && !f.isUntracked && <Text dimColor>bin</Text>}
+                          {!!f.added && <Text color="success">{`+${f.added}`}</Text>}
+                          {!!f.removed && <Text color="error">{`-${f.removed}`}</Text>}
+                        </Box>
+                      )}
+                      <Button
+                        key={`file:${id}`}
+                        plain
+                        label={`${at?.root === snap.root && at.path === f.path ? '📎 ' : ''}${f.path}`}
+                        onPress={() => select($, snap, f)}
+                      />
+                    </Box>
+                  )
+                })}
             </Box>
           )
         })}
