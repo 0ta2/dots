@@ -108,8 +108,17 @@ const askedName = (at: Asked) =>
   `${basename(at.root)}/${at.path}${at.range ? `（${at.range.isOld ? '削除した ' : ''}${spanOf(at.range)} 行）` : ''}`
 const spanOf = (r: { from: number; to: number }) => (r.from === r.to ? `${r.from}` : `${r.from}–${r.to}`)
 const STATUS_COLORS: Record<string, string> = { A: 'success', M: 'warning', T: 'warning', D: 'error', U: 'error' }
-const countsText = (f: FileChange) =>
-  f.isUntracked ? '' : f.added === null ? 'bin' : [f.added && `+${f.added}`, f.removed && `-${f.removed}`].filter(Boolean).join(' ')
+type Count = { text: string; color?: string }
+const counts = (f: FileChange): Count[] =>
+  f.isUntracked
+    ? []
+    : f.added === null
+      ? [{ text: 'bin' }]
+      : [
+          ...(f.added ? [{ text: `+${f.added}`, color: 'success' }] : []),
+          ...(f.removed ? [{ text: `-${f.removed}`, color: 'error' }] : []),
+        ]
+const countsWidth = (c: Count[]) => c.reduce((w, { text }) => w + text.length, Math.max(c.length - 1, 0))
 
 const dirname = (p: string) => p.slice(0, p.lastIndexOf('/')) || '/'
 const basename = (p: string) => p.slice(p.lastIndexOf('/') + 1)
@@ -196,7 +205,7 @@ export const register: Register = on => {
         {snaps.length === 0 && <Text dimColor>マージ前の変更はありません</Text>}
         {snaps.map(snap => {
           const isOpenRepo = isExpanded(snap.root)
-          const width = Math.max(...snap.files.map(f => countsText(f).length))
+          const width = Math.max(...snap.files.map(f => countsWidth(counts(f))))
           const marks = isOpenRepo ? '' : `${at?.root === snap.root ? ' 📎' : ''}${sel?.root === snap.root ? ' (表示中)' : ''}`
           return (
             <Box key={`group:${snap.root}`} flexDirection="column" marginBottom={isOpenRepo ? 1 : 0}>
@@ -221,9 +230,11 @@ export const register: Register = on => {
                       </Text>
                       {width > 0 && (
                         <Box width={width} flexShrink={0} flexDirection="row" gap={1}>
-                          {f.added === null && !f.isUntracked && <Text dimColor>bin</Text>}
-                          {!!f.added && <Text color="success">{`+${f.added}`}</Text>}
-                          {!!f.removed && <Text color="error">{`-${f.removed}`}</Text>}
+                          {counts(f).map(c => (
+                            <Text key={c.text} color={c.color} dimColor={!c.color}>
+                              {c.text}
+                            </Text>
+                          ))}
                         </Box>
                       )}
                       <Button
