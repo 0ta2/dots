@@ -410,6 +410,24 @@ test('タスクを押すと詳細を開き、もう一度押すと閉じる', as
   expect(closed).not.toContain('┆    Trying the band and the pane in a child session.')
 })
 
+test('同じ題名のタスクが 2 つあっても、押した方だけ詳細を開く', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  standInForEngine(on)
+  const twin = { title: 'Ship it', detail: '', owner: '', waitsOn: '' }
+  recordModelCalls(on, () =>
+    imadokoReply({ ...IMADOKO, tasks: [{ ...twin, state: 'next', detail: 'First detail.' }, { ...twin, state: 'waiting', detail: 'Second detail.' }] }),
+  )
+
+  await startInteractive($)
+  await runTurn($, clock, 'パネルを作りたい', '作りました', 't1')
+  const ui = await $.ui.mount(paneOn('terminal'))
+  await ui.press({ key: 'task:open:Ship it#2' })
+  await ui.unmount()
+  const rows = await paneRows($)
+
+  expect([rows.some(row => row.includes('First detail.')), rows.some(row => row.includes('Second detail.'))]).toEqual([false, true])
+})
+
 test('/imadoko の Pane では見出しをオレンジの太字で、本文を色なしで、タスクの印を状態の色で出す', async ($, on) => {
   const clock = mock.clock(on, { now: START })
   standInForEngine(on)
@@ -1427,6 +1445,42 @@ for (const { name, saved, previous } of [
     expect(blockOf(requests.at(-1)?.prompt, 'previous_imadoko')).toBe(previous)
   })
 }
+
+test('/resume の後、履歴を足す前に終わったターンが 2 つ以上あっても、引き継いだ概要の後のターンを全部渡す', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  const transcript: SessionMessage[] = []
+  const session = { id: 'sess-1' }
+  standInForEngine(on, transcript, {}, [], session, {
+    'imadoko:sess-2': { sections: { ...IMADOKO, purpose: '保存した目的' }, turnKey: turnKey('次の依頼', '実装しました'), savedAt: 1 },
+  })
+  const requests = recordModelCalls(on)
+
+  await startInteractive($)
+  await runTurn($, clock, '前のセッションの依頼', '前のセッションの回答', 't1')
+  await $.session.end({ reason: 'resume', sessionId: 'sess-1', resume: { id: 'sess-1' } })
+  await $.turn.start({ text: '再開後の一つ目', turnId: 't2' })
+  await completeTurn($, '一つ目の回答', 't2')
+  await $.turn.start({ text: '再開後の二つ目', turnId: 't3' })
+  await completeTurn($, '二つ目の回答', 't3')
+  await clock.advance(0)
+  session.id = 'sess-2'
+  transcript.push(
+    ...RESUMED,
+    { role: 'user', text: '再開後の一つ目', toolUses: [] },
+    { role: 'assistant', text: '一つ目の回答', toolUses: [] },
+    { role: 'user', text: '再開後の二つ目', toolUses: [] },
+    { role: 'assistant', text: '二つ目の回答', toolUses: [] },
+  )
+  await clock.advance(1_000)
+  await clock.settle()
+
+  const prompt = requests.at(-1)?.prompt
+  expect([
+    JSON.parse(blockOf(prompt, 'previous_imadoko') ?? '{}').purpose,
+    blockOf(prompt, 'turns_since_previous_imadoko'),
+    blockOf(prompt, 'latest_request'),
+  ]).toEqual(['保存した目的', '\n- T3 再開後の一つ目 → 一つ目の回答\n', '再開後の二つ目'])
+})
 
 test('/resume の前に始まった概要の呼び出しが、履歴を足した後に届いても捨てて作り直す', async ($, on) => {
   const clock = mock.clock(on, { now: START })

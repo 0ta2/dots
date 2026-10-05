@@ -192,7 +192,7 @@ export const startTurn = (imadoko: Imadoko, text: string): Imadoko => {
  * at its end, and they keep their place after the history, renumbered. A
  * summary written before then never saw the history: it is dropped, and the
  * stored one stands in when it was written after the history's last turn.
- * Calls still out for the old numbers land below sectionsTurn and are dropped.
+ * The epoch moves on, so calls still out for the old numbers are dropped.
  */
 export const underHistory = (current: Imadoko, rebuilt: Imadoko, stored: StoredImadoko | undefined): Imadoko => {
   // A transcript's copy of a live turn has its request and, so far, no other
@@ -219,7 +219,8 @@ export const underHistory = (current: Imadoko, rebuilt: Imadoko, stored: StoredI
       ...current.questions.map(one => ({ ...one, turn: one.turn + offset })),
     ],
     sections: isFresh ? stored.sections : null,
-    sectionsTurn: (lastTurn(current)?.turn ?? 0) + offset,
+    sectionsTurn: offset,
+    epoch: current.epoch + 1,
     background: current.background ?? rebuilt.background,
   }
 }
@@ -560,8 +561,21 @@ export const paneSections = (imadoko: Imadoko, words: Words): { title: string; r
   ]
 }
 
-/** A task's key on the timeline: what keeps it open across summaries that rewrite its detail. */
-export const taskKey = (task: Task): string => `${task.state === 'done' ? 'done' : 'open'}:${task.title}`
+/**
+ * Each task's key on the timeline: what keeps it open across summaries that
+ * rewrite its detail. Tasks that share a title count up so each opens alone.
+ */
+export const taskKeys = (tasks: readonly Task[]): string[] => {
+  const seen = new Map<string, number>()
+
+  return tasks.map(task => {
+    const key = `${task.state === 'done' ? 'done' : 'open'}:${task.title}`
+    const count = (seen.get(key) ?? 0) + 1
+    seen.set(key, count)
+
+    return count === 1 ? key : `${key}#${count}`
+  })
+}
 
 /** Who has a task and what it waits on, when either is known. */
 export const taskMeta = (task: Task, words: Words): string =>

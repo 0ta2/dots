@@ -23,7 +23,7 @@ import {
   startOver,
   startTurn,
   storedImadokoOf,
-  taskKey,
+  taskKeys,
   taskMeta,
   summaryRequest,
   turnKeyOf,
@@ -33,7 +33,7 @@ import type { Locale } from './imadoko'
 import type { Imadoko, Task, TaskState } from '../types'
 
 const imadoko = atom({ plugin: 'imadoko', key: 'imadoko' } as const, EMPTY)
-// The tasks the person opened on the timeline, by taskKey.
+// The tasks the person opened on the timeline, by taskKeys.
 const expanded = atom({ plugin: 'imadoko', key: 'expanded' } as const, [] as string[])
 
 const PANE_ID = 'imadoko'
@@ -355,6 +355,7 @@ export const register: Register = on => {
     const current = await read($, imadoko)
     const opened = await read($, expanded)
     const tasks: readonly Task[] = current.sections?.tasks ?? []
+    const keys = taskKeys(tasks)
     const { Box, Button, Text } = $.ui.resolve(e)
 
     return (
@@ -389,7 +390,7 @@ export const register: Register = on => {
           </Text>
           {tasks.length === 0 ? <Text wrap="wrap">{locale.words.none}</Text> : null}
           {tasks.map((task, index) => {
-            const key = taskKey(task)
+            const key = keys[index] ?? ''
             const isOpen = opened.includes(key)
             const after = tasks[index + 1]
             const rail = after === undefined ? ' ' : after.state === 'done' || after.state === 'doing' ? '│' : '┆'
