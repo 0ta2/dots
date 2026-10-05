@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Asked, FileChange, RepoSnapshot } from '../types'
-import { dirsInCommand, fitHunks, snapshot, type Git } from './git.ts'
+import { dirsInCommand, fitHunks, pickLines, snapshot, type Git } from './git.ts'
 
 const PANE = 'unmerged'
 const CODE_LIMIT = 10000
@@ -14,6 +14,7 @@ const snapshots = atom({ plugin: 'unmerged', key: 'snapshots' } as const, [])
 const selected = atom({ plugin: 'unmerged', key: 'selected' } as const, null)
 const isOpen = atom({ plugin: 'unmerged', key: 'isOpen' } as const, false)
 const asked = atom({ plugin: 'unmerged', key: 'asked' } as const, null)
+const expanded = atom({ plugin: 'unmerged', key: 'expanded' } as const, {})
 
 const gitOf = ($: EngineInterface, okCodes = [0]): Git => async (dir, args) => {
   const r = await $.process.run(['git', '-C', dir, ...GIT_ARGS, ...args]).catch(() => undefined)
@@ -95,13 +96,17 @@ async function askText($: EngineInterface, at: Asked, room: number): Promise<{ n
   const snap = await snapshot(gitOf($), at.root)
   const file = snap?.files.findLast(f => f.path === at.path)
   if (!snap || !file) return { name }
-  const head = `The user attached the diff of ${at.path} in ${at.root} (since its merge base with ${snap.base}) from the unmerged pane to this prompt:\n`
-  const diff = await diffOf($, snap, file)
+  const what = at.range ? `${at.range.isOld ? 'removed ' : ''}lines ${spanOf(at.range)} of the diff` : 'the diff'
+  const head = `The user attached ${what} of ${at.path} in ${at.root} (since its merge base with ${snap.base}) from the unmerged pane to this prompt:\n`
+  const diff = at.range?.source ?? (await diffOf($, snap, file))
   const whole = fitHunks(diff, room - head.length)
   const fit = whole?.isCut ? fitHunks(diff, room - head.length - CUT_NOTE.length) : whole
   return { name, text: fit?.source ? head + fit.source + (fit.isCut ? CUT_NOTE : '') : undefined }
 }
 
+const askedName = (at: Asked) =>
+  `${basename(at.root)}/${at.path}${at.range ? `（${at.range.isOld ? '削除した ' : ''}${spanOf(at.range)} 行）` : ''}`
+const spanOf = (r: { from: number; to: number }) => (r.from === r.to ? `${r.from}` : `${r.from}–${r.to}`)
 const dirname = (p: string) => p.slice(0, p.lastIndexOf('/')) || '/'
 const basename = (p: string) => p.slice(p.lastIndexOf('/') + 1)
 
@@ -160,48 +165,76 @@ export const register: Register = on => {
     }
   })
 
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    const at = await read($, asked)
+    if (!at || e.props.hasSurvey) return next(e)
+    const { Box, Text, Button } = $.ui.resolve(e)
+    return (
+      <Box flexDirection="row" gap={1}>
+        <Text>{`📎 ${askedName(at)}${at.range ? '' : ' '}を次の送信に添付`}</Text>
+        <Button key="unask" label="外す" onPress={() => update($, asked, () => null)} />
+      </Box>
+    )
+  })
+
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text, Button, Code } = $.ui.resolve(e)
     const snaps = (await read($, snapshots)) ?? []
     const sel = await read($, selected)
     const at = await read($, asked)
+    const opened = (await read($, expanded)) ?? {}
     const isAsked = isSame(at, sel)
     const fit = sel?.diff ? fitHunks(sel.diff, CODE_LIMIT) : undefined
+    const isExpanded = (root: string) => opened[root] ?? (snaps.length < 2 || sel?.root === root)
 
     return (
       <Box flexDirection="column">
         {snaps.length === 0 && <Text dimColor>マージ前の変更はありません</Text>}
-        {snaps.map(snap => (
-          <Box key={`repo:${snap.root}`} flexDirection="column" marginBottom={1}>
-            <Text bold>{basename(snap.root)}</Text>
-            <Text dimColor>
-              {snap.branch} · {snap.ahead} commits ahead of {snap.base}
-            </Text>
-            {snap.files.map(f => (
+        {snaps.map(snap => {
+          const isOpenRepo = isExpanded(snap.root)
+          const marks = isOpenRepo ? '' : `${at?.root === snap.root ? ' 📎' : ''}${sel?.root === snap.root ? ' (表示中)' : ''}`
+          return (
+            <Box key={`group:${snap.root}`} flexDirection="column" marginBottom={isOpenRepo ? 1 : 0}>
               <Button
-                key={`file:${snap.root}:${f.isUntracked ? 'untracked' : 'tracked'}:${f.path}`}
+                key={`repo:${snap.root}`}
                 plain
-                label={`${f.isUntracked ? 'new' : f.added === null ? 'bin' : `+${f.added} -${f.removed}`}  ${f.path}`}
-                onPress={() => select($, snap, f)}
+                label={`${isOpenRepo ? '▾' : '▸'} ${basename(snap.root)} (${snap.files.length})${marks}`}
+                onPress={() => update($, expanded, now => ({ ...now, [snap.root]: !isOpenRepo }))}
               />
-            ))}
-          </Box>
-        ))}
+              {isOpenRepo && (
+                <Text dimColor>
+                  {snap.branch} · {snap.ahead} commits ahead of {snap.base}
+                </Text>
+              )}
+              {isOpenRepo &&
+                snap.files.map(f => (
+                  <Button
+                    key={`file:${snap.root}:${f.isUntracked ? 'untracked' : 'tracked'}:${f.path}`}
+                    plain
+                    label={`${at?.root === snap.root && at.path === f.path ? '📎 ' : ''}${f.isUntracked ? 'new' : f.added === null ? 'bin' : `+${f.added} -${f.removed}`}  ${f.path}`}
+                    onPress={() => select($, snap, f)}
+                  />
+                ))}
+            </Box>
+          )
+        })}
         {sel && (
           <Box flexDirection="column">
             <Box flexDirection="row" gap={1}>
+              <Button
+                key="ask"
+                label={isAsked ? '添付を外す' : '添付'}
+                onPress={async () => {
+                  await $.ui.status(undefined)
+                  if (isAsked) return update($, asked, () => null)
+                  const picked = await $.ui.selection()
+                  const range = sel.diff && picked && !picked.requestId ? pickLines(sel.diff, picked.text) : undefined
+                  await update($, asked, () => ({ root: sel.root, path: sel.path, ...(range && { range }) }))
+                }}
+              />
               <Text bold>
                 {basename(sel.root)}/{sel.path}
               </Text>
-              <Button
-                key="ask"
-                label={isAsked ? 'asked ✓' : 'ask'}
-                onPress={async () => {
-                  const { root, path } = sel
-                  await update($, asked, () => (isAsked ? null : { root, path }))
-                  await $.ui.status(isAsked ? undefined : `${basename(root)}/${path} の差分を次のプロンプトに添付します`)
-                }}
-              />
             </Box>
             {sel.diff === null ? (
               <Text dimColor>読み込み中…</Text>
