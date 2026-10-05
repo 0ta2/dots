@@ -223,3 +223,17 @@ test('a state change after the member last wrote its status file is read off the
   expect(await ui.find({ text: /レビュー指摘を読んでいる/ })).toBeUndefined()
   await ui.unmount()
 })
+
+test('a status file written between two polls counts as written after the state change', async ($, on) => {
+  const world: World = { agents: AGENTS, files: {} }
+  const seen = standIn(on, 'main', ENV, world)
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await seen.clock.advance(0)
+  world.agents = AGENTS.replace(/("pane_id":"p2","tab_id":"t2","agent":"codex","agent_status":)"blocked"/, '$1"idle"')
+  world.files = { '/imadoko/wW/p2.json': JSON.stringify({ status: 'ログイン画面を直して PR を出した', savedAt: 1_790_000_000_000 + 1500 }) }
+  await seen.clock.advance(3000)
+  await seen.clock.settle()
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /待機中 · ログイン画面を直して PR を出した/ })).toBeDefined()
+  await ui.unmount()
+})

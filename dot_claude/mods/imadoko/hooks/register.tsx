@@ -326,8 +326,10 @@ const keepBook = async ($: EngineInterface, space: string, book: MarkBook, was: 
 
 let seen = new Map<string, MemberState>()
 const notedAt = new Map<string, number>()
-// When each member's state last changed; a status file older than that tells of the state before.
+// When each member was last seen in its old state before it changed; a status
+// file older than that tells of the state before.
 const changedAt = new Map<string, number>()
+let lastNotedAt: number | undefined
 const noting = new Set<string>()
 let lastLeadCheck = -Infinity
 
@@ -368,8 +370,9 @@ const noteMembers = async ($: EngineInterface, at: Where, before: Map<string, Me
   const now = await $.clock.now()
   for (const m of list) {
     const was = before.get(m.tabId)
-    if (was !== undefined && was !== m.status) changedAt.set(m.tabId, now)
+    if (was !== undefined && was !== m.status) changedAt.set(m.tabId, lastNotedAt ?? now)
   }
+  lastNotedAt = now
   const own = await Promise.all(
     list.map(async m => {
       if (m.paneId === undefined) return undefined
@@ -404,6 +407,7 @@ const clearTeam = async ($: EngineInterface) => {
   seen = new Map()
   notedAt.clear()
   changedAt.clear()
+  lastNotedAt = undefined
   await update($, lead, () => false)
   await update($, team, () => [])
   $.ui.status(undefined)
