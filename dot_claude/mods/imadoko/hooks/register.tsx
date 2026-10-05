@@ -371,18 +371,19 @@ const noteFromScreen = async ($: EngineInterface, tabId: string, language: strin
   let line: string | undefined
   try {
     const m = (await read($, team)).find(one => one.tabId === tabId)
-    if (m?.paneId === undefined) return
-    const screen = await herdr($, ['pane', 'read', m.paneId])
-    if (!screen?.trim()) return
-    const reply = await $.model.complete({ model: 'haiku', ...notePrompt(m, screen, language), maxTokens: 100, effort: 'low', timeoutMs: 30_000 })
-    line = reply.isAnswered ? cleanNote(reply.text) : undefined
-    if (line !== undefined && generations.get(tabId) === generation) await update($, notes, now => ({ ...now, [tabId]: line! }))
-  } finally {
-    noting.delete(tabId)
-    if (generations.get(tabId) === generation) {
-      if (line === undefined) unnoted.add(tabId)
-      else unnoted.delete(tabId)
+    const screen = m?.paneId === undefined ? undefined : await herdr($, ['pane', 'read', m.paneId])
+    if (m !== undefined && screen?.trim()) {
+      const reply = await $.model.complete({ model: 'haiku', ...notePrompt(m, screen, language), maxTokens: 100, effort: 'low', timeoutMs: 30_000 })
+      line = reply.isAnswered ? cleanNote(reply.text) : undefined
     }
+    if (line !== undefined && generations.get(tabId) === generation) await update($, notes, now => ({ ...now, [tabId]: line! }))
+  } catch {
+    line = undefined
+  }
+  noting.delete(tabId)
+  if (generations.get(tabId) === generation) {
+    if (line === undefined) unnoted.add(tabId)
+    else unnoted.delete(tabId)
   }
   if (again.delete(tabId)) await noteFromScreen($, tabId, language)
 }
@@ -407,8 +408,19 @@ const noteMembers = async ($: EngineInterface, at: Where, before: Map<string, Me
     }),
   )
   const alive = new Set(list.map(m => m.tabId))
+  // A member whose agent left or can no longer be read keeps no line from before.
+  const unreadable = new Set(
+    list
+      .filter(m => (m.paneId === undefined || m.status === 'absent' || m.status === 'unknown') && before.get(m.tabId) !== m.status)
+      .map(m => m.tabId),
+  )
+  for (const tabId of unreadable) {
+    again.delete(tabId)
+    unnoted.delete(tabId)
+    generations.set(tabId, (generations.get(tabId) ?? 0) + 1)
+  }
   await update($, notes, all => ({
-    ...Object.fromEntries(Object.entries(all).filter(([tab]) => alive.has(tab))),
+    ...Object.fromEntries(Object.entries(all).filter(([tab]) => alive.has(tab) && !unreadable.has(tab))),
     ...Object.fromEntries(
       list.flatMap((m, i) => {
         const line = own[i] === undefined ? undefined : cleanNote(own[i]!.status)

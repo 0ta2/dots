@@ -250,3 +250,40 @@ test('a screen read that gives no line is tried again a little later', async ($,
   expect(await ui.find({ text: /質問待ち · ログイン方式について質問中/ })).toBeDefined()
   await ui.unmount()
 })
+
+test('a queued read still runs when the read in flight fails', async ($, on) => {
+  let fail: (e: Error) => void = () => {}
+  const first = new Promise<string>((_, reject) => {
+    fail = reject
+  })
+  const world: World = { agents: AGENTS, screenReply: async n => (n === 1 ? first : '返答を待って待機中') }
+  const seen = standIn(on, 'main', ENV, world)
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await seen.clock.advance(0)
+  world.agents = AGENTS.replace('"blocked"', '"idle"')
+  await seen.clock.advance(3000)
+  fail(new Error('model down'))
+  await seen.clock.settle()
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /待機中 · 返答を待って待機中/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a member whose agent left drops the line a read in flight would have given', async ($, on) => {
+  let release: (text: string) => void = () => {}
+  const first = new Promise<string>(resolve => {
+    release = resolve
+  })
+  const world: World = { agents: AGENTS, screenReply: async () => first }
+  const seen = standIn(on, 'main', ENV, world)
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await seen.clock.advance(0)
+  world.agents = AGENTS.replace(/\{"pane_id":"p2"[^}]*\},/, '')
+  await seen.clock.advance(3000)
+  release('ログイン方式について質問中')
+  await seen.clock.settle()
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /I1 · 実装 · codex/ })).toBeDefined()
+  expect(await ui.find({ text: /ログイン方式について質問中/ })).toBeUndefined()
+  await ui.unmount()
+})
