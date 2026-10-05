@@ -3,7 +3,7 @@ name: herdr-review
 description: 同じ Herdr スペースに専用タブを作って別エージェントを起動し、現在の差分・特定ファイル・直近コミットなどをレビューさせ、結果を回収して報告する。 「隣のcodexにレビューしてもらって」「隣のopusにレビューさせて」「別のエージェントにこの差分を見てもらって」のように、隣ペイン・別エージェント・レビューを明示した依頼で使う。既定は codex。claude、opus、sonnet 等が指定された場合はそのエージェントまたはモデルを使う。「レビューして」だけの依頼、または自分でレビューする依頼には使わず、自分でレビュースキルを実行する。
 disable-model-invocation: false
 user-invocable: true
-allowed-tools: Bash(herdr *), Bash(grep *), Bash(sed *), Bash(test *), Read
+allowed-tools: Bash(herdr *), Bash(grep *), Bash(sed *), Bash(test *), Read, Bash(mkdir -p *), Write(~/.local/state/herdr-team/**)
 ---
 
 # herdr-review
@@ -252,6 +252,17 @@ dim 以外の文字列が残っているときは、自分が送った依頼文�
   「PR にコメントさせて」など投稿を指示されたときだけ reviewer に投稿させる。
   **どちらであっても依頼文に書く。** レビュースキルは PR 対象なら投稿する既定を
   持つことがあり (`change-review` がそう)、黙っていると投稿される
+
+## タスクを記録する
+
+imadoko のチーム表示 (main タブの `/imadoko`) がメンバーの横に出す 1 行を書く。依頼を送る直前に、新規・再利用を問わず毎回書き直す。
+
+```bash
+mkdir -p "$HOME/.local/state/herdr-team/$HERDR_WORKSPACE_ID"
+```
+
+`$HOME/.local/state/herdr-team/$HERDR_WORKSPACE_ID/<tab_id>.json` に `{"task": "<レビュー対象を 1 行で。例: dots#163 の再レビュー>"}` を書く。
+役割と状態は imadoko がタブラベルと herdr から読むので書かない。書けなくても依頼は止めない。
 
 ## 依頼を送る
 
