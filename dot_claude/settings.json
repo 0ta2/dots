@@ -8,6 +8,7 @@
     "lua-lsp@claude-plugins-official": true,
     "ponytail@ponytail": true,
     "pyright-lsp@claude-plugins-official": true,
+    "recap-plus@claude-recap-plus": true,
     "superpowers@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true
   },
@@ -16,6 +17,12 @@
     "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods/command-guard:~/.claude/mods/unmerged"
   },
   "extraKnownMarketplaces": {
+    "claude-recap-plus": {
+      "source": {
+        "repo": "skanehira/claude-recap-plus",
+        "source": "github"
+      }
+    },
     "heptabase-cli-skills": {
       "source": {
         "repo": "heptameta/heptabase-cli-skills",
