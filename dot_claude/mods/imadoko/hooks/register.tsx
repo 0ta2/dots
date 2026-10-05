@@ -343,9 +343,12 @@ export const register: Register = on => {
 
   on('tool.call', async ($, e, next) => {
     const line = isInteractive && e.agentId === undefined ? activityOf(String(e.tool), e) : undefined
-    if (line !== undefined) await update($, imadoko, current => recordActivity(current, line))
+    const ran = await next(e)
+    if (line !== undefined && ran.deny === undefined && ran.isError !== true) {
+      await update($, imadoko, current => recordActivity(current, line))
+    }
 
-    return next(e)
+    return ran
   })
 
   on('command.run', { command: 'imadoko' }, async ($, e) => {

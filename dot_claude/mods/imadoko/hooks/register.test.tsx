@@ -536,6 +536,28 @@ test('Haiku には前回の概要・依頼・回答・質問と回答・その�
   })
 })
 
+test('拒否された操作と失敗した操作は、したこととして Haiku に渡さない', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  standInForEngine(on)
+  const requests = recordModelCalls(on)
+  const outcomes = [
+    { deny: 'The user denied this command' },
+    { result: { stdout: '', stderr: 'fatal', interrupted: false }, isError: true },
+    { result: { stdout: '', stderr: '', interrupted: false } },
+  ]
+  on('tool.call', { tool: 'Bash' }, () => outcomes.shift()! as never)
+
+  await startInteractive($)
+  await $.turn.start({ text: 'push して', turnId: 't1' })
+  await $.tool.call({ tool: 'Bash', command: 'git push --force', description: 'Force push' })
+  await $.tool.call({ tool: 'Bash', command: 'git push', description: 'Push and fail' })
+  await $.tool.call({ tool: 'Bash', command: 'git push', description: 'Push the commits' })
+  await completeTurn($, '回答', 't1')
+  await clock.settle()
+
+  expect(blockOf(requests.at(-1)?.prompt, 'activity')).toBe('\n- Bash: Push the commits\n')
+})
+
 test('自由入力の回答はその文を、答えずに閉じた質問は (no answer) を Haiku に渡す', async ($, on) => {
   const clock = mock.clock(on, { now: START })
   standInForEngine(on)
