@@ -23,6 +23,7 @@ import {
   storedRecapPlusOf,
   summaryRequest,
   turnKeyOf,
+  underHistory,
 } from './recap-plus'
 import type { Locale } from './recap-plus'
 import type { RecapPlus } from '../types'
@@ -152,7 +153,8 @@ const openSession = async ($: EngineInterface, locale: Locale) => {
  * After a /clear or an in-process /resume no session.start comes, and the
  * session that follows is not there yet when the old one ends: watch for the
  * id to change, then open that session. When a turn has already begun in it,
- * keep that turn and only learn the id, so its recap-plus summary is saved under it.
+ * keep that turn after the history the session already held, and learn the
+ * id, so its recap-plus summary is saved under it.
  */
 const followNextSession = ($: EngineInterface, endedId: string, locale: Locale) => {
   let tries = 0
@@ -169,8 +171,29 @@ const followNextSession = ($: EngineInterface, endedId: string, locale: Locale) 
         timer.cancel()
         const current = await read($, recapPlus)
         if (current.sessionId !== null) return
-        if (current.turns.length === 0) await openSession($, locale)
-        else await update($, recapPlus, latest => (latest.sessionId === null ? { ...latest, sessionId } : latest))
+        if (current.turns.length === 0) {
+          await openSession($, locale)
+
+          return
+        }
+        const rebuilt = rebuild(await $.session.messages())
+        const stored = storedRecapPlusOf(await $.store.get(storeKey(sessionId)))
+        await update($, recapPlus, latest => {
+          if (latest.sessionId !== null) return latest
+
+          const joined = underHistory({ ...latest, sessionId }, rebuilt)
+          const usage = stored?.usage ?? EMPTY.usage
+
+          return {
+            ...joined,
+            ...(joined.sections === null && stored !== undefined ? { sections: stored.sections } : {}),
+            usage: {
+              calls: joined.usage.calls + usage.calls,
+              inputTokens: joined.usage.inputTokens + usage.inputTokens,
+              outputTokens: joined.usage.outputTokens + usage.outputTokens,
+            },
+          }
+        })
       })
       .catch((error: unknown) => $.ui.log(`recap-plus: following the session failed: ${String(error)}`, { to: 'debug' }))
   })

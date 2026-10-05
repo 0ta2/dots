@@ -1314,6 +1314,30 @@ test('/clear の直後に依頼を始めても、その後に分かった新し�
   expect(store.get('recap-plus:sess-2')).toEqual({ sections: RECAP_PLUS, turnKey: turnKey('クリア直後の依頼', 'クリア直後の回答'), savedAt: START + 1_000, usage: { calls: 1, inputTokens: 0, outputTokens: 0 } })
 })
 
+test('同じプロセス内の /resume の直後に依頼を始めても、再開したセッションの履歴を残す', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  const transcript: SessionMessage[] = []
+  const session = { id: 'sess-1' }
+  standInForEngine(on, transcript, {}, [], session)
+  const requests = recordModelCalls(on)
+
+  await startInteractive($)
+  await runTurn($, clock, '前のセッションの依頼', '前のセッションの回答', 't1')
+  await $.session.end({ reason: 'resume', sessionId: 'sess-1', resume: { id: 'sess-1' } })
+  await $.turn.start({ text: '再開直後の依頼', turnId: 't2' })
+  session.id = 'sess-2'
+  transcript.push(...RESUMED, { role: 'user', text: '再開直後の依頼', toolUses: [] })
+  await clock.advance(1_000)
+  await completeTurn($, '再開直後の回答', 't2')
+  await clock.settle()
+
+  const prompt = requests.at(-1)?.prompt
+  expect([blockOf(prompt, 'earlier_requests'), blockOf(prompt, 'latest_request')]).toEqual([
+    '\n- T1 最初の依頼\n- T2 次の依頼\n',
+    '再開直後の依頼',
+  ])
+})
+
 test('Pane の閉じるボタンは Pane を閉じる (ctrl+x b の 2 回目で閉じるための受け口)', async ($, on) => {
   const clock = mock.clock(on, { now: START })
   standInForEngine(on)

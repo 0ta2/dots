@@ -177,6 +177,35 @@ export const startTurn = (recapPlus: RecapPlus, text: string): RecapPlus => {
   return { ...recapPlus, turns, isWorking: true }
 }
 
+/**
+ * Puts the turns a resumed session already held under the ones begun in it
+ * before its id was known: the transcript may already carry those new turns
+ * at its end, and they keep their place after the history, renumbered.
+ */
+export const underHistory = (current: RecapPlus, rebuilt: RecapPlus): RecapPlus => {
+  const asks = (turns: readonly TurnEntry[]) => turns.map(turn => turn.ask)
+  const overlap =
+    Array.from({ length: Math.min(rebuilt.turns.length, current.turns.length) }, (_, index) => index + 1)
+      .reverse()
+      .find(
+        count =>
+          JSON.stringify(asks(rebuilt.turns.slice(-count))) === JSON.stringify(asks(current.turns.slice(0, count))),
+      ) ?? 0
+  const earlier = rebuilt.turns.slice(0, rebuilt.turns.length - overlap)
+  const offset = earlier.at(-1)?.turn ?? 0
+
+  return {
+    ...current,
+    turns: [...earlier, ...current.turns.map(turn => ({ ...turn, turn: turn.turn + offset }))].slice(-KEPT_TURNS),
+    questions: [
+      ...rebuilt.questions.filter(one => one.turn <= offset),
+      ...current.questions.map(one => ({ ...one, turn: one.turn + offset })),
+    ],
+    sectionsTurn: current.sections === null ? 0 : current.sectionsTurn + offset,
+    background: current.background ?? rebuilt.background,
+  }
+}
+
 export const completeTurn = (recapPlus: RecapPlus, answer: string): RecapPlus => ({
   ...recapPlus,
   turns: withLastTurn(recapPlus, turn => ({ ...turn, answer: clip(answer, ANSWER_CHARS) })),
