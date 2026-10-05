@@ -94,10 +94,9 @@ const CLOSE_MARK_CELLS = 3
 const PANE_SHARE = 0.66
 const PANE_MIN_COLUMNS = 40
 
-// Both buttons answer this action, so its chord (ctrl+x b in the README's
-// key bindings) opens the pane from the band and closes it from the pane: a
-// pane's button wins over the band's. The engine handles the action itself
-// only inside the diff panel.
+// Both buttons answer this action: it opens the pane from the band and closes
+// it from the pane. A pane's button wins over the band's. The engine handles
+// the action itself only inside the diff panel.
 const TOGGLE_ACTION = 'app:cycleDiffBase'
 
 // How many sessions' imadoko summaries the store keeps, the newest; one is a few KB.
@@ -246,7 +245,26 @@ const openSession = async ($: EngineInterface, locale: Locale) => {
   if (!isApplied) return
   if (isJoined ? shouldSummarize : !isUpToDate && (rebuilt.turns.length > 0 || rebuilt.background !== null)) {
     summarizeLater($, locale)
+  } else if (isJoined) {
+    await saveKnown($)
   }
+}
+
+/**
+ * Keeps an imadoko summary written before the session's id was known, once
+ * the id is: it already covers the last turn, so nothing else would save it.
+ */
+const saveKnown = async ($: EngineInterface) => {
+  const current = await read($, imadoko)
+  const turn = current.turns.at(-1)
+  if (current.sessionId === null || current.sections === null || current.isWorking || turn === undefined || current.sectionsTurn !== turn.turn) return
+
+  await $.store.set(storeKey(current.sessionId), {
+    sections: current.sections,
+    turnKey: turnKeyOf(current),
+    savedAt: await $.clock.now(),
+    usage: current.usage,
+  })
 }
 
 /**
@@ -490,6 +508,8 @@ export const register: Register = on => {
   // Set by session.start, which fires again on every reload of this module.
   let isInteractive = false
   let locale = localeFor(undefined)
+  // ponytail: image-only prompts are recognized live only; preserve attachment metadata in SessionMessage to rebuild them after reload.
+  let imagePromptQueued = false
   const pane = (terminalColumns: number) =>
     ({
       id: PANE_ID,
@@ -537,8 +557,16 @@ export const register: Register = on => {
     return next(e)
   })
 
+  on('prompt.submit', ($, e, next) => {
+    imagePromptQueued ||= e.text.trim() === '' && e.attachments?.some(attachment => attachment.type === 'image') === true
+
+    return next(e)
+  })
+
   on('turn.start', async ($, e, next) => {
-    if (isInteractive) await update($, imadoko, current => startTurn(current, e.text))
+    const hasImage = imagePromptQueued && e.text.trim() === ''
+    imagePromptQueued &&= !hasImage
+    if (isInteractive) await update($, imadoko, current => startTurn(current, e.text, hasImage))
 
     return next(e)
   })
@@ -553,7 +581,7 @@ export const register: Register = on => {
   })
 
   on('tool.call', { tool: 'AskUserQuestion' }, async ($, e, next) => {
-    if (!isInteractive) return next(e)
+    if (!isInteractive || e.agentId !== undefined) return next(e)
 
     await update($, imadoko, current =>
       askQuestions(
