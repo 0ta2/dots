@@ -1,0 +1,9 @@
+{
+  "name": "imadoko",
+  "version": "0.3.0",
+  "description": "Keeps an imadoko summary of the session above the prompt: what it is for and where it stands; /imadoko adds what was done and decided, what waits on you, what comes next and the tasks expected after it",
+  "author": {
+    "name": "skanehira"
+  },
+  "types": "./types/index.d.ts"
+}
