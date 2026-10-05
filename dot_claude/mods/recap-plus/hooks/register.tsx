@@ -295,7 +295,6 @@ export const register: Register = on => {
           <Button
             key="close"
             label={locale.words.close}
-            hotkey="b"
             action={TOGGLE_ACTION}
             plain
             dimColor
@@ -346,7 +345,6 @@ export const register: Register = on => {
             <Button
               key="open"
               label={locale.words.details}
-              hotkey="b"
               action={TOGGLE_ACTION}
               plain
               dimColor

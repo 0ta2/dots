@@ -18,7 +18,7 @@ describe('fallbackSummary は最終回答の最初の本文行を現状の代わ
 })
 
 describe('parseSections は Haiku の返答から概要を取り出す', () => {
-  const recapPlus = { purpose: 'p', status: 's', done: ['d'], decisions: [], pending: [], next: 'n' }
+  const recapPlus = { purpose: 'p', status: 's', done: ['d'], decisions: [], pending: [], next: 'n', upcoming: [] }
   const cases: [string, string, unknown][] = [
     ['JSON だけの返答', JSON.stringify(recapPlus), recapPlus],
     ['前後に文があっても JSON の部分を読む', `Here it is:\n${JSON.stringify(recapPlus)}\nDone.`, recapPlus],
@@ -67,7 +67,7 @@ describe('localeFor は Claude Code の language 設定から見出しの言語�
 })
 
 describe('storedRecapPlusOf は保存した概要の使用量の累計を読み、記録を始める前のものは 0 から数える', () => {
-  const sections = { purpose: 'p', status: 's', done: [], decisions: [], pending: [], next: '' }
+  const sections = { purpose: 'p', status: 's', done: [], decisions: [], pending: [], next: '', upcoming: [] }
   const ZERO = { calls: 0, inputTokens: 0, outputTokens: 0 }
   const kept = { calls: 3, inputTokens: 4_200, outputTokens: 1_300 }
   const cases: [string, unknown, unknown][] = [

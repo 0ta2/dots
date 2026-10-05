@@ -23,6 +23,7 @@ export type Sections = {
   decisions: string[]
   pending: string[]
   next: string
+  upcoming: string[]
 }
 
 /** The Haiku calls a session's recap-plus summary took: how many, and the tokens they read and wrote. */
