@@ -237,3 +237,16 @@ test('a status file written between two polls counts as written after the state 
   expect(await ui.find({ text: /待機中 · ログイン画面を直して PR を出した/ })).toBeDefined()
   await ui.unmount()
 })
+
+test('a screen read that gives no line is tried again a little later', async ($, on) => {
+  const world: World = { agents: AGENTS, screenReply: async n => (n === 1 ? '' : 'ログイン方式について質問中') }
+  const seen = standIn(on, 'main', ENV, world)
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await seen.clock.advance(0)
+  await seen.clock.settle()
+  await seen.clock.advance(30_000)
+  await seen.clock.settle()
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /質問待ち · ログイン方式について質問中/ })).toBeDefined()
+  await ui.unmount()
+})

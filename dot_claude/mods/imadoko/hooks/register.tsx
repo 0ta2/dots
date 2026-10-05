@@ -356,6 +356,9 @@ let lastLeadCheck = -Infinity
 // member is read again for the state it is in now.
 const generations = new Map<string, number>()
 const again = new Set<string>()
+// Members whose last screen read gave no line; read again after a while.
+const unnoted = new Set<string>()
+const NOTE_RETRY_MS = 30_000
 
 /** Reads a member's screen and has Haiku say in one line what it is doing. */
 const noteFromScreen = async ($: EngineInterface, tabId: string, language: string): Promise<void> => {
@@ -365,16 +368,21 @@ const noteFromScreen = async ($: EngineInterface, tabId: string, language: strin
   }
   noting.add(tabId)
   const generation = generations.get(tabId) ?? 0
+  let line: string | undefined
   try {
     const m = (await read($, team)).find(one => one.tabId === tabId)
     if (m?.paneId === undefined) return
     const screen = await herdr($, ['pane', 'read', m.paneId])
     if (!screen?.trim()) return
     const reply = await $.model.complete({ model: 'haiku', ...notePrompt(m, screen, language), maxTokens: 100, effort: 'low', timeoutMs: 30_000 })
-    const line = reply.isAnswered ? cleanNote(reply.text) : undefined
-    if (line !== undefined && generations.get(tabId) === generation) await update($, notes, now => ({ ...now, [tabId]: line }))
+    line = reply.isAnswered ? cleanNote(reply.text) : undefined
+    if (line !== undefined && generations.get(tabId) === generation) await update($, notes, now => ({ ...now, [tabId]: line! }))
   } finally {
     noting.delete(tabId)
+    if (generations.get(tabId) === generation) {
+      if (line === undefined) unnoted.add(tabId)
+      else unnoted.delete(tabId)
+    }
   }
   if (again.delete(tabId)) await noteFromScreen($, tabId, language)
 }
@@ -411,9 +419,11 @@ const noteMembers = async ($: EngineInterface, at: Where, before: Map<string, Me
   list.forEach((m, i) => {
     if (own[i] === undefined) return
     again.delete(m.tabId)
+    unnoted.delete(m.tabId)
     generations.set(m.tabId, (generations.get(m.tabId) ?? 0) + 1)
   })
-  const due = list.filter((m, i) => own[i] === undefined && needsNote(before.get(m.tabId), m, notedAt.get(m.tabId), now))
+  const retry = (m: TeamMember) => m.paneId !== undefined && m.status !== 'absent' && unnoted.has(m.tabId) && now - (notedAt.get(m.tabId) ?? -Infinity) >= NOTE_RETRY_MS
+  const due = list.filter((m, i) => own[i] === undefined && (needsNote(before.get(m.tabId), m, notedAt.get(m.tabId), now) || retry(m)))
   for (const m of due) {
     notedAt.set(m.tabId, now)
     generations.set(m.tabId, (generations.get(m.tabId) ?? 0) + 1)
@@ -426,6 +436,7 @@ const clearTeam = async ($: EngineInterface) => {
   notedAt.clear()
   changedAt.clear()
   lastNotedAt = undefined
+  unnoted.clear()
   await update($, lead, () => false)
   await update($, team, () => [])
   $.ui.status(undefined)
