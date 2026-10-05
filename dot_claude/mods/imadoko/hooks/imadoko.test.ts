@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { EMPTY, activityOf, completeTurn, fallbackSummary, localeFor, parseSections, startTurn, storedImadokoOf, underHistory } from './imadoko'
+import { EMPTY, activityOf, completeTurn, fallbackSummary, localeFor, parseSections, startTurn, statusFilePath, storedImadokoOf, summaryRequest, underHistory } from './imadoko'
 
 describe('fallbackSummary は最終回答の最初の本文行を現状の代わりにする', () => {
   const cases: [string, string, string | undefined][] = [
@@ -26,7 +26,8 @@ describe('parseSections は Haiku の返答から概要を取り出す', () => {
     ['目的が無ければ使えない', JSON.stringify({ ...imadoko, purpose: '' }), undefined],
     ['現状が無ければ使えない', JSON.stringify({ ...imadoko, status: 3 }), undefined],
     ['リストでない値は空にし、文字列でない項目を落とす', JSON.stringify({ ...imadoko, tasks: 'x', pending: ['a', 1] }), { ...imadoko, tasks: [], pending: ['a'] }],
-    ['タスクは waits_on を読み、題名か状態の無いものを落とす', JSON.stringify({ ...imadoko, tasks: [{ title: 'w', state: 'waiting', detail: '', owner: 'Codex', waits_on: 'merge' }, { title: '', state: 'next' }, { title: 'x', state: 'later' }] }), { ...imadoko, tasks: [{ title: 'w', state: 'waiting', detail: '', owner: 'Codex', waitsOn: 'merge' }] }],
+    ['タスクは waits_on を読み、題名か状態の無いものを落とす', JSON.stringify({ ...imadoko, tasks: [{ title: 'w', state: 'waiting', detail: '', owner: 'R1', waits_on: 'merge' }, { title: '', state: 'next' }, { title: 'x', state: 'later' }] }), { ...imadoko, tasks: [{ title: 'w', state: 'waiting', detail: '', owner: 'R1', waitsOn: 'merge' }] }],
+    ['担当は 2 文字までの記号だけを読み、長いものは空にする', JSON.stringify({ ...imadoko, tasks: [{ ...task, owner: 'I1' }, { ...task, title: 'u', owner: 'Codex' }] }), { ...imadoko, tasks: [{ ...task, owner: 'I1' }, { ...task, title: 'u', owner: '' }] }],
     ['済んだタスクは新しい方から 5 件まで、ほかは全部残す', JSON.stringify({ ...imadoko, tasks: [...Array.from({ length: 7 }, (_, index) => ({ ...task, title: `done ${index + 1}`, state: 'done' })), ...Array.from({ length: 7 }, (_, index) => ({ ...task, title: `wait ${index + 1}`, state: 'waiting' }))] }), { ...imadoko, tasks: [...Array.from({ length: 5 }, (_, index) => ({ ...task, title: `done ${index + 3}`, state: 'done' })), ...Array.from({ length: 7 }, (_, index) => ({ ...task, title: `wait ${index + 1}`, state: 'waiting' }))] }],
     ['壊れた JSON は使えない', '{"purpose": "p", ', undefined],
   ]
@@ -123,4 +124,31 @@ describe('underHistory は再開したセッションの履歴の後ろに、読
   test('compact の要約だけの履歴でも、その要約を引き継ぐ', () => {
     expect(underHistory(live, { ...EMPTY, background: '要約' }, undefined).background).toBe('要約')
   })
+})
+
+describe('summaryRequest はメンバーの一覧があるときだけ記号と説明を渡す', () => {
+  const turn = completeTurn(startTurn(EMPTY, '依頼'), '回答')
+  const cases: [string, { mark: string; about: string }[], string | undefined][] = [
+    ['一覧があれば 1 人 1 行', [{ mark: 'I1', about: 'impl-dots-claude' }, { mark: 'R1', about: 'review-dots-codex' }], '<members>\n- I1: impl-dots-claude\n- R1: review-dots-codex\n</members>'],
+    ['一覧が無ければ何も足さない', [], undefined],
+  ]
+  for (const [name, members, expected] of cases) {
+    test(name, () => {
+      expect(summaryRequest(turn, localeFor(undefined), members).prompt.match(/<members>[\s\S]*<\/members>/)?.[0]).toBe(expected)
+    })
+  }
+})
+
+describe('statusFilePath は herdr のワークスペースとペインが分かるときだけ書き出し先を決める', () => {
+  const cases: [string, string | undefined, string | undefined, string | undefined, string | undefined][] = [
+    ['全部あればワークスペースの下にペインの名前で', '/home/u', 'ws1', 'p2', '/home/u/.local/state/imadoko/ws1/p2.json'],
+    ['ワークスペースが無ければ無い', '/home/u', undefined, 'p2', undefined],
+    ['ペインが空なら無い', '/home/u', 'ws1', '', undefined],
+    ['HOME が無ければ無い', undefined, 'ws1', 'p2', undefined],
+  ]
+  for (const [name, home, workspace, pane, expected] of cases) {
+    test(name, () => {
+      expect(statusFilePath(home, workspace, pane)).toBe(expected)
+    })
+  }
 })

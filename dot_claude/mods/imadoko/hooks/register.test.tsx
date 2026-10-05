@@ -42,7 +42,7 @@ const IMADOKO = {
     { title: 'Write the mod and its tests', state: 'done', detail: 'The mod and its tests are written.', owner: '', waitsOn: '' },
     { title: 'Check it in a child session', state: 'doing', detail: 'Trying the band and the pane in a child session.', owner: '', waitsOn: '' },
     { title: 'Publish the repository', state: 'next', detail: 'Publish it once approved.', owner: '', waitsOn: '' },
-    { title: 'Write the release notes', state: 'waiting', detail: 'Notes for the first release.', owner: 'Codex', waitsOn: 'the pull request merging' },
+    { title: 'Write the release notes', state: 'waiting', detail: 'Notes for the first release.', owner: 'R1', waitsOn: 'the pull request merging' },
   ],
   decisions: ['English by default (answer to: which language?)'],
   pending: ['Approve publishing the repository'],
@@ -93,7 +93,9 @@ const standInForEngine = (
   storeEntries: Readonly<Record<string, unknown>> = {},
   isCommandRefused = false,
   beforeStoreGet: (key: string) => Promise<void> = async () => {},
+  environment: Readonly<Record<string, string>> = {},
 ) => {
+  mock.env(on, environment)
   // The plugin's own store, kept in memory so a test can read what was saved.
   const store = new Map<string, unknown>(Object.entries(storeEntries))
   on('store.get', async (_$, e) => {
@@ -377,7 +379,7 @@ test('/imadoko の Pane に目的・現状・タスクの時系列・決定事�
       '○ next  Publish the repository ▸',
       '┆',
       '◌ wait  Write the release notes ▸',
-      '     with: Codex · waits on: the pull request merging',
+      '     with: R1 · waits on: the pull request merging',
       'Decisions',
       '- English by default (answer to: which language?)',
       'Waiting on you',
@@ -491,7 +493,7 @@ test('Haiku には前回の概要・依頼・回答・質問と回答・その�
       '  - title: the task in a few words.',
       '  - state: "done", "doing" (under way now), "next" (what Claude does next) or "waiting" (later, or on someone or something).',
       '  - detail: one or two sentences on what it is and where it stands.',
-      '  - owner: who has it when this session does not (another Claude Code or Codex session, a herdr pane); an empty string otherwise.',
+      "  - owner: the mark from <members> of whoever has it when this session does not; an empty string when it is this session's own, when no listed member has it, or when there is no <members> list.",
       '  - waits_on: what it waits on (a pull request merging, a review, a reply); an empty string when nothing.',
       '- decisions: what has been decided, including the answers the user gave to questions, oldest first, at most 5 items.',
       '- pending: everything still undecided or waiting for the user to answer or do, oldest first. Leave none out. An empty list when nothing.',
@@ -919,7 +921,7 @@ test('Claude Code の language が Japanese なら見出しを日本語にし、
     '○ 次  Publish the repository ▸',
     '┆',
     '◌ 待  Write the release notes ▸',
-    '     担当: Codex · 待ち: the pull request merging',
+    '     担当: R1 · 待ち: the pull request merging',
     '決定事項',
     '- English by default (answer to: which language?)',
     '確認待ち',
@@ -1006,6 +1008,33 @@ for (const { name, reply, answer, logs, band } of HAIKU_REPLIES) {
 
     expect([logged, await bandRows($)]).toEqual([logs.map(text => ({ text, to: 'debug' })), band])
   })
+}
+
+{
+  const HERDR = { HOME: '/home/u', HERDR_WORKSPACE_ID: 'ws1', HERDR_PANE_ID: 'p2' }
+  const cases: [string, Record<string, string>, { path: string; text: string }[]][] = [
+    ['ワークスペースとペインがあれば書く', HERDR, [{ path: '/home/u/.local/state/imadoko/ws1/p2.json', text: `${JSON.stringify({ status: IMADOKO.status, savedAt: START })}\n` }]],
+    ['ペインが分からなければ書かない', { HOME: '/home/u', HERDR_WORKSPACE_ID: 'ws1' }, []],
+    ['herdr の外では書かない', { HOME: '/home/u' }, []],
+  ]
+  for (const [name, environment, expected] of cases) {
+    test(`herdr の現状ファイル: ${name}`, async ($, on) => {
+      const clock = mock.clock(on, { now: START })
+      standInForEngine(on, [], {}, [], { id: 'sess-1' }, {}, false, async () => {}, environment)
+      recordModelCalls(on)
+      const written: { path: string; text: string }[] = []
+      on('fs.write', (_$, e) => {
+        written.push({ path: e.path, text: e.text })
+
+        return { value: undefined }
+      })
+
+      await startInteractive($)
+      await runTurn($, clock, 'パネルを作りたい', '回答', 't1')
+
+      expect(written).toEqual(expected)
+    })
+  }
 }
 
 test('前のターンの返答が後から届いても、新しいターンの概要を上書きしない', async ($, on) => {

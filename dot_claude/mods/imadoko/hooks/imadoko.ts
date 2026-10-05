@@ -298,6 +298,11 @@ export const answersOf = (result: unknown): Record<string, string> =>
 export const freeTextOf = (result: unknown): string | undefined =>
   isRecord(result) && typeof result.response === 'string' ? result.response : undefined
 
+/** A member the summary may hand a task to: a mark of one or two characters and who it stands for. */
+export type Member = { mark: string; about: string }
+
+const MARK_CHARS = 2
+
 const systemPrompt = (language: string): string =>
   [
     'You keep an imadoko summary of a Claude Code session so that its user can tell at a glance what it is doing.',
@@ -310,7 +315,7 @@ const systemPrompt = (language: string): string =>
     '  - title: the task in a few words.',
     '  - state: "done", "doing" (under way now), "next" (what Claude does next) or "waiting" (later, or on someone or something).',
     '  - detail: one or two sentences on what it is and where it stands.',
-    '  - owner: who has it when this session does not (another Claude Code or Codex session, a herdr pane); an empty string otherwise.',
+    '  - owner: the mark from <members> of whoever has it when this session does not; an empty string when it is this session\'s own, when no listed member has it, or when there is no <members> list.',
     '  - waits_on: what it waits on (a pull request merging, a review, a reply); an empty string when nothing.',
     '- decisions: what has been decided, including the answers the user gave to questions, oldest first, at most 5 items.',
     '- pending: everything still undecided or waiting for the user to answer or do, oldest first. Leave none out. An empty list when nothing.',
@@ -362,7 +367,11 @@ const historyLines = (imadoko: Imadoko, words: Words): string[] => {
  * there is one, the history), the turn's request and answer, the questions
  * answered in it and what its tools did.
  */
-export const summaryRequest = (imadoko: Imadoko, { words, language }: Locale): { system: string; prompt: string } => {
+export const summaryRequest = (
+  imadoko: Imadoko,
+  { words, language }: Locale,
+  members: readonly Member[] = [],
+): { system: string; prompt: string } => {
   const turn = lastTurn(imadoko)
   const answered = imadoko.questions
     .filter(one => turn !== undefined && one.turn === turn.turn)
@@ -374,6 +383,7 @@ export const summaryRequest = (imadoko: Imadoko, { words, language }: Locale): {
     `<latest_answer>${turn?.answer ?? ''}</latest_answer>`,
     ...listBlock('questions_and_answers', answered, '(none)'),
     ...listBlock('activity', turn?.activity ?? [], '(none)'),
+    ...(members.length === 0 ? [] : listBlock('members', members.map(member => `${member.mark}: ${member.about}`), '(none)')),
   ].join('\n')
 
   return { system: systemPrompt(language), prompt }
@@ -397,7 +407,9 @@ const taskOf = (value: unknown): Task[] => {
   const state = STATES.find(one => one === value.state)
   if (title === '' || state === undefined) return []
 
-  return [{ title, state, detail: textOf(value.detail), owner: textOf(value.owner), waitsOn: textOf(value.waits_on ?? value.waitsOn) }]
+  const owner = textOf(value.owner)
+
+  return [{ title, state, detail: textOf(value.detail), owner: Array.from(owner).length <= MARK_CHARS ? owner : '', waitsOn: textOf(value.waits_on ?? value.waitsOn) }]
 }
 
 /** The tasks of a reply, oldest first: of the done ones only the newest few, of the rest every one, up to a bound. */
@@ -600,3 +612,11 @@ export const rebuild = (rows: readonly SessionMessage[]): Imadoko => {
 
   return { ...rebuilt, isWorking: false }
 }
+
+/** Where a member in a herdr pane leaves its status for the team: none outside herdr. */
+export const statusFilePath = (home: string | undefined, workspace: string | undefined, pane: string | undefined): string | undefined =>
+  home === undefined || home === '' || workspace === undefined || workspace === '' || pane === undefined || pane === ''
+    ? undefined
+    : `${home}/.local/state/imadoko/${workspace}/${pane}.json`
+
+export const statusFileText = (sections: Sections, savedAt: number): string => `${JSON.stringify({ status: sections.status, savedAt })}\n`

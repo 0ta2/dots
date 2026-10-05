@@ -18,6 +18,8 @@ import {
   rebuild,
   recordActivity,
   setSections,
+  statusFilePath,
+  statusFileText,
   startOver,
   startTurn,
   storedImadokoOf,
@@ -118,12 +120,20 @@ const summarize = async ($: EngineInterface, locale: Locale) => {
 
     return applied
   })
-  if (applied !== undefined && sections !== undefined && sessionId !== null) {
+  if (applied === undefined || sections === undefined) return
+  const savedAt = await $.clock.now()
+  if (sessionId !== null) {
     await $.store.set(storeKey(sessionId), {
       sections,
       turnKey: turnKeyOf(current),
-      savedAt: await $.clock.now(),
+      savedAt,
       usage: applied.usage,
+    })
+  }
+  const path = statusFilePath(await $.env.get('HOME'), await $.env.get('HERDR_WORKSPACE_ID'), await $.env.get('HERDR_PANE_ID'))
+  if (path !== undefined) {
+    await $.fs.write(path, statusFileText(sections, savedAt)).catch((error: unknown) => {
+      $.ui.log(`imadoko: could not write ${path}: ${String(error)}`, { to: 'debug' })
     })
   }
 }
