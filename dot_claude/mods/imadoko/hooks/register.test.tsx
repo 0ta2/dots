@@ -558,6 +558,21 @@ test('拒否された操作と失敗した操作は、したこととして Haik
   expect(blockOf(requests.at(-1)?.prompt, 'activity')).toBe('\n- Bash: Push the commits\n')
 })
 
+test('サブエージェントの質問は、このセッションの質問として Haiku に渡さない', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  standInForEngine(on)
+  const requests = recordModelCalls(on)
+  on('tool.call', { tool: 'AskUserQuestion' }, () => ANSWERED)
+
+  await startInteractive($)
+  await $.turn.start({ text: 'パネルを作りたい', turnId: 't1' })
+  await $.tool.call({ tool: 'AskUserQuestion', questions: QUESTIONS, agentId: 'agent-1' } as never)
+  await completeTurn($, '回答', 't1')
+  await clock.settle()
+
+  expect(blockOf(requests.at(-1)?.prompt, 'questions_and_answers')).toBe('\n(none)\n')
+})
+
 test('自由入力の回答はその文を、答えずに閉じた質問は (no answer) を Haiku に渡す', async ($, on) => {
   const clock = mock.clock(on, { now: START })
   standInForEngine(on)
@@ -1415,6 +1430,27 @@ test('/clear の直後に依頼を始めても、その後に分かった新し�
   await clock.settle()
 
   expect(store.get('imadoko:sess-2')).toEqual({ sections: IMADOKO, turnKey: turnKey('クリア直後の依頼', 'クリア直後の回答'), savedAt: START + 1_000, usage: { calls: 1, inputTokens: 0, outputTokens: 0 } })
+})
+
+test('/clear の後、新しいセッション ID が分かる前にできた概要も、分かった時点で保存する', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  const transcript: SessionMessage[] = []
+  const session = { id: 'sess-1' }
+  const store = standInForEngine(on, transcript, {}, [], session)
+  recordModelCalls(on)
+
+  await startInteractive($)
+  await runTurn($, clock, 'クリア前の依頼', 'クリア前の回答', 't1')
+  await $.session.end({ reason: 'clear', sessionId: 'sess-1', resume: { id: 'sess-1' } })
+  await $.turn.start({ text: 'クリア直後の依頼', turnId: 't2' })
+  await completeTurn($, 'クリア直後の回答', 't2')
+  await clock.advance(0)
+  session.id = 'sess-2'
+  transcript.push({ role: 'user', text: 'クリア直後の依頼', toolUses: [] }, { role: 'assistant', text: 'クリア直後の回答', toolUses: [] })
+  await clock.advance(1_000)
+  await clock.settle()
+
+  expect(store.get('imadoko:sess-2')).toEqual({ sections: IMADOKO, turnKey: turnKey('クリア直後の依頼', 'クリア直後の回答'), savedAt: START + 500, usage: { calls: 1, inputTokens: 0, outputTokens: 0 } })
 })
 
 test('同じプロセス内の /resume の直後に依頼を始めても、再開したセッションの履歴を残す', async ($, on) => {

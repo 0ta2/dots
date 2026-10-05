@@ -214,7 +214,26 @@ const openSession = async ($: EngineInterface, locale: Locale) => {
   if (!isApplied) return
   if (isJoined ? shouldSummarize : !isUpToDate && (rebuilt.turns.length > 0 || rebuilt.background !== null)) {
     summarizeLater($, locale)
+  } else if (isJoined) {
+    await saveKnown($)
   }
+}
+
+/**
+ * Keeps an imadoko summary written before the session's id was known, once
+ * the id is: it already covers the last turn, so nothing else would save it.
+ */
+const saveKnown = async ($: EngineInterface) => {
+  const current = await read($, imadoko)
+  const turn = current.turns.at(-1)
+  if (current.sessionId === null || current.sections === null || current.isWorking || turn === undefined || current.sectionsTurn !== turn.turn) return
+
+  await $.store.set(storeKey(current.sessionId), {
+    sections: current.sections,
+    turnKey: turnKeyOf(current),
+    savedAt: await $.clock.now(),
+    usage: current.usage,
+  })
 }
 
 /**
@@ -326,7 +345,7 @@ export const register: Register = on => {
   })
 
   on('tool.call', { tool: 'AskUserQuestion' }, async ($, e, next) => {
-    if (!isInteractive) return next(e)
+    if (!isInteractive || e.agentId !== undefined) return next(e)
 
     await update($, imadoko, current =>
       askQuestions(
