@@ -1590,6 +1590,30 @@ test('新しいセッションの読み込みが一度失敗しても、次の�
   expect([failures, blockOf(requests.at(-1)?.prompt, 'latest_request')]).toEqual([1, '次の依頼'])
 })
 
+test('compact の要約だけの履歴をつなぐ前に概要ができていても、要約を渡して作り直す', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  const transcript: SessionMessage[] = []
+  const session = { id: 'sess-1' }
+  const compacted = 'This session is being continued from a previous conversation that ran out of context.\nSummary: 前の要約'
+  standInForEngine(on, transcript, {}, [], session)
+  const requests = recordModelCalls(on, call => imadokoReply({ ...IMADOKO, purpose: `呼び出し ${call}` }))
+
+  await startInteractive($)
+  await runTurn($, clock, '前のセッションの依頼', '前のセッションの回答', 't1')
+  await $.session.end({ reason: 'resume', sessionId: 'sess-1', resume: { id: 'sess-1' } })
+  await $.turn.start({ text: '再開直後の依頼', turnId: 't2' })
+  await completeTurn($, '再開直後の回答', 't2')
+  await clock.advance(0)
+  const beforeJoin = requests.length
+  session.id = 'sess-2'
+  transcript.push({ role: 'user', text: compacted, toolUses: [] })
+  await clock.advance(1_000)
+  await clock.settle()
+
+  expect(requests).toHaveLength(beforeJoin + 1)
+  expect([blockOf(requests.at(-1)?.prompt, 'previous_imadoko'), blockOf(requests.at(-1)?.prompt, 'earlier_context')]).toEqual(['(none)', compacted])
+})
+
 test('compact の要約だけの履歴をつないだら、その前に始まった概要の呼び出しは捨てて作り直す', async ($, on) => {
   const clock = mock.clock(on, { now: START })
   const transcript: SessionMessage[] = []

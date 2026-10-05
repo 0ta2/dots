@@ -208,7 +208,7 @@ export const underHistory = (current: Imadoko, rebuilt: Imadoko, stored: StoredI
   if (offset === 0) {
     return current.background !== null || rebuilt.background === null
       ? current
-      : { ...current, background: rebuilt.background, epoch: current.epoch + 1 }
+      : { ...current, background: rebuilt.background, sections: null, epoch: current.epoch + 1 }
   }
 
   const isFresh = stored !== undefined && stored.turnKey === turnKeyOf({ ...rebuilt, turns: earlier })
