@@ -18,13 +18,16 @@ describe('fallbackSummary は最終回答の最初の本文行を現状の代わ
 })
 
 describe('parseSections は Haiku の返答から概要を取り出す', () => {
-  const imadoko = { purpose: 'p', status: 's', done: ['d'], decisions: [], pending: [], next: 'n', upcoming: [] }
+  const task = { title: 't', state: 'doing', detail: 'd', owner: '', waitsOn: '' }
+  const imadoko = { purpose: 'p', status: 's', tasks: [task], decisions: [], pending: [] }
   const cases: [string, string, unknown][] = [
     ['JSON だけの返答', JSON.stringify(imadoko), imadoko],
     ['前後に文があっても JSON の部分を読む', `Here it is:\n${JSON.stringify(imadoko)}\nDone.`, imadoko],
     ['目的が無ければ使えない', JSON.stringify({ ...imadoko, purpose: '' }), undefined],
     ['現状が無ければ使えない', JSON.stringify({ ...imadoko, status: 3 }), undefined],
-    ['リストでない値は空にし、文字列でない項目を落とす', JSON.stringify({ ...imadoko, done: 'x', pending: ['a', 1] }), { ...imadoko, done: [], pending: ['a'] }],
+    ['リストでない値は空にし、文字列でない項目を落とす', JSON.stringify({ ...imadoko, tasks: 'x', pending: ['a', 1] }), { ...imadoko, tasks: [], pending: ['a'] }],
+    ['タスクは waits_on を読み、題名か状態の無いものを落とす', JSON.stringify({ ...imadoko, tasks: [{ title: 'w', state: 'waiting', detail: '', owner: 'Codex', waits_on: 'merge' }, { title: '', state: 'next' }, { title: 'x', state: 'later' }] }), { ...imadoko, tasks: [{ title: 'w', state: 'waiting', detail: '', owner: 'Codex', waitsOn: 'merge' }] }],
+    ['済んだタスクは新しい方から 5 件まで、ほかは全部残す', JSON.stringify({ ...imadoko, tasks: [...Array.from({ length: 7 }, (_, index) => ({ ...task, title: `done ${index + 1}`, state: 'done' })), ...Array.from({ length: 7 }, (_, index) => ({ ...task, title: `wait ${index + 1}`, state: 'waiting' }))] }), { ...imadoko, tasks: [...Array.from({ length: 5 }, (_, index) => ({ ...task, title: `done ${index + 3}`, state: 'done' })), ...Array.from({ length: 7 }, (_, index) => ({ ...task, title: `wait ${index + 1}`, state: 'waiting' }))] }],
     ['壊れた JSON は使えない', '{"purpose": "p", ', undefined],
   ]
   for (const [name, reply, expected] of cases) {
@@ -67,7 +70,7 @@ describe('localeFor は Claude Code の language 設定から見出しの言語�
 })
 
 describe('storedImadokoOf は保存した概要の使用量の累計を読み、記録を始める前のものは 0 から数える', () => {
-  const sections = { purpose: 'p', status: 's', done: [], decisions: [], pending: [], next: '', upcoming: [] }
+  const sections = { purpose: 'p', status: 's', tasks: [], decisions: [], pending: [] }
   const ZERO = { calls: 0, inputTokens: 0, outputTokens: 0 }
   const kept = { calls: 3, inputTokens: 4_200, outputTokens: 1_300 }
   const cases: [string, unknown, unknown][] = [

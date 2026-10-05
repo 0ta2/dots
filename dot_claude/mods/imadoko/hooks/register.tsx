@@ -21,19 +21,33 @@ import {
   startOver,
   startTurn,
   storedImadokoOf,
+  taskKey,
+  taskMeta,
   summaryRequest,
   turnKeyOf,
   underHistory,
 } from './imadoko'
 import type { Locale } from './imadoko'
-import type { Imadoko } from '../types'
+import type { Imadoko, Task, TaskState } from '../types'
 
 const imadoko = atom({ plugin: 'imadoko', key: 'imadoko' } as const, EMPTY)
+// The tasks the person opened on the timeline, by taskKey.
+const expanded = atom({ plugin: 'imadoko', key: 'expanded' } as const, [] as string[])
 
 const PANE_ID = 'imadoko'
 
 // The color of the headings: the band's labels and the pane's section titles.
 const HEADING_COLOR = '#ffa500'
+
+// The timeline's mark and color for each state: filled for what is behind,
+// ringed for the one under way, hollow and dotted for what is ahead.
+const MARKS: Readonly<Record<TaskState, string>> = { done: '●', doing: '◉', next: '○', waiting: '◌' }
+const STATE_COLORS: Readonly<Record<TaskState, string>> = {
+  done: '#6a9955',
+  doing: HEADING_COLOR,
+  next: '#4fc1ff',
+  waiting: '#dcdcaa',
+}
 
 // The cells the terminal's ` [-]` mark covers at the band's right edge, and
 // its ` ✕` mark at the top right of a pane.
@@ -208,6 +222,10 @@ const followNextSession = ($: EngineInterface, endedId: string, locale: Locale) 
   })
 }
 
+/** Opens a task's detail on the timeline, or closes it when it is open. */
+const toggle = ($: EngineInterface, key: string) =>
+  update($, expanded, keys => (keys.includes(key) ? keys.filter(one => one !== key) : [...keys, key]))
+
 /** Keeps the newest imadoko summaries in the store; the oldest go first. */
 const pruneStore = async ($: EngineInterface) => {
   const keys = (await $.store.keys()).filter(key => key.startsWith('imadoko:'))
@@ -316,9 +334,9 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'Pane', requestId: PANE_ID }, async ($, e) => {
     const current = await read($, imadoko)
-    const { Box, Text } = $.ui.resolve(e)
-
-    const { Button } = $.ui.resolve(e)
+    const opened = await read($, expanded)
+    const tasks: readonly Task[] = current.sections?.tasks ?? []
+    const { Box, Button, Text } = $.ui.resolve(e)
 
     return (
       <Box flexDirection="column">
@@ -332,6 +350,63 @@ export const register: Register = on => {
             dimColor
             onPress={() => $.ui.close({ id: PANE_ID })}
           />
+        </Box>
+        {[
+          { title: locale.words.purpose, rows: [current.sections?.purpose ?? locale.words.notYet] },
+          { title: locale.words.status, rows: [current.sections?.status ?? locale.words.notYet] },
+        ].map(section => (
+          <Box flexDirection="column" marginBottom={1}>
+            <Text bold color={HEADING_COLOR} wrap="wrap">
+              {section.title}
+            </Text>
+            {section.rows.map(row => (
+              <Text wrap="wrap">{row}</Text>
+            ))}
+          </Box>
+        ))}
+        <Box flexDirection="column" marginBottom={1}>
+          <Text bold color={HEADING_COLOR} wrap="wrap">
+            {locale.words.tasks}
+          </Text>
+          {tasks.length === 0 ? <Text wrap="wrap">{locale.words.none}</Text> : null}
+          {tasks.map((task, index) => {
+            const key = taskKey(task)
+            const isOpen = opened.includes(key)
+            const after = tasks[index + 1]
+            const rail = after === undefined ? ' ' : after.state === 'done' || after.state === 'doing' ? '│' : '┆'
+            const meta = taskMeta(task, locale.words)
+            const below = [...(meta === '' ? [] : [meta]), ...(isOpen && task.detail !== '' ? [task.detail] : [])]
+
+            return (
+              <Box flexDirection="column">
+                <Box key={`line:${key}`} flexDirection="row">
+                  <Box flexShrink={0}>
+                    <Text color={STATE_COLORS[task.state]} bold={task.state === 'doing'} dimColor={task.state === 'done'}>
+                      {`${MARKS[task.state]} ${locale.words.states[task.state]}  `}
+                    </Text>
+                  </Box>
+                  <Button
+                    key={`task:${key}`}
+                    label={`${task.title} ${isOpen ? '▾' : '▸'}`}
+                    plain
+                    dimColor={task.state === 'done'}
+                    onPress={() => toggle($, key)}
+                  />
+                </Box>
+                {below.map((line, row) => (
+                  <Box key={`line:${key}:${row}`} flexDirection="row">
+                    <Box flexShrink={0}>
+                      <Text dimColor>{`${rail}    `}</Text>
+                    </Box>
+                    <Text dimColor={row === 0 && meta !== ''} wrap="wrap">
+                      {line}
+                    </Text>
+                  </Box>
+                ))}
+                {after === undefined ? null : <Text dimColor>{rail}</Text>}
+              </Box>
+            )
+          })}
         </Box>
         {paneSections(current, locale.words).map(section => (
           <Box flexDirection="column" marginBottom={1}>

@@ -15,15 +15,29 @@ export type TurnEntry = {
   activity: string[]
 }
 
+/** Where a task stands: finished, under way now, the one after it, or later on someone or something. */
+export type TaskState = 'done' | 'doing' | 'next' | 'waiting'
+
+/** One stop on the session's timeline. */
+export type Task = {
+  title: string
+  state: TaskState
+  /** One or two sentences: what it is and where it stands. */
+  detail: string
+  /** Who has it when this session does not: another Claude Code or Codex session, a herdr pane; '' otherwise. */
+  owner: string
+  /** What it waits on: a pull request merging, a review, a reply; '' when nothing. */
+  waitsOn: string
+}
+
 /** The imadoko summary Haiku keeps of the session, rewritten after every turn. */
 export type Sections = {
   purpose: string
   status: string
-  done: string[]
+  /** Oldest first: the newest done ones, the one under way, then what comes after. */
+  tasks: Task[]
   decisions: string[]
   pending: string[]
-  next: string
-  upcoming: string[]
 }
 
 /** The Haiku calls a session's imadoko summary took: how many, and the tokens they read and wrote. */
@@ -66,6 +80,6 @@ export type StoredImadoko = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'imadoko': { 'imadoko': Imadoko }
+    'imadoko': { 'imadoko': Imadoko; expanded: string[] }
   }
 }
