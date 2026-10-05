@@ -208,7 +208,7 @@ export const underHistory = (current: Imadoko, rebuilt: Imadoko, stored: StoredI
   if (offset === 0) {
     return current.background !== null || rebuilt.background === null
       ? current
-      : { ...current, background: rebuilt.background, epoch: current.epoch + 1 }
+      : { ...current, background: rebuilt.background, sections: null, epoch: current.epoch + 1 }
   }
 
   const isFresh = stored !== undefined && stored.turnKey === turnKeyOf({ ...rebuilt, turns: earlier })
@@ -624,7 +624,7 @@ export const rebuild = (rows: readonly SessionMessage[]): Imadoko => {
       if (use.tool === 'AskUserQuestion') {
         return answerQuestions(askQuestions(current, questionsOf(use.input)), answersOf(use.result), freeTextOf(use.result))
       }
-      const line = activityOf(use.tool, use.input)
+      const line = use.isError === true ? undefined : activityOf(use.tool, use.input)
 
       return line === undefined ? current : recordActivity(current, line)
     }, imadoko)
