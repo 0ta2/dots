@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { EMPTY, activityOf, fallbackSummary, localeFor, parseSections, startTurn, storedImadokoOf } from './imadoko'
+import { EMPTY, activityOf, completeTurn, fallbackSummary, localeFor, parseSections, startTurn, storedImadokoOf, underHistory } from './imadoko'
 
 describe('fallbackSummary は最終回答の最初の本文行を現状の代わりにする', () => {
   const cases: [string, string, string | undefined][] = [
@@ -101,4 +101,26 @@ describe('startTurn はエンジンが書き込んだタグだけを依頼でな
       expect(startTurn(EMPTY, text).turns[0]?.ask).toBe(ask)
     })
   }
+})
+
+describe('underHistory は再開したセッションの履歴の後ろに、読み込み前に始まったターンをつなぐ', () => {
+  const live = startTurn(EMPTY, '同じ依頼')
+
+  test('同じ依頼を繰り返しても、回答のある前のターンは履歴として残す', () => {
+    const history = completeTurn(startTurn(EMPTY, '同じ依頼'), '前の回答')
+    const joined = underHistory(live, history, undefined)
+    expect(joined.turns.map(turn => [turn.turn, turn.ask, turn.answer])).toEqual([
+      [1, '同じ依頼', '前の回答'],
+      [2, '同じ依頼', null],
+    ])
+  })
+
+  test('transcript に写った読み込み中のターンは重ねない', () => {
+    const history = startTurn(completeTurn(startTurn(EMPTY, '前の依頼'), '前の回答'), '同じ依頼')
+    expect(underHistory(live, history, undefined).turns.map(turn => turn.ask)).toEqual(['前の依頼', '同じ依頼'])
+  })
+
+  test('compact の要約だけの履歴でも、その要約を引き継ぐ', () => {
+    expect(underHistory(live, { ...EMPTY, background: '要約' }, undefined).background).toBe('要約')
+  })
 })

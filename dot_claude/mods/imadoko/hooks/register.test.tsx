@@ -1491,6 +1491,29 @@ test('/resume の後、新しいセッションを読み込んでいる間に始
   ])
 })
 
+test('新しいセッションを読み込んでいる間にもう一度 /clear したら、古い読み込みを捨てて新しいセッションを開く', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  const session = { id: 'sess-1' }
+  let isCleared = false
+  const store = standInForEngine(on, [], {}, [], session, {}, false, async key => {
+    if (key !== 'imadoko:sess-2' || isCleared) return
+    isCleared = true
+    await $.session.end({ reason: 'clear', sessionId: 'sess-2', resume: { id: 'sess-2' } })
+    session.id = 'sess-3'
+  })
+  recordModelCalls(on)
+
+  await startInteractive($)
+  await runTurn($, clock, 'クリア前の依頼', 'クリア前の回答', 't1')
+  await $.session.end({ reason: 'clear', sessionId: 'sess-1', resume: { id: 'sess-1' } })
+  session.id = 'sess-2'
+  await clock.advance(1_000)
+  await clock.advance(1_000)
+  await runTurn($, clock, '二度目のクリアの後の依頼', '回答', 't2')
+
+  expect([isCleared, store.has('imadoko:sess-2'), store.has('imadoko:sess-3')]).toEqual([true, false, true])
+})
+
 test('Pane の閉じるボタンは Pane を閉じる (ctrl+x b の 2 回目で閉じるための受け口)', async ($, on) => {
   const clock = mock.clock(on, { now: START })
   standInForEngine(on)

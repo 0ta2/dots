@@ -162,14 +162,19 @@ const summarizeLater = ($: EngineInterface, locale: Locale) => {
  * history the session already held.
  */
 const openSession = async ($: EngineInterface, locale: Locale) => {
+  const { epoch } = await read($, imadoko)
   const sessionId = await $.session.id()
   const rebuilt = rebuild(await $.session.messages())
   const stored = storedImadokoOf(await $.store.get(storeKey(sessionId)))
   const isUpToDate = stored !== undefined && stored.turnKey === turnKeyOf(rebuilt)
 
+  let isApplied = false
   let isJoined = false
   let shouldSummarize = false
   await update($, imadoko, current => {
+    // A /clear or /resume while this loaded started another conversation; its own poll opens it.
+    if (current.epoch !== epoch) return current
+    isApplied = true
     if (current.sessionId === null && current.turns.length > 0) {
       const known = { ...current, sessionId }
       const joined = underHistory(known, rebuilt, stored)
@@ -196,6 +201,7 @@ const openSession = async ($: EngineInterface, locale: Locale) => {
       ...(isUpToDate ? { sections: stored.sections, sectionsTurn: rebuilt.turns.at(-1)?.turn ?? 0 } : {}),
     }
   })
+  if (!isApplied) return
   if (isJoined ? shouldSummarize : !isUpToDate && (rebuilt.turns.length > 0 || rebuilt.background !== null)) {
     summarizeLater($, locale)
   }

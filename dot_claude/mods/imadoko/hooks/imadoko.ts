@@ -195,17 +195,19 @@ export const startTurn = (imadoko: Imadoko, text: string): Imadoko => {
  * Calls still out for the old numbers land below sectionsTurn and are dropped.
  */
 export const underHistory = (current: Imadoko, rebuilt: Imadoko, stored: StoredImadoko | undefined): Imadoko => {
-  const asks = (turns: readonly TurnEntry[]) => turns.map(turn => turn.ask)
+  // A transcript's copy of a live turn has its request and, so far, no other
+  // answer: a finished turn that only repeats the request is history.
+  const isCopy = (copy: TurnEntry, live: TurnEntry) =>
+    copy.ask === live.ask && (copy.answer === null || copy.answer === live.answer)
   const overlap =
     Array.from({ length: Math.min(rebuilt.turns.length, current.turns.length) }, (_, index) => index + 1)
       .reverse()
-      .find(
-        count =>
-          JSON.stringify(asks(rebuilt.turns.slice(-count))) === JSON.stringify(asks(current.turns.slice(0, count))),
-      ) ?? 0
+      .find(count => rebuilt.turns.slice(-count).every((copy, index) => current.turns[index] !== undefined && isCopy(copy, current.turns[index]))) ?? 0
   const earlier = rebuilt.turns.slice(0, rebuilt.turns.length - overlap)
   const offset = earlier.at(-1)?.turn ?? 0
-  if (offset === 0) return current
+  if (offset === 0) {
+    return current.background !== null || rebuilt.background === null ? current : { ...current, background: rebuilt.background }
+  }
 
   const isFresh = stored !== undefined && stored.turnKey === turnKeyOf({ ...rebuilt, turns: earlier })
 
