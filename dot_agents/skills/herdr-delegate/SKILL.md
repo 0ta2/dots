@@ -3,7 +3,7 @@ name: herdr-delegate
 description: 同じ Herdr スペースに専用タブを作って別のコーディングエージェント (codex/claude) を立て、実装を委譲する。「隣の codex に実装頼んで」「別のエージェントにこれ実装させて」など、委譲先が別ペインであることを明示されたときに使う。単に実装を頼まれただけでは使わない。HERDR_ENV=1 が必要。
 disable-model-invocation: false
 user-invocable: true
-allowed-tools: Bash(herdr *), Bash(grep *), Bash(sed *), Bash(test *), Read
+allowed-tools: Bash(herdr *), Bash(grep *), Bash(sed *), Bash(test *), Read, Bash(mkdir -p *), Write(~/.local/state/herdr-team/**)
 ---
 
 # herdr-delegate
@@ -217,6 +217,17 @@ herdr agent rename <pane_id> "<agent 名>"
 
 `pane read` は必ず `--format ansi` で読む。`text` だと Claude Code の入力欄の
 ゴーストテキスト (薄色のプレースホルダ) がユーザーの入力した文字列と区別できない。
+
+## タスクを記録する
+
+imadoko のチーム表示 (main タブの `/imadoko`) がメンバーの横に出す 1 行を書く。依頼を送る直前に、新規・再利用を問わず毎回書き直す。
+
+```bash
+mkdir -p "$HOME/.local/state/herdr-team/$HERDR_WORKSPACE_ID"
+```
+
+`$HOME/.local/state/herdr-team/$HERDR_WORKSPACE_ID/<tab_id>.json` に `{"task": "<依頼の要約 1 行>"}` を書く。
+役割と状態は imadoko がタブラベルと herdr から読むので書かない。書けなくても依頼は止めない。
 
 ## 依頼を送る
 

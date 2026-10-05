@@ -78,8 +78,27 @@ export type StoredImadoko = {
   usage: Usage
 }
 
+/** A member's part in the team, read off its herdr tab label. */
+export type Role = 'impl' | 'review' | 'member'
+
+/** Where a member stands as herdr reports it; absent when its tab has no agent. */
+export type MemberState = 'working' | 'blocked' | 'idle' | 'done' | 'unknown' | 'absent'
+
+/** Another agent in this herdr space, as the main tab's team view shows it. */
+export type TeamMember = {
+  tabId: string
+  paneId?: string
+  label: string
+  role: Role
+  kind?: string
+  status: MemberState
+  task?: string
+  /** The short mark (I1, R1) the summary's task owners name the member by; '' past nine of a role. */
+  mark: string
+}
+
 declare module 'claude-code' {
   interface PluginState {
-    'imadoko': { 'imadoko': Imadoko; expanded: string[] }
+    'imadoko': { 'imadoko': Imadoko; expanded: string[]; team: TeamMember[]; frame: number; notes: Record<string, string>; isLead: boolean }
   }
 }

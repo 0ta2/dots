@@ -30,11 +30,34 @@ import {
   underHistory,
 } from './imadoko'
 import type { Locale } from './imadoko'
-import type { Imadoko, Task, TaskState } from '../types'
+import { SIZE, cells } from './sprite'
+import {
+  changes,
+  cleanNote,
+  freshStatus,
+  isLead,
+  marksOf,
+  members,
+  needsNote,
+  notePrompt,
+  paneTabOf,
+  parseAgents,
+  parseTabs,
+  parseTask,
+  summary,
+  teamWordsFor,
+} from './team'
+import type { Imadoko, MemberState, Task, TaskState, TeamMember } from '../types'
 
 const imadoko = atom({ plugin: 'imadoko', key: 'imadoko' } as const, EMPTY)
 // The tasks the person opened on the timeline, by taskKey.
 const expanded = atom({ plugin: 'imadoko', key: 'expanded' } as const, [] as string[])
+// The other agents in this herdr space, shown when this session is its main tab's PM.
+const team = atom({ plugin: 'imadoko', key: 'team' } as const, [] as TeamMember[])
+const lead = atom({ plugin: 'imadoko', key: 'isLead' } as const, false)
+// One line per member, by tab: what it is doing, from its own status file or its screen.
+const notes = atom({ plugin: 'imadoko', key: 'notes' } as const, {} as Record<string, string>)
+const frame = atom({ plugin: 'imadoko', key: 'frame' } as const, 0)
 
 const PANE_ID = 'imadoko'
 
@@ -91,7 +114,7 @@ const whyNoImadoko = (reply: ModelCompleteResult): string => {
  */
 const summarize = async ($: EngineInterface, locale: Locale) => {
   const current = await read($, imadoko)
-  const request = summaryRequest(current, locale)
+  const request = summaryRequest(current, locale, marksOf(await read($, team), teamWordsFor(locale.language)))
   const turn = current.turns.at(-1)
   const turnNumber = turn?.turn ?? 0
   const { epoch, sessionId } = current
@@ -241,6 +264,145 @@ const followNextSession = ($: EngineInterface, endedId: string, locale: Locale) 
   })
 }
 
+// How often the team is read from herdr while this session leads it, and how
+// often a session that does not checks whether it has become the lead.
+const TEAM_POLL_MS = 3000
+const LEAD_CHECK_MS = 30_000
+const FRAME_MS = 600
+
+type Where = { workspace: string; pane: string; home: string }
+
+const whereAmI = async ($: EngineInterface): Promise<Where | undefined> => {
+  const [workspace, pane, home] = await Promise.all([$.env.get('HERDR_WORKSPACE_ID'), $.env.get('HERDR_PANE_ID'), $.env.get('HOME')])
+  return workspace && pane && home ? { workspace, pane, home } : undefined
+}
+
+const herdr = async ($: EngineInterface, args: string[]) => {
+  const r = await $.process.run(['herdr', ...args], { timeoutMs: 10_000 }).catch(() => undefined)
+  return r?.exitCode === 0 && !r.isStdoutTruncated ? r.stdout : undefined
+}
+
+/** The one-line tasks herdr-delegate and herdr-review leave for the tabs they open. */
+const taskRecords = async ($: EngineInterface, at: Where): Promise<Record<string, string>> => {
+  const dir = `${at.home}/.local/state/herdr-team/${at.workspace}`
+  const entries = await $.fs.list(dir).catch(() => [])
+  const pairs = await Promise.all(
+    entries
+      .filter(f => f.kind === 'file' && f.name.endsWith('.json'))
+      .map(async f => [f.name.slice(0, -'.json'.length), parseTask(await $.fs.read(`${dir}/${f.name}`).catch(() => ''))] as const),
+  )
+  return Object.fromEntries(pairs.filter((p): p is readonly [string, string] => p[1] !== undefined))
+}
+
+let seen = new Map<string, MemberState>()
+const notedAt = new Map<string, number>()
+const noting = new Set<string>()
+let lastLeadCheck = -Infinity
+
+/** Reads a member's screen and has Haiku say in one line what it is doing. */
+const noteFromScreen = async ($: EngineInterface, m: TeamMember, language: string) => {
+  if (m.paneId === undefined || noting.has(m.tabId)) return
+  noting.add(m.tabId)
+  try {
+    const screen = await herdr($, ['pane', 'read', m.paneId])
+    if (!screen?.trim()) return
+    const reply = await $.model.complete({ model: 'haiku', ...notePrompt(m, screen, language), maxTokens: 100, effort: 'low', timeoutMs: 30_000 })
+    const line = reply.isAnswered ? cleanNote(reply.text) : undefined
+    if (line !== undefined) await update($, notes, now => ({ ...now, [m.tabId]: line }))
+  } finally {
+    noting.delete(m.tabId)
+  }
+}
+
+/**
+ * Brings each member's line up to date: a member whose own imadoko wrote its
+ * status lately is read from that file; any other is read off its screen when
+ * its state changed, and every so often while it works.
+ */
+const noteMembers = async ($: EngineInterface, at: Where, before: Map<string, MemberState>, list: TeamMember[], language: string) => {
+  const now = await $.clock.now()
+  const own = await Promise.all(
+    list.map(async m =>
+      m.paneId === undefined
+        ? undefined
+        : freshStatus(await $.fs.read(`${at.home}/.local/state/imadoko/${at.workspace}/${m.paneId}.json`).catch(() => ''), now),
+    ),
+  )
+  const alive = new Set(list.map(m => m.tabId))
+  await update($, notes, all => ({
+    ...Object.fromEntries(Object.entries(all).filter(([tab]) => alive.has(tab))),
+    ...Object.fromEntries(
+      list.flatMap((m, i) => {
+        const line = own[i] === undefined ? undefined : cleanNote(own[i]!.status)
+        return line === undefined ? [] : [[m.tabId, line]]
+      }),
+    ),
+  }))
+  const due = list.filter((m, i) => own[i] === undefined && needsNote(before.get(m.tabId), m, notedAt.get(m.tabId), now))
+  for (const m of due) notedAt.set(m.tabId, now)
+  void Promise.all(due.map(m => noteFromScreen($, m, language).catch(() => undefined)))
+}
+
+const clearTeam = async ($: EngineInterface) => {
+  seen = new Map()
+  notedAt.clear()
+  await update($, lead, () => false)
+  await update($, team, () => [])
+  $.ui.status(undefined)
+}
+
+/** Reads the space from herdr; only the PM in the main tab keeps a team. */
+const refreshTeam = async ($: EngineInterface, language: string) => {
+  const isLeading = await read($, lead)
+  const now = await $.clock.now()
+  if (!isLeading && now - lastLeadCheck < LEAD_CHECK_MS) return
+  lastLeadCheck = now
+  const at = await whereAmI($)
+  if (at === undefined) return
+  const [tabsOut, agentsOut] = await Promise.all([herdr($, ['tab', 'list', '--workspace', at.workspace]), herdr($, ['agent', 'list'])])
+  if (tabsOut === undefined || agentsOut === undefined) return
+  const tabs = parseTabs(tabsOut)
+  const agents = parseAgents(agentsOut)
+  const selfTab = agents.find(a => a.paneId === at.pane)?.tabId ?? paneTabOf((await herdr($, ['pane', 'get', at.pane])) ?? '')
+  if (!isLead(tabs, selfTab)) {
+    if (isLeading) await clearTeam($)
+    return
+  }
+  const words = teamWordsFor(language)
+  const list = members(tabs, agents, await taskRecords($, at), selfTab)
+  for (const line of changes(seen, list, words)) $.ui.toast(line, { timeoutMs: 6000 })
+  const before = seen
+  seen = new Map(list.map(m => [m.tabId, m.status]))
+  await update($, lead, () => true)
+  await update($, team, () => list)
+  await noteMembers($, at, before, list, language)
+  $.ui.status(summary(list, words))
+}
+
+let teamPoll: { cancel: () => void } | undefined
+let animation: { cancel: () => void } | undefined
+
+const watchTeam = ($: EngineInterface, language: string) => {
+  teamPoll?.cancel()
+  animation?.cancel()
+  lastLeadCheck = -Infinity
+  let isBusy = false
+  const tick = () => {
+    if (isBusy) return
+    isBusy = true
+    void refreshTeam($, language)
+      .catch((error: unknown) => $.ui.log(`imadoko: reading the team failed: ${String(error)}`, { to: 'debug' }))
+      .finally(() => {
+        isBusy = false
+      })
+  }
+  teamPoll = $.clock.every(TEAM_POLL_MS, tick)
+  animation = $.clock.every(FRAME_MS, () => {
+    void read($, lead).then(isLeading => (isLeading ? update($, frame, n => (n + 1) % 1000) : undefined))
+  })
+  tick()
+}
+
 /** Opens a task's detail on the timeline, or closes it when it is open. */
 const toggle = ($: EngineInterface, key: string) =>
   update($, expanded, keys => (keys.includes(key) ? keys.filter(one => one !== key) : [...keys, key]))
@@ -292,6 +454,7 @@ export const register: Register = on => {
       summarizeLater($, locale)
     }
     await pruneStore($)
+    if ((await $.env.get('HERDR_ENV')) === '1') watchTeam($, locale.language)
 
     return next(e)
   })
@@ -355,7 +518,12 @@ export const register: Register = on => {
     const current = await read($, imadoko)
     const opened = await read($, expanded)
     const tasks: readonly Task[] = current.sections?.tasks ?? []
-    const { Box, Button, Text } = $.ui.resolve(e)
+    const elements = $.ui.resolve(e)
+    const { Box, Button, Text } = elements
+    const mates = (await read($, lead)) ? await read($, team) : []
+    const said = await read($, notes)
+    const tick = mates.length > 0 ? await read($, frame) : 0
+    const tw = teamWordsFor(locale.language)
 
     return (
       <Box flexDirection="column">
@@ -383,6 +551,29 @@ export const register: Register = on => {
             ))}
           </Box>
         ))}
+        {mates.length === 0 ? null : (
+          <Box flexDirection="column" marginBottom={1}>
+            <Text bold color={HEADING_COLOR} wrap="wrap">
+              {tw.members}
+            </Text>
+            {mates.map(m => (
+              <Box key={`member:${m.tabId}`} flexDirection="row" gap={1}>
+                {'Raster' in elements ? (
+                  <elements.Raster key={`sprite:${m.tabId}`} columns={SIZE} rows={SIZE / 2} cells={cells(m.role, m.status, tick, m.kind)} />
+                ) : null}
+                <Box flexDirection="column" flexShrink={1}>
+                  <Text bold wrap="truncate-end">
+                    {[m.mark, tw.roles[m.role], m.kind].filter(Boolean).join(' · ')}
+                  </Text>
+                  <Text wrap="truncate-end">{`${tw.states[m.status]}${said[m.tabId] ? ` · ${said[m.tabId]}` : ''}`}</Text>
+                  <Text dimColor wrap="truncate-end">
+                    {m.task ?? m.label}
+                  </Text>
+                </Box>
+              </Box>
+            ))}
+          </Box>
+        )}
         <Box flexDirection="column" marginBottom={1}>
           <Text bold color={HEADING_COLOR} wrap="wrap">
             {locale.words.tasks}
@@ -393,7 +584,8 @@ export const register: Register = on => {
             const isOpen = opened.includes(key)
             const after = tasks[index + 1]
             const rail = after === undefined ? ' ' : after.state === 'done' || after.state === 'doing' ? '│' : '┆'
-            const meta = taskMeta(task, locale.words)
+            const owner = mates.find(m => m.mark !== '' && m.mark === task.owner)
+            const meta = [taskMeta(task, locale.words), owner === undefined ? '' : tw.states[owner.status]].filter(one => one !== '').join(' · ')
             const below = [...(meta === '' ? [] : [meta]), ...(isOpen && task.detail !== '' ? [task.detail] : [])]
 
             return (
