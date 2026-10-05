@@ -67,6 +67,7 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
       [`tab list --workspace ${world.space ?? 'wW'}`]: tabsOut(selfLabel),
       'agent list': world.agents,
       'pane read p2': '? Which login provider should I use?',
+      'pane read p3': '? Should I block on the naming nits?',
       ...(world.paneGet === undefined ? {} : { 'pane get p1': world.paneGet }),
     }
     return { value: { exitCode: key in out ? 0 : 1, stdout: out[key] ?? '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
@@ -192,5 +193,33 @@ test('a status file the member wrote wins over a screen summary still in flight'
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await ui.find({ text: /ログイン方式を決めて実装中/ })).toBeDefined()
   expect(await ui.find({ text: /ログイン方式について質問中/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('after a pane move the task records of both the old and the current workspace are read', async ($, on) => {
+  standIn(on, 'main', ENV, {
+    agents: AGENTS,
+    space: 'wX',
+    paneGet: JSON.stringify({ result: { pane: { tab_id: 't1', workspace_id: 'wX' } } }),
+    files: { '/herdr-team/wX/t3.json': '{"task":"PR を見る"}' },
+  })
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /ログイン画面を直す/ })).toBeDefined()
+  expect(await ui.find({ text: /PR を見る/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a state change after the member last wrote its status file is read off the screen', async ($, on) => {
+  const world: World = { agents: AGENTS, screenReply: async n => (n === 1 ? 'ログイン方式について質問中' : '指摘の扱いを質問中') }
+  const seen = standIn(on, 'main', ENV, world)
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await seen.clock.advance(0)
+  world.agents = AGENTS.replace(/("pane_id":"p3","tab_id":"t3","agent":"claude","agent_status":)"working"/, '$1"blocked"')
+  await seen.clock.advance(3000)
+  await seen.clock.settle()
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /質問待ち · 指摘の扱いを質問中/ })).toBeDefined()
+  expect(await ui.find({ text: /レビュー指摘を読んでいる/ })).toBeUndefined()
   await ui.unmount()
 })

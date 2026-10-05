@@ -299,8 +299,18 @@ const herdr = async ($: EngineInterface, args: string[]) => {
 
 /** The one-line tasks herdr-delegate and herdr-review left for the tabs open now. */
 const taskRecords = async ($: EngineInterface, at: Where, tabs: Tab[]): Promise<Record<string, string>> => {
-  const dir = `${at.home}/.local/state/herdr-team/${at.workspace}`
-  const pairs = await Promise.all(tabs.map(async t => [t.tabId, parseTask(await $.fs.read(`${dir}/${t.tabId}.json`).catch(() => ''))] as const))
+  // A PM whose pane moved still writes under the workspace it started in, and
+  // a PM started here writes under this one; the record for where the tab is now wins.
+  const dirs = [...new Set([at.space, at.workspace])].map(ws => `${at.home}/.local/state/herdr-team/${ws}`)
+  const pairs = await Promise.all(
+    tabs.map(async t => {
+      for (const dir of dirs) {
+        const task = parseTask(await $.fs.read(`${dir}/${t.tabId}.json`).catch(() => ''))
+        if (task !== undefined) return [t.tabId, task] as const
+      }
+      return [t.tabId, undefined] as const
+    }),
+  )
   return Object.fromEntries(pairs.filter((p): p is readonly [string, string] => p[1] !== undefined))
 }
 
@@ -316,6 +326,8 @@ const keepBook = async ($: EngineInterface, space: string, book: MarkBook, was: 
 
 let seen = new Map<string, MemberState>()
 const notedAt = new Map<string, number>()
+// When each member's state last changed; a status file older than that tells of the state before.
+const changedAt = new Map<string, number>()
 const noting = new Set<string>()
 let lastLeadCheck = -Infinity
 
@@ -354,12 +366,16 @@ const noteFromScreen = async ($: EngineInterface, tabId: string, language: strin
  */
 const noteMembers = async ($: EngineInterface, at: Where, before: Map<string, MemberState>, list: TeamMember[], language: string) => {
   const now = await $.clock.now()
+  for (const m of list) {
+    const was = before.get(m.tabId)
+    if (was !== undefined && was !== m.status) changedAt.set(m.tabId, now)
+  }
   const own = await Promise.all(
-    list.map(async m =>
-      m.paneId === undefined
-        ? undefined
-        : freshStatus(await $.fs.read(`${at.home}/.local/state/imadoko/${at.space}/${m.paneId}.json`).catch(() => ''), now),
-    ),
+    list.map(async m => {
+      if (m.paneId === undefined) return undefined
+      const file = freshStatus(await $.fs.read(`${at.home}/.local/state/imadoko/${at.space}/${m.paneId}.json`).catch(() => ''), now)
+      return file !== undefined && file.savedAt >= (changedAt.get(m.tabId) ?? -Infinity) ? file : undefined
+    }),
   )
   const alive = new Set(list.map(m => m.tabId))
   await update($, notes, all => ({
@@ -387,6 +403,7 @@ const noteMembers = async ($: EngineInterface, at: Where, before: Map<string, Me
 const clearTeam = async ($: EngineInterface) => {
   seen = new Map()
   notedAt.clear()
+  changedAt.clear()
   await update($, lead, () => false)
   await update($, team, () => [])
   $.ui.status(undefined)
