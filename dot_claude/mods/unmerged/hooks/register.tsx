@@ -233,6 +233,59 @@ export const register: Register = on => {
     const isAsked = isSame(at, sel)
     const fit = sel?.diff ? fitHunks(sel.diff, CODE_LIMIT) : undefined
     const isExpanded = (root: string) => opened[root] ?? (snaps.length < 2 || sel?.root === root)
+    const selectedDiff = sel && (
+      <Box flexDirection="column">
+        <Box flexDirection="row" gap={1}>
+          <Button
+            key="ask"
+            label={isAsked ? '添付を外す' : '添付'}
+            onPress={async () => {
+              await $.ui.status(undefined)
+              if (isAsked) return update($, asked, () => null)
+              const picked = await $.ui.selection()
+              const range = sel.diff && picked && !picked.requestId ? pickLines(sel.diff, picked.text) : undefined
+              await update($, asked, () => ({ root: sel.root, path: sel.path, ...(range && { range }) }))
+            }}
+          />
+          <Text bold>
+            {basename(sel.root)}/{sel.path}
+          </Text>
+        </Box>
+        {sel.diff === null ? (
+          <Text dimColor>読み込み中…</Text>
+        ) : fit?.source ? (
+          <Box flexDirection="column">
+            {fit.source.split(/(?=^@@ )/m).map((hunk, index) => {
+              const range = pickLines(sel.diff, hunk)
+              const isAskedHunk = !!range && isSame(at, sel) && at?.range?.source === range.source
+              return (
+                <Box key={`hunk-box:${index}`} flexDirection="column">
+                  <Button
+                    key={`hunk:${index}`}
+                    label={isAskedHunk ? '添付を外す' : '添付'}
+                    onPress={async () => {
+                      await $.ui.status(undefined)
+                      if (!range) return
+                      await update($, asked, now =>
+                        isSame(now, sel) && now?.range?.source === range.source
+                          ? null
+                          : { root: sel.root, path: sel.path, range },
+                      )
+                    }}
+                  />
+                  <Code source={hunk} format="diff" path={sel.path} />
+                </Box>
+              )
+            })}
+            {fit.isCut && <Text dimColor>(長いので以降のハンクを省略しました)</Text>}
+          </Box>
+        ) : fit ? (
+          <Text dimColor>差分が大きすぎて表示できません</Text>
+        ) : (
+          <Text dimColor>表示できる差分がありません (バイナリ・大きすぎる差分など)</Text>
+        )}
+      </Box>
+    )
 
     return (
       <Box flexDirection="column">
@@ -260,88 +313,38 @@ export const register: Register = on => {
                 snap.files.map(f => {
                   const id = `${snap.root}:${f.isUntracked ? 'untracked' : 'tracked'}:${f.path}`
                   return (
-                    <Box key={`row:${id}`} flexDirection="row" gap={1}>
-                      <Text color={STATUS_COLORS[f.status]} dimColor={f.isUntracked}>
-                        {f.status}
-                      </Text>
-                      {width > 0 && (
-                        <Box width={width} flexShrink={0} flexDirection="row" gap={1}>
-                          {counts(f).map(c => (
-                            <Text key={c.text} color={c.color} dimColor={!c.color}>
-                              {c.text}
-                            </Text>
-                          ))}
-                        </Box>
-                      )}
-                      <Button
-                        key={`file:${id}`}
-                        plain
-                        label={`${at?.root === snap.root && at.path === f.path ? '📎 ' : ''}${f.path}`}
-                        onPress={() =>
-                          sel?.root === snap.root && sel.path === f.path && sel.isUntracked === f.isUntracked
-                            ? unselect($)
-                            : select($, snap, f)
-                        }
-                      />
+                    <Box key={`row:${id}`} flexDirection="column">
+                      <Box flexDirection="row" gap={1}>
+                        <Text color={STATUS_COLORS[f.status]} dimColor={f.isUntracked}>
+                          {f.status}
+                        </Text>
+                        {width > 0 && (
+                          <Box width={width} flexShrink={0} flexDirection="row" gap={1}>
+                            {counts(f).map(c => (
+                              <Text key={c.text} color={c.color} dimColor={!c.color}>
+                                {c.text}
+                              </Text>
+                            ))}
+                          </Box>
+                        )}
+                        <Button
+                          key={`file:${id}`}
+                          plain
+                          label={`${at?.root === snap.root && at.path === f.path ? '📎 ' : ''}${f.path}`}
+                          onPress={() =>
+                            sel?.root === snap.root && sel.path === f.path && sel.isUntracked === f.isUntracked
+                              ? unselect($)
+                              : select($, snap, f)
+                          }
+                        />
+                      </Box>
+                      {sel?.root === snap.root && sel.path === f.path && sel.isUntracked === f.isUntracked && selectedDiff}
                     </Box>
                   )
                 })}
             </Box>
           )
         })}
-        {sel && (
-          <Box flexDirection="column">
-            <Box flexDirection="row" gap={1}>
-              <Button
-                key="ask"
-                label={isAsked ? '添付を外す' : '添付'}
-                onPress={async () => {
-                  await $.ui.status(undefined)
-                  if (isAsked) return update($, asked, () => null)
-                  const picked = await $.ui.selection()
-                  const range = sel.diff && picked && !picked.requestId ? pickLines(sel.diff, picked.text) : undefined
-                  await update($, asked, () => ({ root: sel.root, path: sel.path, ...(range && { range }) }))
-                }}
-              />
-              <Text bold>
-                {basename(sel.root)}/{sel.path}
-              </Text>
-            </Box>
-            {sel.diff === null ? (
-              <Text dimColor>読み込み中…</Text>
-            ) : fit?.source ? (
-              <Box flexDirection="column">
-                {fit.source.split(/(?=^@@ )/m).map((hunk, index) => {
-                  const range = pickLines(sel.diff, hunk)
-                  const isAskedHunk = !!range && isSame(at, sel) && at?.range?.source === range.source
-                  return (
-                    <Box key={`hunk-box:${index}`} flexDirection="column">
-                      <Button
-                        key={`hunk:${index}`}
-                        label={isAskedHunk ? '添付を外す' : '添付'}
-                        onPress={async () => {
-                          await $.ui.status(undefined)
-                          if (!range) return
-                          await update($, asked, now =>
-                            isSame(now, sel) && now?.range?.source === range.source
-                              ? null
-                              : { root: sel.root, path: sel.path, range },
-                          )
-                        }}
-                      />
-                      <Code source={hunk} format="diff" path={sel.path} />
-                    </Box>
-                  )
-                })}
-                {fit.isCut && <Text dimColor>(長いので以降のハンクを省略しました)</Text>}
-              </Box>
-            ) : fit ? (
-              <Text dimColor>差分が大きすぎて表示できません</Text>
-            ) : (
-              <Text dimColor>表示できる差分がありません (バイナリ・大きすぎる差分など)</Text>
-            )}
-          </Box>
-        )}
       </Box>
     )
   })

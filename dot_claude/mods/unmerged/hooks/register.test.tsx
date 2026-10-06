@@ -187,7 +187,10 @@ test('several repos start folded and open one at a time', async ($, on) => {
   await pane.press({ key: 'ask' })
   await pane.press({ key: 'repo:/r' })
   expect(await pane.find({ key: 'file:/r:tracked:x.ts' })).toBeUndefined()
+  expect(await pane.find({ key: 'ask' })).toBeUndefined()
   expect((await pane.find({ key: 'repo:/r' }))?.props.label).toBe('▸ r (1) 📎 (表示中)')
+  await pane.press({ key: 'repo:/r' })
+  expect(await pane.find({ key: 'ask' })).toBeDefined()
   await pane.unmount()
 })
 
