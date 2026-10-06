@@ -203,4 +203,9 @@ describe('command-guard', () => {
     engineMerged(on, ['b'])
     expect((await check($, 'Bash', { command: 'cd project && git branch -D b' })).decision).toBe('ask')
   })
+
+  test('asks after a tilde-user cd', async ($, on) => {
+    engineMerged(on, ['b'])
+    expect((await check($, 'Bash', { command: 'cd ~root/repo && git branch -D b' })).decision).toBe('ask')
+  })
 })

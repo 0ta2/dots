@@ -99,7 +99,7 @@ function branchNames(cmd: string, ctx: Context): { dir: string; name: string }[]
   for (const seg of cmd.split(/&&|\|\||[;|\n]/).map(s => s.trim()).filter(Boolean)) {
     const cd = CD.exec(seg)?.[1]
     if (cd) {
-      if (!/^[~/]/.test(cd)) return undefined
+      if (!/^(\/|~$|~\/)/.test(cd)) return undefined
       dir = resolve(dir, cd, ctx.home)
       continue
     }
@@ -107,7 +107,7 @@ function branchNames(cmd: string, ctx: Context): { dir: string; name: string }[]
     if (!deletion) return undefined
     if (!/(?:^|\s)(?:-[dDf]*[dD][dDf]*|--delete)(?=\s|$)/.test(deletion[2])) return undefined
     if (!/[Df]|--force/.test(deletion[2])) continue
-    if (deletion[1] && !/^[~/]/.test(deletion[1])) return undefined
+    if (deletion[1] && !/^(\/|~$|~\/)/.test(deletion[1])) return undefined
     const target = deletion[1] ? resolve(dir, deletion[1], ctx.home) : dir
     branches.push(...deletion[3].trim().split(/\s+/).map(name => ({ dir: target, name })))
   }
