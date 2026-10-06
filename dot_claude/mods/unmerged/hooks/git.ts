@@ -127,6 +127,17 @@ function isSameLine(picked: string, line: string): boolean {
 
 export type PickedLines = { source: string; from: number; to: number; isOld: boolean }
 
+export function hunkRange(hunk: string): PickedLines | undefined {
+  const m = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/.exec(hunk)
+  if (!m) return undefined
+  const old = Number(m[1])
+  const olds = m[2] === undefined ? 1 : Number(m[2])
+  const now = Number(m[3])
+  const news = m[4] === undefined ? 1 : Number(m[4])
+  const source = hunk.endsWith('\n') ? hunk : `${hunk}\n`
+  return news > 0 ? { source, from: now, to: now + news - 1, isOld: false } : { source, from: old, to: old + olds - 1, isOld: true }
+}
+
 export function pickLines(diff: string, picked: string): PickedLines | undefined {
   const lines = diffLines(diff)
   const want = picked

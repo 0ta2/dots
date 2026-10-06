@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Asked, FileChange, RepoSnapshot } from '../types'
-import { dirsInCommand, fitHunks, pickLines, snapshot, type Git } from './git.ts'
+import { dirsInCommand, fitHunks, hunkRange, pickLines, snapshot, type Git } from './git.ts'
 
 const PANE = 'unmerged'
 const CODE_LIMIT = 10000
@@ -256,7 +256,7 @@ export const register: Register = on => {
         ) : fit?.source ? (
           <Box flexDirection="column">
             {fit.source.split(/(?=^@@ )/m).map((hunk, index) => {
-              const range = pickLines(sel.diff, hunk)
+              const range = hunkRange(hunk)
               const isAskedHunk = !!range && isSame(at, sel) && at?.range?.source === range.source
               return (
                 <Box key={`hunk-box:${index}`} flexDirection="column">

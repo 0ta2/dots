@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'claude-code/testing'
-import { dirsInCommand, fitHunks, parseNameStatus, parseNumstat, pickLines, snapshot, type Git } from './git.ts'
+import { dirsInCommand, fitHunks, hunkRange, parseNameStatus, parseNumstat, pickLines, snapshot, type Git } from './git.ts'
 
 const fakeGit = (answers: Record<string, string | undefined>): Git => async (_dir, args) => answers[args.join(' ')]
 
@@ -75,5 +75,15 @@ describe('unmerged git helpers', () => {
     expect(pickLines(diff, '-eleven')).toEqual({ source: '@@ -11,1 +10,0 @@\n-eleven\n', from: 11, to: 11, isOld: true })
     expect(pickLines(diff, 'nowhere in the diff')).toBeUndefined()
     expect(pickLines(diff, '\n  \n')).toBeUndefined()
+  })
+
+  test('takes a hunk range from its own header, even when hunks read alike', () => {
+    const first = '@@ -1,2 +1,2 @@\n a\n-b\n+B\n'
+    const second = '@@ -20,2 +20,2 @@\n a\n-b\n+B\n'
+    expect(hunkRange(first)).toEqual({ source: first, from: 1, to: 2, isOld: false })
+    expect(hunkRange(second)).toEqual({ source: second, from: 20, to: 21, isOld: false })
+    expect(hunkRange('@@ -5,2 +4,0 @@\n-x\n-y\n')).toEqual({ source: '@@ -5,2 +4,0 @@\n-x\n-y\n', from: 5, to: 6, isOld: true })
+    expect(hunkRange('@@ -3 +3 @@\n-x\n+y\n\\ No newline at end of file\n')?.from).toBe(3)
+    expect(hunkRange('no header')).toBeUndefined()
   })
 })
