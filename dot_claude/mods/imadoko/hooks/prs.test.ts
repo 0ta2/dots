@@ -28,6 +28,7 @@ test('parses pull request views', () => {
 
 test('counts unresolved review threads', () => {
   expect(parseUnresolved('{"data":{"repository":{"pullRequest":{"reviewThreads":{"nodes":[{"isResolved":true},{"isResolved":false}]}}}}}')).toBe(1)
+  expect(parseUnresolved('2\n3\n')).toBe(5)
   expect(parseUnresolved('{')).toBeUndefined()
 })
 

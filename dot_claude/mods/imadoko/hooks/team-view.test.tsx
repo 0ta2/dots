@@ -31,7 +31,7 @@ const AGENTS = JSON.stringify({
   },
 })
 
-type World = { agents: string; paneGet?: string; space?: string; screenReply?: (n: number) => Promise<string>; store?: Record<string, unknown>; files?: Record<string, string>; summary?: typeof SUMMARY; pullView?: string | Promise<string>; unresolved?: string | Promise<string> }
+type World = { agents: string; paneGet?: string; space?: string; screenReply?: (n: number) => Promise<string>; store?: Record<string, unknown>; files?: Record<string, string>; summary?: typeof SUMMARY; pullView?: string | Promise<string>; unresolved?: string | Promise<string>; session?: { id: string } }
 
 function standIn(on: On, selfLabel: string, env: Record<string, string>, world: World = { agents: AGENTS }) {
   const prompts: string[] = []
@@ -47,7 +47,8 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
   })
   on('store.keys', () => ({ value: [...store.keys()] }))
   on('session.start', (_$, e) => ({ cwd: e.cwd }))
-  on('session.id', () => ({ value: 'sess-1' }))
+  on('session.end', (_$, e) => ({ sessionId: e.sessionId }))
+  on('session.id', () => ({ value: world.session?.id ?? 'sess-1' }))
   on('session.messages', () => ({ value: [] }))
   on('settings.read', () => ({ value: { language: '日本語' } }))
   on('command.register', (_$, e) => ({ value: { command: e.name } }))
@@ -376,6 +377,38 @@ test('a merged pull request leaves the pane', async ($, on) => {
   await seen.clock.settle()
   ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await ui.find({ text: /dots#171/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('pull request records follow the conversation', async ($, on) => {
+  const session = { id: 'sess-1' }
+  const seen = standIn(on, 'main', ENV, {
+    agents: AGENTS,
+    session,
+    pullView: JSON.stringify({ title: 'ブランチ強制削除を防ぐ', url: 'https://github.com/0ta2/dots/pull/171', state: 'OPEN', mergeStateStatus: 'CLEAN', statusCheckRollup: [] }),
+    unresolved: JSON.stringify({ data: { repository: { pullRequest: { reviewThreads: { nodes: [] } } } } }),
+  })
+  on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: 'https://github.com/0ta2/dots/pull/171\n', stderr: '', interrupted: false } }))
+
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: 'Bash', command: 'gh pr create --title x' })
+  await seen.clock.settle()
+  await $.session.end({ reason: 'resume', sessionId: 'sess-1', resume: { id: 'sess-1' } })
+  let ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /dots#171/ })).toBeUndefined()
+  await ui.unmount()
+  session.id = 'sess-2'
+  await seen.clock.advance(500)
+  await seen.clock.settle()
+  ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /dots#171/ })).toBeUndefined()
+  await ui.unmount()
+  await $.session.end({ reason: 'resume', sessionId: 'sess-2', resume: { id: 'sess-2' } })
+  session.id = 'sess-1'
+  await seen.clock.advance(500)
+  await seen.clock.settle()
+  ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /dots#171/ })).toBeDefined()
   await ui.unmount()
 })
 

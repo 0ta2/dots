@@ -43,6 +43,8 @@ export function parseView(text: string): PullView | undefined {
 }
 
 export function parseUnresolved(text: string): number | undefined {
+  const counts = text.trim().split(/\s+/)
+  if (counts.length > 0 && counts.every(count => /^\d+$/.test(count))) return counts.reduce((total, count) => total + Number(count), 0)
   try {
     const nodes = (JSON.parse(text) as { data?: { repository?: { pullRequest?: { reviewThreads?: { nodes?: { isResolved?: unknown }[] } } } } })
       .data?.repository?.pullRequest?.reviewThreads?.nodes

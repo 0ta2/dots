@@ -143,6 +143,15 @@ const TOGGLE_ACTION = 'app:cycleDiffBase'
 // How many sessions' imadoko summaries the store keeps, the newest; one is a few KB.
 const STORED_SESSIONS = 200
 const storeKey = (sessionId: string): string => `imadoko:${sessionId}`
+const pullsStoreKey = (sessionId: string): string => `imadoko-pulls:${sessionId}`
+
+const storedPullsOf = (value: unknown): PullRef[] =>
+  Array.isArray(value)
+    ? value.flatMap(one => {
+        const pull = one as Partial<PullRef>
+        return typeof pull.owner === 'string' && typeof pull.repo === 'string' && typeof pull.number === 'number' ? [{ owner: pull.owner, repo: pull.repo, number: pull.number }] : []
+      })
+    : []
 
 // How long a /clear or an in-process /resume is watched for the session it starts.
 const SESSION_POLL_MS = 500
@@ -246,8 +255,9 @@ const summarizeLater = ($: EngineInterface, locale: Locale) => {
 const openSession = async ($: EngineInterface, locale: Locale) => {
   const { epoch } = await read($, imadoko)
   const sessionId = await $.session.id()
-  const rebuilt = rebuild(await $.session.messages())
-  const stored = storedImadokoOf(await $.store.get(storeKey(sessionId)))
+  const [messages, saved, savedPulls] = await Promise.all([$.session.messages(), $.store.get(storeKey(sessionId)), $.store.get(pullsStoreKey(sessionId))])
+  const rebuilt = rebuild(messages)
+  const stored = storedImadokoOf(saved)
   const isUpToDate = stored !== undefined && stored.turnKey === turnKeyOf(rebuilt)
 
   let isApplied = false
@@ -284,6 +294,8 @@ const openSession = async ($: EngineInterface, locale: Locale) => {
     }
   })
   if (!isApplied) return
+  await update($, pulls, () => storedPullsOf(savedPulls))
+  await update($, pullViews, () => ({}))
   if (isJoined ? shouldSummarize : !isUpToDate && (rebuilt.turns.length > 0 || rebuilt.background !== null)) {
     summarizeLater($, locale)
   } else if (isJoined) {
@@ -306,6 +318,11 @@ const saveKnown = async ($: EngineInterface) => {
     savedAt: await $.clock.now(),
     usage: current.usage,
   })
+}
+
+const savePulls = async ($: EngineInterface) => {
+  const sessionId = (await read($, imadoko)).sessionId
+  if (sessionId !== null) await $.store.set(pullsStoreKey(sessionId), await read($, pulls))
 }
 
 /**
@@ -357,13 +374,23 @@ const herdr = async ($: EngineInterface, args: string[]) => {
 }
 
 const readPulls = async ($: EngineInterface) => {
+  const sessionId = (await read($, imadoko)).sessionId
   const known = await read($, pulls)
   const results = await Promise.all(
     known.map(async pull => {
       const [viewResult, threadsResult] = await Promise.all([
         $.process.run(['gh', 'pr', 'view', String(pull.number), '--repo', `${pull.owner}/${pull.repo}`, '--json', 'title,url,state,mergeStateStatus,statusCheckRollup'], { timeoutMs: 15_000 }).catch(() => undefined),
         $.process.run(
-          ['gh', 'api', 'graphql', '-f', `query={ repository(owner: \"${pull.owner}\", name: \"${pull.repo}\") { pullRequest(number: ${pull.number}) { reviewThreads(first: 100) { nodes { isResolved } } } } }`],
+          [
+            'gh',
+            'api',
+            'graphql',
+            '--paginate',
+            '-f',
+            `query=query($endCursor: String) { repository(owner: \"${pull.owner}\", name: \"${pull.repo}\") { pullRequest(number: ${pull.number}) { reviewThreads(first: 100, after: $endCursor) { nodes { isResolved } pageInfo { hasNextPage endCursor } } } } }`,
+            '--jq',
+            '.data.repository.pullRequest.reviewThreads.nodes | map(select(.isResolved == false)) | length',
+          ],
           { timeoutMs: 15_000 },
         ).catch(() => undefined),
       ])
@@ -373,10 +400,17 @@ const readPulls = async ($: EngineInterface) => {
       return { pull, view: view === undefined || unresolved === undefined ? 'unreadable' as const : { ...view, unresolved } }
     }),
   )
+  if ((await read($, imadoko)).sessionId !== sessionId) return
   const closed = new Set(results.flatMap(result => (result.closed ? [pullKey(result.pull)] : [])))
   const views = results.flatMap(result => (result.closed ? [] : [[pullKey(result.pull), result.view!] as const]))
-  await update($, pulls, current => current.filter(pull => !closed.has(pullKey(pull))))
+  let changed = false
+  await update($, pulls, current => {
+    const next = current.filter(pull => !closed.has(pullKey(pull)))
+    changed = next.length !== current.length
+    return next
+  })
   await update($, pullViews, current => ({ ...Object.fromEntries(Object.entries(current).filter(([key]) => !closed.has(key))), ...Object.fromEntries(views) }))
+  if (changed) await savePulls($)
 }
 
 let pullPoll: { cancel: () => void } | undefined
@@ -662,6 +696,8 @@ export const register: Register = on => {
     // another one; neither raises session.start again, so start over here.
     if (isInteractive && (e.reason === 'clear' || e.reason === 'resume')) {
       await update($, imadoko, startOver)
+      await update($, pulls, () => [])
+      await update($, pullViews, () => ({}))
       followNextSession($, e.sessionId, locale)
     }
 
@@ -723,7 +759,10 @@ export const register: Register = on => {
         added = additions.length > 0
         return [...current, ...additions]
       })
-      if (added) refreshPulls($)
+      if (added) {
+        await savePulls($)
+        refreshPulls($)
+      }
     }
 
     return ran
