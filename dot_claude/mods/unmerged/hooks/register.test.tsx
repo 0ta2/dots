@@ -19,6 +19,7 @@ const SECOND: Record<string, string> = {
 }
 
 const RANGE_DIFF = 'diff --git a/x.ts b/x.ts\n--- a/x.ts\n+++ b/x.ts\n@@ -1,4 +1,5 @@\n keep()\n-old()\n+first()\n+second()\n tail()\n end()\n'
+const TWO_HUNK_DIFF = 'diff --git a/x.ts b/x.ts\n--- a/x.ts\n+++ b/x.ts\n@@ -1 +1 @@\n-old()\n+first()\n@@ -10 +10 @@\n-before()\n+second()\n'
 
 const BAND_PROPS = { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {} }
 
@@ -136,6 +137,24 @@ test('lines selected in the diff are attached alone', async ($, on) => {
   expect(contexts[0]?.[0]).toContain('attached lines 2–3 of the diff of x.ts')
   expect(contexts[0]?.[0]).toContain('since its merge base with origin/main) from the unmerged pane to this prompt:\n@@ -2,0 +2,2 @@\n+first()\n+second()\n')
   await band.unmount()
+  await pane.unmount()
+})
+
+test('a diff hunk can be attached and removed alone', async ($, on) => {
+  const contexts = fake(on, { ...GIT, 'diff --no-renames --no-textconv --no-ext-diff abc -- x.ts': TWO_HUNK_DIFF })
+  await $.tool.call({ tool: 'Bash', command: 'cd /r && git status' })
+  await $.command.run({ command: 'unmerged', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 160 } })
+  const pane = await $.ui.mount({ plugin: 'unmerged', surface: 'terminal', component: 'Pane', requestId: 'unmerged', props: PANE_PROPS })
+  await pane.press({ key: 'file:/r:tracked:x.ts' })
+  await pane.press({ key: 'hunk:1' })
+  await $.prompt.submit({ text: 'a', wait: false, origin: { kind: 'composer' } })
+  expect(contexts[0]?.[0]).toContain('-before()\n+second()\n')
+  expect(contexts[0]?.[0]).not.toContain('@@ -1 +1 @@')
+  await pane.press({ key: 'hunk:1' })
+  expect((await pane.find({ key: 'hunk:1' }))?.props.label).toBe('添付を外す')
+  await pane.press({ key: 'hunk:1' })
+  await $.prompt.submit({ text: 'b', wait: false, origin: { kind: 'composer' } })
+  expect(contexts[1]).toBeUndefined()
   await pane.unmount()
 })
 

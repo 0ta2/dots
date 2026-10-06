@@ -299,7 +299,28 @@ export const register: Register = on => {
               <Text dimColor>読み込み中…</Text>
             ) : fit?.source ? (
               <Box flexDirection="column">
-                <Code source={fit.source} format="diff" path={sel.path} />
+                {fit.source.split(/(?=^@@ )/m).map((hunk, index) => {
+                  const range = pickLines(sel.diff, hunk)
+                  const isAskedHunk = !!range && isSame(at, sel) && at?.range?.source === range.source
+                  return (
+                    <Box key={`hunk-box:${index}`} flexDirection="column">
+                      <Button
+                        key={`hunk:${index}`}
+                        label={isAskedHunk ? '添付を外す' : '添付'}
+                        onPress={async () => {
+                          await $.ui.status(undefined)
+                          if (!range) return
+                          await update($, asked, now =>
+                            isSame(now, sel) && now?.range?.source === range.source
+                              ? null
+                              : { root: sel.root, path: sel.path, range },
+                          )
+                        }}
+                      />
+                      <Code source={hunk} format="diff" path={sel.path} />
+                    </Box>
+                  )
+                })}
                 {fit.isCut && <Text dimColor>(長いので以降のハンクを省略しました)</Text>}
               </Box>
             ) : fit ? (
