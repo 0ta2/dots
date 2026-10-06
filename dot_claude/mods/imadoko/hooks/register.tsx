@@ -645,7 +645,7 @@ const pruneStore = async ($: EngineInterface) => {
     keys.map(async key => ({ key, savedAt: storedImadokoOf(await $.store.get(key))?.savedAt ?? 0 })),
   )
   const oldest = saved.sort((a, b) => a.savedAt - b.savedAt).slice(0, keys.length - STORED_SESSIONS)
-  await Promise.all(oldest.map(one => $.store.delete(one.key)))
+  await Promise.all(oldest.flatMap(one => [$.store.delete(one.key), $.store.delete(pullsStoreKey(one.key.slice(storeKey('').length)))]))
 }
 
 export const register: Register = on => {
