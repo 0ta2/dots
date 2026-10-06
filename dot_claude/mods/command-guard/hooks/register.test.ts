@@ -37,7 +37,7 @@ const check = ($: any, tool: string, input: unknown) => $.tool.check({ tool, inp
 const engineMerged = (on: On, merged: string[] | Record<string, string[]>) => {
   on('fs.read', () => ({
     value: JSON.stringify({
-      rules: [{ name: 'branch force delete', pattern: 'git(?:\\s+-C\\s+\\S+)?\\s+branch\\s+-D', action: 'ask', exceptMerged: true }],
+      rules: [{ name: 'branch force delete', pattern: 'git(?:\\s+\\S+)*\\s+branch\\s+-D', action: 'ask', exceptMerged: true }],
     }),
   }))
   on('session.cwd', () => ({ value: '/repo' }))
@@ -167,5 +167,25 @@ describe('command-guard', () => {
   test('asks when a branch name is a glob', async ($, on) => {
     engineMerged(on, ['feature/*'])
     expect((await check($, 'Bash', { command: 'git branch -D feature/*' })).decision).toBe('ask')
+  })
+
+  test('asks after pushd', async ($, on) => {
+    engineMerged(on, ['b'])
+    expect((await check($, 'Bash', { command: 'pushd /r2; git branch -D b' })).decision).toBe('ask')
+  })
+
+  test('asks with --git-dir', async ($, on) => {
+    engineMerged(on, ['b'])
+    expect((await check($, 'Bash', { command: 'git --git-dir=/r2/.git branch -D b' })).decision).toBe('ask')
+  })
+
+  test('lets merged branches go after a plain cd', async ($, on) => {
+    engineMerged(on, { '/r1': ['a'] })
+    expect((await check($, 'Bash', { command: 'cd /r1 && git branch -D a' })).decision).toBe('allow')
+  })
+
+  test('asks when a force move is chained', async ($, on) => {
+    engineMerged(on, ['a', 'b'])
+    expect((await check($, 'Bash', { command: 'git branch -f a; git branch -D b' })).decision).toBe('ask')
   })
 })

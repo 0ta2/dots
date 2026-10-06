@@ -66,6 +66,10 @@ const unquote = (s: string) => s.replace(/^(["'])(.*)\1$/, '$2')
 const expand = (p: string, home: string) => (p === '~' ? home : p.startsWith('~/') ? home + p.slice(1) : p)
 
 const PATH_ARG = `("[^"]+"|'[^']+'|\\S+)`
+const LIT = '[A-Za-z0-9._~/-]+'
+const NAME = '[A-Za-z0-9._/][A-Za-z0-9._/-]*'
+const CD = new RegExp(`^cd\\s+(${LIT})$`)
+const BRANCH_DELETE = new RegExp(`^git(?:\\s+-C\\s+(${LIT}))?\\s+branch((?:\\s+(?:-[dDf]+|--delete|--force))+)(\\s+${NAME}(?:\\s+${NAME})*)$`)
 
 const resolve = (base: string, p: string, home: string) => {
   const abs = expand(unquote(p), home)
@@ -88,22 +92,20 @@ export function targetDir(cmd: string, re: RegExp, ctx: Context): string {
   return dir
 }
 
-function branchNames(cmd: string, regexes: RegExp[], ctx: Context): { dir: string; name: string }[] | undefined {
+function branchNames(cmd: string, ctx: Context): { dir: string; name: string }[] | undefined {
   let dir = ctx.cwd
   const branches = [] as { dir: string; name: string }[]
-  for (const seg of cmd.split(/&&|\|\||[;|\n]/)) {
-    const cd = new RegExp(`^\\s*\\(?\\s*cd\\s+${PATH_ARG}`).exec(seg)?.[1]
+  for (const seg of cmd.split(/&&|\|\||[;|\n]/).map(s => s.trim()).filter(Boolean)) {
+    const cd = CD.exec(seg)?.[1]
     if (cd) {
       dir = resolve(dir, cd, ctx.home)
       continue
     }
-    if (!regexes.every(re => re.test(seg))) continue
-    const c = new RegExp(`git\\s+-C\\s+${PATH_ARG}`).exec(seg)?.[1]
-    const target = c ? resolve(dir, c, ctx.home) : dir
-    const words = seg.trim().split(/\s+/)
-    const names = words.slice(words.indexOf('branch') + 1).filter(w => !w.startsWith('-')).map(unquote)
-    if (names.some(name => !/^[A-Za-z0-9._\/-]+$/.test(name))) return undefined
-    branches.push(...names.map(name => ({ dir: target, name })))
+    const deletion = BRANCH_DELETE.exec(seg)
+    if (!deletion) return undefined
+    if (!/(?:^|\s)(?:-[dDf]*[dD][dDf]*|--delete)(?=\s|$)/.test(deletion[2])) return undefined
+    const target = deletion[1] ? resolve(dir, deletion[1], ctx.home) : dir
+    branches.push(...deletion[3].trim().split(/\s+/).map(name => ({ dir: target, name })))
   }
   return branches
 }
@@ -138,7 +140,7 @@ export async function findRule(config: Config, tool: string, input: unknown, ctx
       if (rule.exceptRepos?.some(p => expand(p, ctx.home) === top)) continue
     }
     if (rule.exceptMerged) {
-      const branches = branchNames(raw, rule.regexes, ctx)
+      const branches = branchNames(raw, ctx)
       if (branches) {
         const merged = await Promise.all(branches.map(({ dir, name }) => ctx.git(dir, ['branch', '--list', '--merged', 'origin/HEAD', name])))
         if (branches.length > 0 && merged.every(Boolean)) continue
