@@ -93,6 +93,7 @@ export function targetDir(cmd: string, re: RegExp, ctx: Context): string {
 }
 
 function branchNames(cmd: string, ctx: Context): { dir: string; name: string }[] | undefined {
+  if (cmd.includes('|')) return undefined
   let dir = ctx.cwd
   const branches = [] as { dir: string; name: string }[]
   for (const seg of cmd.split(/&&|\|\||[;|\n]/).map(s => s.trim()).filter(Boolean)) {
@@ -104,6 +105,7 @@ function branchNames(cmd: string, ctx: Context): { dir: string; name: string }[]
     const deletion = BRANCH_DELETE.exec(seg)
     if (!deletion) return undefined
     if (!/(?:^|\s)(?:-[dDf]*[dD][dDf]*|--delete)(?=\s|$)/.test(deletion[2])) return undefined
+    if (!/[Df]|--force/.test(deletion[2])) continue
     const target = deletion[1] ? resolve(dir, deletion[1], ctx.home) : dir
     branches.push(...deletion[3].trim().split(/\s+/).map(name => ({ dir: target, name })))
   }

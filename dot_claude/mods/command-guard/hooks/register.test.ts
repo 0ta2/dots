@@ -188,4 +188,14 @@ describe('command-guard', () => {
     engineMerged(on, ['a', 'b'])
     expect((await check($, 'Bash', { command: 'git branch -f a; git branch -D b' })).decision).toBe('ask')
   })
+
+  test('asks when a cd is conditional', async ($, on) => {
+    engineMerged(on, { '/r2': ['b'] })
+    expect((await check($, 'Bash', { command: 'cd /r1 || cd /r2; git branch -D b' })).decision).toBe('ask')
+  })
+
+  test('does not hold a safe deletion to origin', async ($, on) => {
+    engineMerged(on, ['stale'])
+    expect((await check($, 'Bash', { command: 'git branch -d topic; git branch -D stale' })).decision).toBe('allow')
+  })
 })
