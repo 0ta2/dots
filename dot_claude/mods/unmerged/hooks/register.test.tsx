@@ -172,6 +172,16 @@ test('several repos start folded and open one at a time', async ($, on) => {
   await pane.unmount()
 })
 
+test('a repo a delegated tab works in shows up', async ($, on) => {
+  fake(on, { ...GIT })
+  on('fs.list', () => ({ value: [{ name: 'wW:tN.json', kind: 'file' as const, size: 0, mtimeMs: 0, isLink: false }] }))
+  on('fs.read', () => ({ value: JSON.stringify({ task: 't', repos: ['/s'] }) }))
+  await $.command.run({ command: 'unmerged', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 160 } })
+  const pane = await $.ui.mount({ plugin: 'unmerged', surface: 'terminal', component: 'Pane', requestId: 'unmerged', props: PANE_PROPS })
+  expect(await pane.find({ key: 'file:/s:tracked:y.ts' })).toBeDefined()
+  await pane.unmount()
+})
+
 test('each file row shows its kind and line counts in color', async ($, on) => {
   fake(on, {
     ...GIT,
