@@ -157,7 +157,33 @@ const countsWidth = (c: Count[]) => c.reduce((w, { text }) => w + text.length, M
 const dirname = (p: string) => p.slice(0, p.lastIndexOf('/')) || '/'
 const basename = (p: string) => p.slice(p.lastIndexOf('/') + 1)
 
-export const register: Register = on => {
+const quote = (s: string) => (/^[\w@%+=:,./-]+$/.test(s) ? s : `'${s.replaceAll("'", `'\\''`)}'`)
+
+async function openInEditor($: EngineInterface, editor: string, root: string, path: string) {
+  const herdr = async (...args: string[]) => {
+    const r = await $.process.run(['herdr', ...args], { timeoutMs: 10_000 }).catch(() => undefined)
+    if (r?.exitCode !== 0 || r.isStdoutTruncated) throw new Error('herdr failed')
+    return r.stdout
+  }
+  let tab: string | undefined
+  try {
+    const pane = await $.env.get('HERDR_PANE_ID')
+    const moved = pane ? await herdr('pane', 'get', pane).then(out => JSON.parse(out).result?.pane?.workspace_id, () => undefined) : undefined
+    const workspace = (typeof moved === 'string' && moved) || (await $.env.get('HERDR_WORKSPACE_ID'))
+    if (!workspace) throw new Error('no workspace')
+    const label = `edit-${basename(root)}-${basename(path)}`
+    const { result } = JSON.parse(await herdr('tab', 'create', '--workspace', workspace, '--cwd', root, '--label', label, '--no-focus'))
+    tab = result.tab.tab_id
+    await herdr('pane', 'run', result.root_pane.pane_id, `${editor} ${quote(path.startsWith('-') ? `./${path}` : path)}`)
+    await herdr('tab', 'focus', tab!)
+  } catch {
+    if (tab) await herdr('tab', 'close', tab).catch(() => undefined)
+    await $.ui.status('開けませんでした')
+  }
+}
+
+export const register: Register = (on, options) => {
+  const editor = (options as { editor?: string } | undefined)?.editor || 'nvim'
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'unmerged', description: 'このセッションで触ったリポジトリのマージ前の差分を表示する' })
     await track($, [await $.session.cwd()])
@@ -231,6 +257,7 @@ export const register: Register = on => {
     const at = await read($, asked)
     const opened = (await read($, expanded)) ?? {}
     const isAsked = isSame(at, sel)
+    const canOpen = (await $.env.get('HERDR_ENV')) === '1'
     const fit = sel?.diff ? fitHunks(sel.diff, CODE_LIMIT) : undefined
     const isExpanded = (root: string) => opened[root] ?? (snaps.length < 2 || sel?.root === root)
     const selectedDiff = sel && (
@@ -337,6 +364,9 @@ export const register: Register = on => {
                               : select($, snap, f)
                           }
                         />
+                        {canOpen && f.status !== 'D' && (
+                          <Button key={`open:${id}`} plain label="[開く]" onPress={() => openInEditor($, editor, snap.root, f.path)} />
+                        )}
                       </Box>
                       {sel?.root === snap.root && sel.path === f.path && sel.isUntracked === f.isUntracked && selectedDiff}
                     </Box>
