@@ -198,6 +198,7 @@ test('a repo a delegated tab works in shows up', async ($, on) => {
   await $.command.run({ command: 'unmerged', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 160 } })
   const pane = await $.ui.mount({ plugin: 'unmerged', surface: 'terminal', component: 'Pane', requestId: 'unmerged', props: PANE_PROPS })
   expect(await pane.find({ key: 'file:/s:tracked:y.ts' })).toBeDefined()
+  expect((await pane.find({ key: 'repo:/s' }))?.props.label).toContain('委譲: t')
   await pane.unmount()
 })
 

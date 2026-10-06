@@ -31,16 +31,18 @@ async function track($: EngineInterface, dirs: string[]) {
   if (roots.length) await update($, repos, list => [...new Set([...(list ?? []), ...roots])])
 }
 
-export function parseRepos(text: string): string[] {
+export function parseRepos(text: string): { path: string; task?: string }[] {
   try {
-    const list = (JSON.parse(text) as { repos?: unknown }).repos
-    return Array.isArray(list) ? list.filter((r): r is string => typeof r === 'string') : []
+    const { repos, task } = JSON.parse(text) as { repos?: unknown; task?: unknown }
+    return Array.isArray(repos)
+      ? repos.filter((path): path is string => typeof path === 'string').map(path => ({ path, ...(typeof task === 'string' && { task }) }))
+      : []
   } catch {
     return []
   }
 }
 
-async function delegatedRepos($: EngineInterface): Promise<string[]> {
+async function delegatedRepos($: EngineInterface): Promise<{ path: string; task?: string }[]> {
   const [home, workspace] = await Promise.all([$.env.get('HOME'), $.env.get('HERDR_WORKSPACE_ID')])
   if (!home || !workspace) return []
   const dir = `${home}/.local/state/herdr-team/${workspace}`
@@ -67,6 +69,7 @@ async function diffOf($: EngineInterface, snap: RepoSnapshot, file: FileChange):
 }
 
 let selection = 0
+let delegatedTasks = new Map<string, string | undefined>()
 
 async function select($: EngineInterface, snap: RepoSnapshot, file: FileChange) {
   const mine = ++selection
@@ -83,7 +86,14 @@ async function unselect($: EngineInterface) {
 
 async function refresh($: EngineInterface) {
   const git = gitOf($)
-  const list = [...new Set([...((await read($, repos)) ?? []), ...(await rootsOf(git, await delegatedRepos($)))])]
+  const delegated = await Promise.all(
+    (await delegatedRepos($)).map(async ({ path, task }) => {
+      const root = (await git(path, ['rev-parse', '--show-toplevel']))?.trim()
+      return root ? { root, task } : undefined
+    }),
+  )
+  delegatedTasks = new Map(delegated.filter((repo): repo is { root: string; task?: string } => !!repo).map(({ root, task }) => [root, task]))
+  const list = [...new Set([...((await read($, repos)) ?? []), ...delegatedTasks.keys()])]
   const snaps = (await Promise.all(list.map(root => snapshot(git, root)))).filter(
     (s): s is RepoSnapshot => !!s,
   )
@@ -231,12 +241,14 @@ export const register: Register = on => {
           const isOpenRepo = isExpanded(snap.root)
           const width = Math.max(...snap.files.map(f => countsWidth(counts(f))))
           const marks = isOpenRepo ? '' : `${at?.root === snap.root ? ' 📎' : ''}${sel?.root === snap.root ? ' (表示中)' : ''}`
+          const task = delegatedTasks.get(snap.root)
+          const delegatedMark = delegatedTasks.has(snap.root) ? ` · 委譲${task ? `: ${task}` : ''}` : ''
           return (
             <Box key={`group:${snap.root}`} flexDirection="column" marginBottom={isOpenRepo ? 1 : 0}>
               <Button
                 key={`repo:${snap.root}`}
                 plain
-                label={`${isOpenRepo ? '▾' : '▸'} ${basename(snap.root)} (${snap.files.length})${marks}`}
+                label={`${isOpenRepo ? '▾' : '▸'} ${basename(snap.root)} (${snap.files.length})${marks}${delegatedMark}`}
                 onPress={() => update($, expanded, now => ({ ...now, [snap.root]: !isOpenRepo }))}
               />
               {isOpenRepo && (
