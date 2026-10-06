@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, ModelCompleteResult, Register } from 'claude-code'
+import type { EngineInterface, ModelCompleteResult, Register, RenderChildren } from 'claude-code'
 
 import {
   EMPTY,
@@ -30,6 +30,8 @@ import {
   underHistory,
 } from './imadoko'
 import type { Locale } from './imadoko'
+import { isReviewerOf, parseUnresolved, parseView, pullKey, pullsCreated } from './prs'
+import type { Checks, Merge, PullRef, PullView } from './prs'
 import { HEIGHT, WIDTH, cells } from './sprite'
 import {
   changes,
@@ -63,12 +65,51 @@ const team = atom({ plugin: 'imadoko', key: 'team' } as const, [] as TeamMember[
 const lead = atom({ plugin: 'imadoko', key: 'isLead' } as const, false)
 // One line per member, by tab: what it is doing, from its own status file or its screen.
 const notes = atom({ plugin: 'imadoko', key: 'notes' } as const, {} as Record<string, string>)
+const folded = atom({ plugin: 'imadoko', key: 'folded' } as const, [] as string[])
 const frame = atom({ plugin: 'imadoko', key: 'frame' } as const, 0)
 // Each workspace's mark book; the store keeps a copy, since a /resume empties this.
 const markBooks = atom({ plugin: 'imadoko', key: 'marks' } as const, {} as Record<string, MarkBook>)
+const pulls = atom({ plugin: 'imadoko', key: 'pulls' } as const, [] as PullRef[])
+const pullViews = atom({ plugin: 'imadoko', key: 'pullViews' } as const, {} as Record<string, (PullView & { unresolved?: number }) | 'unreadable'>)
 const MARKS_KEY = 'imadoko-marks'
 
 const PANE_ID = 'imadoko'
+
+type PullWords = {
+  title: string
+  loading: string
+  unreadable: string
+  unresolved: (n: number) => string
+  checks: string
+  reviewer: string
+  merge: Readonly<Record<Merge, string>>
+  check: Readonly<Record<Checks, string>>
+}
+
+const PULL_WORDS: { english: PullWords; japanese: PullWords } = {
+  english: {
+    title: 'PR',
+    loading: 'loading…',
+    unreadable: 'unreadable',
+    unresolved: n => `unresolved ${n}`,
+    checks: 'checks',
+    reviewer: 'Reviewer',
+    merge: { clean: 'mergeable', conflict: 'conflict', blocked: 'blocked', unknown: 'unknown' },
+    check: { pass: '✅', fail: '❌', pending: '…' },
+  },
+  japanese: {
+    title: 'PR',
+    loading: '読み込み中…',
+    unreadable: '読めません',
+    unresolved: n => `未解決 ${n}`,
+    checks: 'チェック',
+    reviewer: 'レビュー担当',
+    merge: { clean: 'マージ可', conflict: 'コンフリクト', blocked: 'ブロック', unknown: '不明' },
+    check: { pass: '✅', fail: '❌', pending: '…' },
+  },
+}
+
+const pullWordsFor = (language: string) => (/^(ja\b|japanese|日本語)/i.test(language) ? PULL_WORDS.japanese : PULL_WORDS.english)
 
 // The color of the headings: the band's labels and the pane's section titles.
 const HEADING_COLOR = '#ffa500'
@@ -102,6 +143,15 @@ const TOGGLE_ACTION = 'app:cycleDiffBase'
 // How many sessions' imadoko summaries the store keeps, the newest; one is a few KB.
 const STORED_SESSIONS = 200
 const storeKey = (sessionId: string): string => `imadoko:${sessionId}`
+const pullsStoreKey = (sessionId: string): string => `imadoko-pulls:${sessionId}`
+
+const storedPullsOf = (value: unknown): PullRef[] =>
+  Array.isArray(value)
+    ? value.flatMap(one => {
+        const pull = one as Partial<PullRef>
+        return typeof pull.owner === 'string' && typeof pull.repo === 'string' && typeof pull.number === 'number' ? [{ owner: pull.owner, repo: pull.repo, number: pull.number }] : []
+      })
+    : []
 
 // How long a /clear or an in-process /resume is watched for the session it starts.
 const SESSION_POLL_MS = 500
@@ -205,8 +255,9 @@ const summarizeLater = ($: EngineInterface, locale: Locale) => {
 const openSession = async ($: EngineInterface, locale: Locale) => {
   const { epoch } = await read($, imadoko)
   const sessionId = await $.session.id()
-  const rebuilt = rebuild(await $.session.messages())
-  const stored = storedImadokoOf(await $.store.get(storeKey(sessionId)))
+  const [messages, saved, savedPulls] = await Promise.all([$.session.messages(), $.store.get(storeKey(sessionId)), $.store.get(pullsStoreKey(sessionId))])
+  const rebuilt = rebuild(messages)
+  const stored = storedImadokoOf(saved)
   const isUpToDate = stored !== undefined && stored.turnKey === turnKeyOf(rebuilt)
 
   let isApplied = false
@@ -243,6 +294,8 @@ const openSession = async ($: EngineInterface, locale: Locale) => {
     }
   })
   if (!isApplied) return
+  await update($, pulls, () => storedPullsOf(savedPulls))
+  await update($, pullViews, () => ({}))
   if (isJoined ? shouldSummarize : !isUpToDate && (rebuilt.turns.length > 0 || rebuilt.background !== null)) {
     summarizeLater($, locale)
   } else if (isJoined) {
@@ -265,6 +318,11 @@ const saveKnown = async ($: EngineInterface) => {
     savedAt: await $.clock.now(),
     usage: current.usage,
   })
+}
+
+const savePulls = async ($: EngineInterface) => {
+  const sessionId = (await read($, imadoko)).sessionId
+  if (sessionId !== null) await $.store.set(pullsStoreKey(sessionId), await read($, pulls))
 }
 
 /**
@@ -313,6 +371,66 @@ const whereAmI = async ($: EngineInterface): Promise<Where | undefined> => {
 const herdr = async ($: EngineInterface, args: string[]) => {
   const r = await $.process.run(['herdr', ...args], { timeoutMs: 10_000 }).catch(() => undefined)
   return r?.exitCode === 0 && !r.isStdoutTruncated ? r.stdout : undefined
+}
+
+const readPulls = async ($: EngineInterface) => {
+  const sessionId = (await read($, imadoko)).sessionId
+  const known = await read($, pulls)
+  const results = await Promise.all(
+    known.map(async pull => {
+      const [viewResult, threadsResult] = await Promise.all([
+        $.process.run(['gh', 'pr', 'view', String(pull.number), '--repo', `${pull.owner}/${pull.repo}`, '--json', 'title,url,state,mergeStateStatus,statusCheckRollup'], { timeoutMs: 15_000 }).catch(() => undefined),
+        $.process.run(
+          [
+            'gh',
+            'api',
+            'graphql',
+            '--paginate',
+            '-f',
+            `query=query($endCursor: String) { repository(owner: \"${pull.owner}\", name: \"${pull.repo}\") { pullRequest(number: ${pull.number}) { reviewThreads(first: 100, after: $endCursor) { nodes { isResolved } pageInfo { hasNextPage endCursor } } } } }`,
+            '--jq',
+            '.data.repository.pullRequest.reviewThreads.nodes | map(select(.isResolved == false)) | length',
+          ],
+          { timeoutMs: 15_000 },
+        ).catch(() => undefined),
+      ])
+      const view = viewResult?.exitCode === 0 && !viewResult.isStdoutTruncated ? parseView(viewResult.stdout) : undefined
+      if (view?.state === 'MERGED' || view?.state === 'CLOSED') return { pull, closed: true as const }
+      const unresolved = threadsResult?.exitCode === 0 && !threadsResult.isStdoutTruncated ? parseUnresolved(threadsResult.stdout) : undefined
+      return { pull, view: view === undefined || unresolved === undefined ? 'unreadable' as const : { ...view, unresolved } }
+    }),
+  )
+  if ((await read($, imadoko)).sessionId !== sessionId) return
+  const closed = new Set(results.flatMap(result => (result.closed ? [pullKey(result.pull)] : [])))
+  const views = results.flatMap(result => (result.closed ? [] : [[pullKey(result.pull), result.view!] as const]))
+  let changed = false
+  await update($, pulls, current => {
+    const next = current.filter(pull => !closed.has(pullKey(pull)))
+    changed = next.length !== current.length
+    return next
+  })
+  await update($, pullViews, current => ({ ...Object.fromEntries(Object.entries(current).filter(([key]) => !closed.has(key))), ...Object.fromEntries(views) }))
+  if (changed) await savePulls($)
+}
+
+let pullPoll: { cancel: () => void } | undefined
+let pullsBusy = false
+
+const refreshPulls = ($: EngineInterface) => {
+  if (pullsBusy) return
+  pullsBusy = true
+  void readPulls($)
+    .catch((error: unknown) => $.ui.log(`imadoko: reading pulls failed: ${String(error)}`, { to: 'debug' }))
+    .finally(() => {
+      pullsBusy = false
+    })
+}
+
+const watchPulls = ($: EngineInterface) => {
+  pullPoll?.cancel()
+  pullPoll = $.clock.every(60_000, () => {
+    void read($, pulls).then(known => (known.length === 0 ? undefined : refreshPulls($)))
+  })
 }
 
 /** The one-line tasks herdr-delegate and herdr-review left for the tabs open now. */
@@ -515,6 +633,9 @@ const watchTeam = ($: EngineInterface, language: string) => {
 const toggle = ($: EngineInterface, key: string) =>
   update($, expanded, keys => (keys.includes(key) ? keys.filter(one => one !== key) : [...keys, key]))
 
+const toggleFold = ($: EngineInterface, key: string) =>
+  update($, folded, keys => (keys.includes(key) ? keys.filter(one => one !== key) : [...keys, key]))
+
 /** Keeps the newest imadoko summaries in the store; the oldest go first. */
 const pruneStore = async ($: EngineInterface) => {
   const keys = (await $.store.keys()).filter(key => key.startsWith('imadoko:'))
@@ -524,7 +645,7 @@ const pruneStore = async ($: EngineInterface) => {
     keys.map(async key => ({ key, savedAt: storedImadokoOf(await $.store.get(key))?.savedAt ?? 0 })),
   )
   const oldest = saved.sort((a, b) => a.savedAt - b.savedAt).slice(0, keys.length - STORED_SESSIONS)
-  await Promise.all(oldest.map(one => $.store.delete(one.key)))
+  await Promise.all(oldest.flatMap(one => [$.store.delete(one.key), $.store.delete(pullsStoreKey(one.key.slice(storeKey('').length)))]))
 }
 
 export const register: Register = on => {
@@ -564,6 +685,7 @@ export const register: Register = on => {
       summarizeLater($, locale)
     }
     await pruneStore($)
+    watchPulls($)
     if ((await $.env.get('HERDR_ENV')) === '1') watchTeam($, locale.language)
 
     return next(e)
@@ -574,6 +696,8 @@ export const register: Register = on => {
     // another one; neither raises session.start again, so start over here.
     if (isInteractive && (e.reason === 'clear' || e.reason === 'resume')) {
       await update($, imadoko, startOver)
+      await update($, pulls, () => [])
+      await update($, pullViews, () => ({}))
       followNextSession($, e.sessionId, locale)
     }
 
@@ -625,6 +749,21 @@ export const register: Register = on => {
     if (line !== undefined && ran.deny === undefined && ran.isError !== true) {
       await update($, imadoko, current => recordActivity(current, line))
     }
+    if (isInteractive && e.agentId === undefined && String(e.tool) === 'Bash' && ran.deny === undefined && ran.isError !== true && typeof e.command === 'string') {
+      const output = ran.result as { stdout?: unknown }
+      const created = pullsCreated(e.command, typeof output.stdout === 'string' ? output.stdout : '')
+      let added = false
+      await update($, pulls, current => {
+        const keys = new Set(current.map(pullKey))
+        const additions = created.filter(pull => !keys.has(pullKey(pull)))
+        added = additions.length > 0
+        return [...current, ...additions]
+      })
+      if (added) {
+        await savePulls($)
+        refreshPulls($)
+      }
+    }
 
     return ran
   })
@@ -641,11 +780,24 @@ export const register: Register = on => {
     const tasks: readonly Task[] = current.sections?.tasks ?? []
     const keys = taskKeys(tasks)
     const elements = $.ui.resolve(e)
-    const { Box, Button, Text } = elements
+    const { Box, Button, Link, Text } = elements
     const mates = (await read($, lead)) ? await read($, team) : []
     const said = await read($, notes)
+    const closed = await read($, folded)
     const tick = mates.length > 0 ? await read($, frame) : 0
     const tw = teamWordsFor(locale.language)
+    const listedPulls = await read($, pulls)
+    const views = await read($, pullViews)
+    const pw = pullWordsFor(locale.language)
+    const Section = ({ sectionKey, title, children }: { sectionKey: string; title: string; children: RenderChildren }) => (
+      <Box flexDirection="column" marginBottom={1}>
+        <Box flexDirection="row">
+          <Button key={`section:${sectionKey}`} label={closed.includes(sectionKey) ? '▸' : '▾'} plain onPress={() => toggleFold($, sectionKey)} />
+          <Text bold color={HEADING_COLOR} wrap="wrap">{title}</Text>
+        </Box>
+        {closed.includes(sectionKey) ? null : children}
+      </Box>
+    )
 
     return (
       <Box flexDirection="column">
@@ -660,46 +812,63 @@ export const register: Register = on => {
             onPress={() => $.ui.close({ id: PANE_ID })}
           />
         </Box>
-        {[
-          { title: locale.words.purpose, rows: [current.sections?.purpose ?? locale.words.notYet] },
-          { title: locale.words.status, rows: [current.sections?.status ?? locale.words.notYet] },
-        ].map(section => (
-          <Box flexDirection="column" marginBottom={1}>
-            <Text bold color={HEADING_COLOR} wrap="wrap">
-              {section.title}
-            </Text>
-            {section.rows.map(row => (
-              <Text wrap="wrap">{row}</Text>
-            ))}
-          </Box>
-        ))}
+        <Section sectionKey="purpose" title={locale.words.purpose}>
+          <Text wrap="wrap">{current.sections?.purpose ?? locale.words.notYet}</Text>
+        </Section>
+        <Section sectionKey="status" title={locale.words.status}>
+          <Text wrap="wrap">{current.sections?.status ?? locale.words.notYet}</Text>
+        </Section>
         {mates.length === 0 ? null : (
-          <Box flexDirection="column" marginBottom={1}>
-            <Text bold color={HEADING_COLOR} wrap="wrap">
-              {tw.members}
-            </Text>
-            {mates.map(m => (
-              <Box key={`member:${m.tabId}`} flexDirection="row" gap={1}>
-                {'Raster' in elements ? (
-                  <elements.Raster key={`sprite:${m.tabId}`} columns={WIDTH} rows={HEIGHT / 2} cells={cells(m.role, m.status, tick, m.kind)} />
-                ) : null}
-                <Box flexDirection="column" flexShrink={1}>
-                  <Text bold wrap="truncate-end">
-                    {[m.mark, tw.roles[m.role], m.kind].filter(Boolean).join(' · ')}
-                  </Text>
-                  <Text wrap="truncate-end">{`${tw.states[m.status]}${said[m.tabId] ? ` · ${said[m.tabId]}` : ''}`}</Text>
-                  <Text dimColor wrap="truncate-end">
-                    {m.task ?? m.label}
-                  </Text>
+          <Section sectionKey="team" title={tw.members}>
+            {mates.map(m => {
+              return (
+                <Box key={`member:${m.tabId}`} flexDirection="row" gap={1}>
+                  {'Raster' in elements ? (
+                    <elements.Raster key={`sprite:${m.tabId}`} columns={WIDTH} rows={HEIGHT / 2} cells={cells(m.role, m.status, tick, m.kind)} />
+                  ) : null}
+                  <Box flexDirection="column" flexShrink={1}>
+                    <Text bold wrap="truncate-end">{[m.mark, tw.roles[m.role], m.kind].filter(Boolean).join(' · ')}</Text>
+                    <Text wrap="truncate-end">{`${tw.states[m.status]}${said[m.tabId] ? ` · ${said[m.tabId]}` : ''}`}</Text>
+                    <Text dimColor wrap="truncate-end">
+                      {m.task ?? m.label}
+                    </Text>
+                  </Box>
                 </Box>
-              </Box>
-            ))}
-          </Box>
+              )
+            })}
+          </Section>
         )}
-        <Box flexDirection="column" marginBottom={1}>
-          <Text bold color={HEADING_COLOR} wrap="wrap">
-            {locale.words.tasks}
-          </Text>
+        {listedPulls.length === 0 ? null : (
+          <Section sectionKey="pulls" title={pw.title}>
+            {listedPulls.map(pull => {
+              const view = views[pullKey(pull)]
+              const reviewers = mates.filter(member => isReviewerOf(member.label, pull))
+              const href = `https://github.com/${pull.owner}/${pull.repo}/pull/${pull.number}`
+
+              return (
+                <Box key={`pull:${pullKey(pull)}`} flexDirection="column">
+                  <Box flexDirection="row" gap={1}>
+                    <Link href={href} label={`${pull.repo}#${pull.number}`} />
+                    {view === undefined || view === 'unreadable' ? null : <Text bold wrap="truncate-end">{view.title}</Text>}
+                  </Box>
+                  <Text dimColor wrap="truncate-end">
+                    {view === undefined
+                      ? pw.loading
+                      : view === 'unreadable'
+                        ? pw.unreadable
+                      : [pw.unresolved(view.unresolved ?? 0), pw.merge[view.merge], ...(view.checks === undefined ? [] : [`${pw.checks} ${pw.check[view.checks]}`])].join(' · ')}
+                  </Text>
+                  {reviewers.length === 0 ? null : (
+                    <Text dimColor wrap="truncate-end">
+                      {`${pw.reviewer}: ${reviewers.map(member => `${member.label} (${tw.states[member.status]})`).join(', ')}`}
+                    </Text>
+                  )}
+                </Box>
+              )
+            })}
+          </Section>
+        )}
+        <Section sectionKey="tasks" title={locale.words.tasks}>
           {tasks.length === 0 ? <Text wrap="wrap">{locale.words.none}</Text> : null}
           {tasks.map((task, index) => {
             const key = keys[index] ?? ''
@@ -740,16 +909,13 @@ export const register: Register = on => {
               </Box>
             )
           })}
-        </Box>
+        </Section>
         {paneSections(current, locale.words).map(section => (
-          <Box flexDirection="column" marginBottom={1}>
-            <Text bold color={HEADING_COLOR} wrap="wrap">
-              {section.title}
-            </Text>
+          <Section key={section.key} sectionKey={section.key} title={section.title}>
             {section.rows.map(row => (
               <Text wrap="wrap">{row}</Text>
             ))}
-          </Box>
+          </Section>
         ))}
       </Box>
     )

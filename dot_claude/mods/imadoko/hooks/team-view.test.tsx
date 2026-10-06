@@ -31,7 +31,7 @@ const AGENTS = JSON.stringify({
   },
 })
 
-type World = { agents: string; paneGet?: string; space?: string; screenReply?: (n: number) => Promise<string>; store?: Record<string, unknown>; files?: Record<string, string> }
+type World = { agents: string; paneGet?: string; space?: string; screenReply?: (n: number) => Promise<string>; store?: Record<string, unknown>; files?: Record<string, string>; summary?: typeof SUMMARY; pullView?: string | Promise<string>; unresolved?: string | Promise<string>; session?: { id: string } }
 
 function standIn(on: On, selfLabel: string, env: Record<string, string>, world: World = { agents: AGENTS }) {
   const prompts: string[] = []
@@ -47,7 +47,8 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
   })
   on('store.keys', () => ({ value: [...store.keys()] }))
   on('session.start', (_$, e) => ({ cwd: e.cwd }))
-  on('session.id', () => ({ value: 'sess-1' }))
+  on('session.end', (_$, e) => ({ sessionId: e.sessionId }))
+  on('session.id', () => ({ value: world.session?.id ?? 'sess-1' }))
   on('session.messages', () => ({ value: [] }))
   on('settings.read', () => ({ value: { language: '日本語' } }))
   on('command.register', (_$, e) => ({ value: { command: e.name } }))
@@ -61,7 +62,15 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
     toasts.push(e.text)
     return { value: undefined }
   })
-  on('process.run', (_$, e) => {
+  on('process.run', async (_$, e) => {
+    if (e.argv[0] === 'gh' && e.argv[1] === 'pr' && e.argv[2] === 'view') {
+      const stdout = await world.pullView
+      return { value: { exitCode: stdout === undefined ? 1 : 0, stdout: stdout ?? '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+    }
+    if (e.argv[0] === 'gh' && e.argv[1] === 'api' && e.argv[2] === 'graphql') {
+      const stdout = await world.unresolved
+      return { value: { exitCode: stdout === undefined ? 1 : 0, stdout: stdout ?? '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+    }
     const key = e.argv.slice(1).join(' ')
     const out: Record<string, string> = {
       [`tab list --workspace ${world.space ?? 'wW'}`]: tabsOut(selfLabel),
@@ -85,7 +94,7 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
     prompts.push(e.prompt)
     const isScreen = e.prompt.includes('<screen>')
     if (isScreen) screens += 1
-    const text = !isScreen ? JSON.stringify(SUMMARY) : world.screenReply ? await world.screenReply(screens) : 'ログイン方式について質問中'
+    const text = !isScreen ? JSON.stringify(world.summary ?? SUMMARY) : world.screenReply ? await world.screenReply(screens) : 'ログイン方式について質問中'
     return { value: { isAnswered: true as const, text, usage: NO_USAGE } }
   })
   on('turn.start', (_$, e) => ({ turnId: e.turnId }))
@@ -295,4 +304,131 @@ test('a member whose state herdr cannot tell is still read off its screen', asyn
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await ui.find({ text: /不明 · ログイン方式について質問中/ })).toBeDefined()
   await ui.unmount()
+})
+
+test('pressing Section headings folds and unfolds their bodies', async ($, on) => {
+  const seen = standIn(on, 'main', ENV, { agents: AGENTS, summary: { ...SUMMARY, decisions: ['OAuth を使う'] } })
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await $.turn.start({ turnId: 't', text: '実装を頼んで' })
+  await $.turn.complete({ turnId: 't', answer: '頼みました', durationMs: 1000, isAborted: false, reason: 'answer' })
+  await seen.clock.settle()
+  const press = async (key: string) => {
+    const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+    await ui.press({ key })
+    await ui.unmount()
+  }
+
+  await press('section:purpose')
+  let ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /チケットを片付ける/ })).toBeUndefined()
+  expect((await ui.find({ key: 'section:purpose' }))?.props.label).toBe('▸')
+  await ui.unmount()
+  await press('section:decisions')
+  ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /- OAuth を使う/ })).toBeUndefined()
+  expect((await ui.find({ key: 'section:decisions' }))?.props.label).toBe('▸')
+  await ui.unmount()
+  await press('section:purpose')
+  await press('section:decisions')
+  ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /チケットを片付ける/ })).toBeDefined()
+  expect(await ui.find({ text: /- OAuth を使う/ })).toBeDefined()
+  expect((await ui.find({ key: 'section:purpose' }))?.props.label).toBe('▾')
+  expect((await ui.find({ key: 'section:decisions' }))?.props.label).toBe('▾')
+  await ui.unmount()
+})
+
+test('a pull request the session opened shows in the pane', async ($, on) => {
+  const seen = standIn(on, 'main', ENV, {
+    agents: AGENTS,
+    pullView: JSON.stringify({ title: 'ブランチ強制削除を防ぐ', url: 'https://github.com/0ta2/dots/pull/171', state: 'OPEN', mergeStateStatus: 'CLEAN', statusCheckRollup: [] }),
+    unresolved: JSON.stringify({ data: { repository: { pullRequest: { reviewThreads: { nodes: [{ isResolved: false }] } } } } }),
+  })
+  on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: 'https://github.com/0ta2/dots/pull/171\n', stderr: '', interrupted: false } }))
+
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: 'Bash', command: 'gh pr create --title x' })
+  await seen.clock.settle()
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /dots#171/ })).toBeDefined()
+  expect(await ui.find({ text: /ブランチ強制削除を防ぐ/ })).toBeDefined()
+  expect(await ui.find({ text: /未解決 1/ })).toBeDefined()
+  expect(await ui.find({ text: /マージ可/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a merged pull request leaves the pane', async ($, on) => {
+  const world: World = {
+    agents: AGENTS,
+    pullView: JSON.stringify({ title: 'ブランチ強制削除を防ぐ', url: 'https://github.com/0ta2/dots/pull/171', state: 'OPEN', mergeStateStatus: 'CLEAN', statusCheckRollup: [] }),
+    unresolved: JSON.stringify({ data: { repository: { pullRequest: { reviewThreads: { nodes: [] } } } } }),
+  }
+  const seen = standIn(on, 'main', ENV, world)
+  on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: 'https://github.com/0ta2/dots/pull/171\n', stderr: '', interrupted: false } }))
+
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: 'Bash', command: 'gh pr create --title x' })
+  await seen.clock.settle()
+  let ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /dots#171/ })).toBeDefined()
+  await ui.unmount()
+  world.pullView = JSON.stringify({ title: 'ブランチ強制削除を防ぐ', url: 'https://github.com/0ta2/dots/pull/171', state: 'MERGED', mergeStateStatus: 'CLEAN', statusCheckRollup: [] })
+  await seen.clock.advance(60_000)
+  await seen.clock.settle()
+  ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /dots#171/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('pull request records follow the conversation', async ($, on) => {
+  const session = { id: 'sess-1' }
+  const seen = standIn(on, 'main', ENV, {
+    agents: AGENTS,
+    session,
+    pullView: JSON.stringify({ title: 'ブランチ強制削除を防ぐ', url: 'https://github.com/0ta2/dots/pull/171', state: 'OPEN', mergeStateStatus: 'CLEAN', statusCheckRollup: [] }),
+    unresolved: JSON.stringify({ data: { repository: { pullRequest: { reviewThreads: { nodes: [] } } } } }),
+  })
+  on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: 'https://github.com/0ta2/dots/pull/171\n', stderr: '', interrupted: false } }))
+
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: 'Bash', command: 'gh pr create --title x' })
+  await seen.clock.settle()
+  await $.session.end({ reason: 'resume', sessionId: 'sess-1', resume: { id: 'sess-1' } })
+  let ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /dots#171/ })).toBeUndefined()
+  await ui.unmount()
+  session.id = 'sess-2'
+  await seen.clock.advance(500)
+  await seen.clock.settle()
+  ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /dots#171/ })).toBeUndefined()
+  await ui.unmount()
+  await $.session.end({ reason: 'resume', sessionId: 'sess-2', resume: { id: 'sess-2' } })
+  session.id = 'sess-1'
+  await seen.clock.advance(500)
+  await seen.clock.settle()
+  ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /dots#171/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a new pull request is loading before its view arrives', async ($, on) => {
+  let release: (text: string) => void = () => {}
+  const pullView = new Promise<string>(resolve => {
+    release = resolve
+  })
+  const seen = standIn(on, 'main', ENV, {
+    agents: AGENTS,
+    pullView,
+    unresolved: JSON.stringify({ data: { repository: { pullRequest: { reviewThreads: { nodes: [] } } } } }),
+  })
+  on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: 'https://github.com/0ta2/dots/pull/171\n', stderr: '', interrupted: false } }))
+
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: 'Bash', command: 'gh pr create --title x' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /読み込み中…/ })).toBeDefined()
+  expect(await ui.find({ text: /読めません/ })).toBeUndefined()
+  await ui.unmount()
+  release(JSON.stringify({ title: 'ブランチ強制削除を防ぐ', url: 'https://github.com/0ta2/dots/pull/171', state: 'OPEN', mergeStateStatus: 'CLEAN', statusCheckRollup: [] }))
 })

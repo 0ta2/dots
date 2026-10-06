@@ -1419,7 +1419,10 @@ test('保存する概要は新しい順に 200 セッション分までにする
     [],
     undefined,
     Object.fromEntries(
-      Array.from({ length: 205 }, (_, index) => [`imadoko:old-${index}`, { sections: IMADOKO, turnKey: 'v1:x', savedAt: index }]),
+      Array.from({ length: 205 }, (_, index) => [
+        [`imadoko:old-${index}`, { sections: IMADOKO, turnKey: 'v1:x', savedAt: index }],
+        [`imadoko-pulls:old-${index}`, [{ owner: '0ta2', repo: 'dots', number: index }]],
+      ]).flat(),
     ),
   )
 
@@ -1427,7 +1430,7 @@ test('保存する概要は新しい順に 200 セッション分までにする
   await clock.settle()
   const kept = [...store.keys()].filter(key => key.startsWith('imadoko:'))
 
-  expect([kept.length, kept.includes('imadoko:old-4'), kept.includes('imadoko:old-5')]).toEqual([200, false, true])
+  expect([kept.length, kept.includes('imadoko:old-4'), kept.includes('imadoko:old-5'), store.has('imadoko-pulls:old-4'), store.has('imadoko-pulls:old-5')]).toEqual([200, false, true, false, true])
 })
 
 test('/clear の後の新しい会話の概要も、新しいセッション ID で保存する', async ($, on) => {
