@@ -1,6 +1,7 @@
 import type { MemberState as Status, Role } from '../types'
 
-export const SIZE = 12
+export const WIDTH = 10
+export const HEIGHT = 6
 const DEFAULT = 0x01000000
 const UPPER = 0x2580
 const LOWER = 0x2584
@@ -9,10 +10,10 @@ type Palette = Record<string, number>
 
 const COMMON: Palette = { s: 0xffd6a5, e: 0x222222, k: 0x6c584c, m: 0xe5383b, l: 0x4a4e69, r: 0xff0054, w: 0xffffff, t: 0xffe066 }
 
-const ROLES: Record<Role, { palette: Palette; hat: string[]; eyes?: string }> = {
-  impl: { palette: { y: 0xfcbf49, h: 0xf77f00, b: 0x3a86ff }, hat: ['hhhh', 'hhhyyhhh', 'hhhhhhhhhh'] },
-  review: { palette: { y: 0x00b4d8, h: 0x2b2d42, b: 0x06d6a0 }, hat: ['', 'hhhhhh', 'hhhhhhhh'], eyes: 'yeyyey' },
-  member: { palette: { y: 0xced4da, h: 0x8d99ae, b: 0xadb5bd }, hat: ['', 'hhhhhh', 'hhhhhhhh'] },
+const ROLES: Record<Role, Palette> = {
+  impl: { y: 0xfcbf49, h: 0xf77f00, b: 0x3a86ff },
+  review: { y: 0x00b4d8, h: 0x2b2d42, b: 0x06d6a0 },
+  member: { y: 0xced4da, h: 0x8d99ae, b: 0xadb5bd },
 }
 
 const KINDS: Record<string, Palette> = {
@@ -20,16 +21,7 @@ const KINDS: Record<string, Palette> = {
   codex: { u: 0x7b8cff, U: 0x4a55d6, d: 0x1b1f4a, w: 0xffffff },
 }
 
-const MASCOT_HATS: Record<Role, string[]> = {
-  impl: ['', 'hhhh', 'hhhyyhhh'],
-  review: ['', '', ''],
-  member: ['', '', ''],
-}
-
-const center = (row: string) => {
-  const left = Math.floor((SIZE - row.length) / 2)
-  return '.'.repeat(left) + row + '.'.repeat(SIZE - row.length - left)
-}
+const HELMET = '..hhyyhh..'
 
 function stamp(rows: string[], at: [number, number], mark: string[]) {
   mark.forEach((line, dy) => {
@@ -43,27 +35,15 @@ function stamp(rows: string[], at: [number, number], mark: string[]) {
 }
 
 function human(role: Role, status: Status, odd: boolean): string[] {
-  const { hat, eyes } = ROLES[role]
   const isSleepy = status === 'idle' || status === 'done'
-  const isCheer = status === 'done'
   const isTyping = status === 'working' && odd
-  const face = [
-    'ssssss',
-    isSleepy ? (eyes ? 'ykyyky' : 'ssssss') : (eyes ?? 'sesses'),
-    isSleepy && !eyes ? 'skssks' : 'ssssss',
-    status === 'blocked' ? 'sssmss' : 'ssmmss',
-  ]
   return [
-    ...hat.map(center),
-    center(face[0]!),
-    center(face[1]!),
-    isCheer ? center('s.' + face[2]! + '.s') : center(face[2]!),
-    isCheer ? center('s.' + face[3]! + '.s') : center(face[3]!),
-    center(isTyping ? 'sbbbbbbbbs' : 'bbbbbbbb'),
-    center(isTyping || isCheer ? 'bbbbbbbb' : 'sbbbbbbbbs'),
-    center('bbbbbbbb'),
-    center('ll..ll'),
-    center('kk..kk'),
+    role === 'impl' ? HELMET : '...hhhh...',
+    '...ssss...',
+    isSleepy ? '...ssss...' : role === 'review' ? '..yeyyey..' : '...esse...',
+    isTyping ? '.sbbbbbbs.' : '..bbbbbb..',
+    isTyping ? '..bbbbbb..' : '.sbbbbbbs.',
+    '...l..l...',
   ]
 }
 
@@ -72,52 +52,41 @@ function clawd(role: Role, status: Status, odd: boolean): string[] {
   const isCheer = status === 'done'
   const isTyping = status === 'working' && odd
   const rows = [
-    ...MASCOT_HATS[role].map(center),
-    center('oooooooo'),
-    center(isSleepy ? 'oooooooo' : 'oeooooeo'),
-    isCheer ? 'oooeooooeooo' : center('oeooooeo'),
-    isCheer || isTyping ? center('oooooooo') : 'oooooooooooo',
-    isTyping ? 'oooooooooooo' : center('oooooooo'),
-    center('oooooooo'),
-    center('o.o..o.o'),
-    center('o.o..o.o'),
-    center(''),
+    role === 'impl' ? HELMET : '..........',
+    '.oooooooo.',
+    isSleepy ? '.oooooooo.' : '.oeooooeo.',
+    isCheer || isTyping ? '.oooooooo.' : 'oooooooooo',
+    isTyping ? 'oooooooooo' : '.oooooooo.',
+    '.o.o..o.o.',
   ]
-  if (isCheer) stamp(rows, [4, 0], ['o..........o'])
-  if (role === 'review') stamp(rows, [4, 2], [isSleepy ? 'yyyooyyy' : 'yeyooyey'])
+  if (isCheer) stamp(rows, [1, 0], ['o........o'])
+  if (role === 'review') stamp(rows, [2, 1], [isSleepy ? 'yyyooyyy' : 'yeyooyey'])
   return rows
 }
 
 function codexPet(role: Role, status: Status, odd: boolean): string[] {
-  const isCheer = status === 'done'
   const isTyping = status === 'working' && odd
   const prompt = status === 'idle' || status === 'done' ? 'l' : 'w'
-  const cursor = (status === 'working' && odd) || status === 'idle' ? 'dd' : 'ww'
+  const cursor = isTyping || status === 'idle' ? 'dd' : 'ww'
   const rows = [
-    role === 'impl' ? center('hhhyyhhh') : center('uuu..uuu'),
-    center('uuuuuuuuuu'),
-    center('uddddddddu'),
-    center(`ud${prompt}dddddu`),
-    center(`udd${prompt}ddddu`),
-    center(`ud${prompt}d${cursor}ddu`),
-    center('uuuuuuuuuu'),
-    center('uuuuuu'),
-    center(isTyping || isCheer ? 'uuuuuu' : 'u.uuuuuu.u'),
-    center(isTyping ? 'u.uuuuuu.u' : 'uuuuuu'),
-    center('uu..uu'),
-    center('UU..UU'),
+    role === 'impl' ? HELMET : '..uu..uu..',
+    '.uuuuuuuu.',
+    `.ud${prompt}ddddu.`,
+    `.udd${prompt}d${cursor}u.`,
+    isTyping ? 'uuuuuuuuuu' : '.uuuuuuuu.',
+    '..UU..UU..',
   ]
-  if (isCheer) stamp(rows, [6, 0], ['.u........u.', '..u......u..'])
-  if (role === 'review') stamp(rows, [2, 0], ['y..........y', 'y..........y', 'y..........y'])
+  if (status === 'done') stamp(rows, [3, 0], ['u........u'])
+  if (role === 'review') stamp(rows, [2, 0], ['y........y', 'y........y'])
   return rows
 }
 
 export function pixels(role: Role, status: Status, frame: number, kind?: string): string[] {
   const odd = frame % 2 === 1
   const rows = kind === 'claude' ? clawd(role, status, odd) : kind === 'codex' ? codexPet(role, status, odd) : human(role, status, odd)
-  if (status === 'blocked' && !odd) stamp(rows, [0, 11], ['r', 'r', 'r', '.', 'r'])
-  if (status === 'idle') stamp(rows, odd ? [1, 8] : [0, 8], ['wwww', '..w.', '.w..', 'wwww'])
-  if (status === 'done') stamp(rows, [0, 0], odd ? ['t.t', '.t.', 't.t'] : ['.t.', 'ttt', '.t.'])
+  if (status === 'blocked' && !odd) stamp(rows, [0, 9], ['r', 'r', '.', 'r'])
+  if (status === 'idle') stamp(rows, [0, odd ? 8 : 9], ['w'])
+  if (status === 'done') stamp(rows, [0, 0], [odd ? 't.' : '.t', odd ? '.t' : 't.'])
   return rows
 }
 
@@ -140,19 +109,19 @@ export function base64(bytes: Uint8Array): string {
 }
 
 export function cells(role: Role, status: Status, frame: number, kind?: string): string {
-  const palette = { ...COMMON, ...ROLES[role].palette, ...(kind ? KINDS[kind] : undefined) }
+  const palette = { ...COMMON, ...ROLES[role], ...(kind ? KINDS[kind] : undefined) }
   const isFaded = status === 'unknown' || status === 'absent'
   const color = (c: string) => {
     const v = palette[c]
     return v === undefined ? undefined : isFaded ? gray(v) : v
   }
   const rows = pixels(role, status, frame, kind)
-  const words = new Uint32Array(SIZE * (SIZE / 2) * 3)
-  for (let y = 0; y < SIZE / 2; y++) {
-    for (let x = 0; x < SIZE; x++) {
+  const words = new Uint32Array(WIDTH * (HEIGHT / 2) * 3)
+  for (let y = 0; y < HEIGHT / 2; y++) {
+    for (let x = 0; x < WIDTH; x++) {
       const top = color(rows[y * 2]![x]!)
       const bottom = color(rows[y * 2 + 1]![x]!)
-      const i = (y * SIZE + x) * 3
+      const i = (y * WIDTH + x) * 3
       if (top !== undefined) words.set([UPPER, top, bottom ?? DEFAULT], i)
       else if (bottom !== undefined) words.set([LOWER, bottom, DEFAULT], i)
       else words.set([0x20, DEFAULT, DEFAULT], i)

@@ -30,7 +30,7 @@ import {
   underHistory,
 } from './imadoko'
 import type { Locale } from './imadoko'
-import { SIZE, cells } from './sprite'
+import { HEIGHT, WIDTH, cells } from './sprite'
 import {
   changes,
   cleanNote,
@@ -411,7 +411,7 @@ const noteMembers = async ($: EngineInterface, at: Where, before: Map<string, Me
   // A member whose agent left or can no longer be read keeps no line from before.
   const unreadable = new Set(
     list
-      .filter(m => (m.paneId === undefined || m.status === 'absent' || m.status === 'unknown') && before.get(m.tabId) !== m.status)
+      .filter(m => (m.paneId === undefined || m.status === 'absent') && before.get(m.tabId) !== m.status)
       .map(m => m.tabId),
   )
   for (const tabId of unreadable) {
@@ -681,7 +681,7 @@ export const register: Register = on => {
             {mates.map(m => (
               <Box key={`member:${m.tabId}`} flexDirection="row" gap={1}>
                 {'Raster' in elements ? (
-                  <elements.Raster key={`sprite:${m.tabId}`} columns={SIZE} rows={SIZE / 2} cells={cells(m.role, m.status, tick, m.kind)} />
+                  <elements.Raster key={`sprite:${m.tabId}`} columns={WIDTH} rows={HEIGHT / 2} cells={cells(m.role, m.status, tick, m.kind)} />
                 ) : null}
                 <Box flexDirection="column" flexShrink={1}>
                   <Text bold wrap="truncate-end">
