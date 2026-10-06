@@ -37,6 +37,7 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
   const prompts: string[] = []
   const statuses: (string | undefined)[] = []
   const toasts: string[] = []
+  const runs: string[][] = []
   mock.env(on, env)
   const clock = mock.clock(on, { now: 1_790_000_000_000 })
   const store = new Map<string, unknown>(Object.entries(world.store ?? {}))
@@ -63,6 +64,7 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
     return { value: undefined }
   })
   on('process.run', async (_$, e) => {
+    runs.push(e.argv)
     if (e.argv[0] === 'gh' && e.argv[1] === 'pr' && e.argv[2] === 'view') {
       const stdout = await world.pullView
       return { value: { exitCode: stdout === undefined ? 1 : 0, stdout: stdout ?? '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
@@ -103,7 +105,7 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
     const { Box } = $.ui.resolve(e)
     return <Box />
   })
-  return { prompts, statuses, toasts, clock, store }
+  return { prompts, statuses, toasts, runs, clock, store }
 }
 
 const ENV = { HERDR_ENV: '1', HERDR_WORKSPACE_ID: 'wW', HERDR_PANE_ID: 'p1', HOME: '/h' }
@@ -123,6 +125,15 @@ test('in the main tab the pane shows each member with its state and what it is d
   }
   expect(seen.statuses.at(-1)).toBe('team ⚙️1 ❗1')
   expect(seen.prompts.filter(p => p.includes('<screen>')).length).toBe(1)
+})
+
+test('pressing a member focuses its tab', async ($, on) => {
+  const seen = standIn(on, 'main', ENV)
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  await ui.press({ key: 'focus:t2' })
+  await ui.unmount()
+  expect(seen.runs).toContainEqual(['herdr', 'tab', 'focus', 't2'])
 })
 
 test('the summary names task owners by the members marks', async ($, on) => {
