@@ -161,18 +161,23 @@ const quote = (s: string) => (/^[\w@%+=:,./-]+$/.test(s) ? s : `'${s.replaceAll(
 
 async function openInEditor($: EngineInterface, editor: string, root: string, path: string) {
   const herdr = async (...args: string[]) => {
-    const r = await $.process.run(['herdr', ...args]).catch(() => undefined)
-    if (r?.exitCode !== 0) throw new Error('herdr failed')
+    const r = await $.process.run(['herdr', ...args], { timeoutMs: 10_000 }).catch(() => undefined)
+    if (r?.exitCode !== 0 || r.isStdoutTruncated) throw new Error('herdr failed')
     return r.stdout
   }
+  let tab: string | undefined
   try {
-    const workspace = await $.env.get('HERDR_WORKSPACE_ID')
+    const pane = await $.env.get('HERDR_PANE_ID')
+    const moved = pane ? await herdr('pane', 'get', pane).then(out => JSON.parse(out).result?.pane?.workspace_id, () => undefined) : undefined
+    const workspace = (typeof moved === 'string' && moved) || (await $.env.get('HERDR_WORKSPACE_ID'))
     if (!workspace) throw new Error('no workspace')
     const label = `edit-${basename(root)}-${basename(path)}`
     const { result } = JSON.parse(await herdr('tab', 'create', '--workspace', workspace, '--cwd', root, '--label', label, '--no-focus'))
-    await herdr('pane', 'run', result.root_pane.pane_id, `${editor} ${quote(path)}`)
-    await herdr('tab', 'focus', result.tab.tab_id)
+    tab = result.tab.tab_id
+    await herdr('pane', 'run', result.root_pane.pane_id, `${editor} ${quote(path.startsWith('-') ? `./${path}` : path)}`)
+    await herdr('tab', 'focus', tab!)
   } catch {
+    if (tab) await herdr('tab', 'close', tab).catch(() => undefined)
     await $.ui.status('開けませんでした')
   }
 }

@@ -37,14 +37,23 @@ let picked: { text: string; requestId?: string } | undefined
 
 const TAB_CREATED = JSON.stringify({ result: { tab: { tab_id: 'wW:t2' }, root_pane: { pane_id: 'wW:t2-1' } } })
 
-function fake(on: On, git: Record<string, string>, env: Record<string, string> = {}, herdr: (readonly string[])[] = []) {
+const PANE_GOT = JSON.stringify({ result: { pane: { workspace_id: 'wX' } } })
+
+function fake(
+  on: On,
+  git: Record<string, string>,
+  env: Record<string, string> = {},
+  herdr: (readonly string[])[] = [],
+  spy: { fail?: string; statuses?: (string | undefined)[] } = {},
+) {
   const contexts: (readonly string[] | undefined)[] = []
   on('session.cwd', () => ({ value: '/w' }))
   on('env.get', (_$, e) => ({ value: e.name in env ? env[e.name] : '/h' }))
   on('process.run', (_$, e) => {
     if (e.argv[0] === 'herdr') {
       herdr.push(e.argv)
-      return { value: { exitCode: 0, stdout: e.argv[2] === 'create' ? TAB_CREATED : '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+      const verb = `${e.argv[1]} ${e.argv[2]}`
+      return { value: { exitCode: verb === spy.fail ? 1 : 0, stdout: verb === 'tab create' ? TAB_CREATED : verb === 'pane get' ? PANE_GOT : '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
     }
     const repo = e.argv[2] === '/s' || e.argv[2]?.startsWith('/s/') ? SECOND : git
     const out = repo[e.argv.slice(8).join(' ')]
@@ -60,7 +69,10 @@ function fake(on: On, git: Record<string, string>, env: Record<string, string> =
   })
   on('tool.call', () => ({ result: { stdout: '', stderr: '', interrupted: false } }))
   on('ui.open', () => ({ value: { isPlaced: true as const } }))
-  on('ui.status', () => ({ value: undefined }))
+  on('ui.status', (_$, e) => {
+    spy.statuses?.push(e.text)
+    return { value: undefined }
+  })
   on('ui.selection', () => ({ value: picked }))
   on('ui.render', () => ({ type: 'Box' as const, props: {}, children: [] }))
   on('fs.stat', () => ({ value: { kind: 'file' as const, size: 4, mtimeMs: 0, isLink: false } }))
@@ -246,7 +258,7 @@ test('pressing the open file again closes its diff', async ($, on) => {
   await pane.unmount()
 })
 
-const HERDR_ENV = { HERDR_ENV: '1', HERDR_WORKSPACE_ID: 'wW' }
+const HERDR_ENV = { HERDR_ENV: '1', HERDR_WORKSPACE_ID: 'wW', HERDR_PANE_ID: '' }
 
 for (const [editor, options] of [['nvim', {}], ['hx', { editor: 'hx' }]] as const) {
   test(`pressing open starts the editor in a new tab at the repo root (${editor})`, { options }, async ($, on) => {
@@ -273,4 +285,41 @@ test('open is hidden outside herdr', async ($, on) => {
   expect(await pane.find({ key: 'file:/r:tracked:x.ts' })).toBeDefined()
   expect(await pane.find({ key: 'open:/r:tracked:x.ts' })).toBeUndefined()
   await pane.unmount()
+})
+
+async function pressOpen($: Parameters<TestBody>[0], on: On, env: Record<string, string>, git: Record<string, string>, spy: Parameters<typeof fake>[4], key: string) {
+  const herdr: (readonly string[])[] = []
+  fake(on, git, env, herdr, spy)
+  await $.tool.call({ tool: 'Bash', command: 'cd /r && git status' })
+  await $.command.run({ command: 'unmerged', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 160 } })
+  const pane = await $.ui.mount({ plugin: 'unmerged', surface: 'terminal', component: 'Pane', requestId: 'unmerged', props: PANE_PROPS })
+  await pane.press({ key })
+  await pane.unmount()
+  return herdr
+}
+
+test('open uses the workspace the pane is in now', async ($, on) => {
+  const herdr = await pressOpen($, on, { ...HERDR_ENV, HERDR_PANE_ID: 'p1' }, { ...GIT }, {}, 'open:/r:tracked:x.ts')
+  expect(herdr[0]).toEqual(['herdr', 'pane', 'get', 'p1'])
+  expect(herdr[1]).toEqual(['herdr', 'tab', 'create', '--workspace', 'wX', '--cwd', '/r', '--label', 'edit-r-x.ts', '--no-focus'])
+})
+
+test('open closes the new tab and says so when the editor cannot start', async ($, on) => {
+  const statuses: (string | undefined)[] = []
+  const herdr = await pressOpen($, on, HERDR_ENV, { ...GIT }, { fail: 'pane run', statuses }, 'open:/r:tracked:x.ts')
+  expect(herdr.map(a => a.slice(1, 3).join(' '))).toEqual(['tab create', 'pane run', 'tab close'])
+  expect(herdr[2]).toEqual(['herdr', 'tab', 'close', 'wW:t2'])
+  expect(statuses).toContain('開けませんでした')
+})
+
+test('open says so when the tab cannot be created', async ($, on) => {
+  const statuses: (string | undefined)[] = []
+  const herdr = await pressOpen($, on, HERDR_ENV, { ...GIT }, { fail: 'tab create', statuses }, 'open:/r:tracked:x.ts')
+  expect(herdr).toHaveLength(1)
+  expect(statuses).toContain('開けませんでした')
+})
+
+test('a path starting with a dash reaches the editor as a path', async ($, on) => {
+  const herdr = await pressOpen($, on, HERDR_ENV, { ...GIT, 'diff --numstat -z --no-renames abc': '1\t1\t-x.ts\0' }, {}, 'open:/r:tracked:-x.ts')
+  expect(herdr[1]).toEqual(['herdr', 'pane', 'run', 'wW:t2-1', 'nvim ./-x.ts'])
 })
