@@ -34,20 +34,21 @@ const engine = (on: On, branch = 'main', cwd = '/repo') => {
 
 const check = ($: any, tool: string, input: unknown) => $.tool.check({ tool, input })
 
-const engineMerged = (on: On, merged: string[]) => {
+const engineMerged = (on: On, merged: string[] | Record<string, string[]>) => {
   on('fs.read', () => ({
     value: JSON.stringify({
-      rules: [{ name: 'branch force delete', pattern: 'git\\s+branch\\s+-D', action: 'ask', exceptMerged: true }],
+      rules: [{ name: 'branch force delete', pattern: 'git(?:\\s+-C\\s+\\S+)?\\s+branch\\s+-D', action: 'ask', exceptMerged: true }],
     }),
   }))
   on('session.cwd', () => ({ value: '/repo' }))
   on('env.get', () => ({ value: '/home/u' }))
   on('process.run', (_$, e) => {
     const name = e.argv.at(-1) ?? ''
+    const names = Array.isArray(merged) ? merged : (merged[e.argv[2] ?? ''] ?? [])
     return {
       value: {
         exitCode: 0,
-        stdout: e.argv.includes('--merged') && merged.includes(name) ? `  ${name}\n` : '',
+        stdout: e.argv.includes('--merged') && names.includes(name) ? `  ${name}\n` : '',
         stderr: '',
         isStdoutTruncated: false,
         isStderrTruncated: false,
@@ -156,5 +157,15 @@ describe('command-guard', () => {
   test('asks when only a safe deletion precedes a forced one', async ($, on) => {
     engineMerged(on, ['a'])
     expect((await check($, 'Bash', { command: 'git branch -d a && git branch -D b' })).decision).toBe('ask')
+  })
+
+  test('asks when a chained deletion in another repo is unmerged there', async ($, on) => {
+    engineMerged(on, { '/r1': ['a', 'b'], '/r2': [] })
+    expect((await check($, 'Bash', { command: 'git -C /r1 branch -D a; git -C /r2 branch -D b' })).decision).toBe('ask')
+  })
+
+  test('asks when a branch name is a glob', async ($, on) => {
+    engineMerged(on, ['feature/*'])
+    expect((await check($, 'Bash', { command: 'git branch -D feature/*' })).decision).toBe('ask')
   })
 })
