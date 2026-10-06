@@ -146,7 +146,7 @@ export async function findRule(config: Config, tool: string, input: unknown, ctx
     if (rule.exceptMerged) {
       const branches = branchNames(raw, ctx)
       if (branches) {
-        const merged = await Promise.all(branches.map(({ dir, name }) => ctx.git(dir, ['branch', '--list', '--merged', 'origin/HEAD', name])))
+        const merged = await Promise.all(branches.map(({ dir, name }) => ctx.git(dir, ['branch', '--list', '--merged', 'refs/remotes/origin/HEAD', name])))
         if (branches.length > 0 && merged.every(Boolean)) continue
       }
     }
