@@ -19,6 +19,7 @@ const SECOND: Record<string, string> = {
 }
 
 const RANGE_DIFF = 'diff --git a/x.ts b/x.ts\n--- a/x.ts\n+++ b/x.ts\n@@ -1,4 +1,5 @@\n keep()\n-old()\n+first()\n+second()\n tail()\n end()\n'
+const TWO_HUNK_DIFF = 'diff --git a/x.ts b/x.ts\n--- a/x.ts\n+++ b/x.ts\n@@ -1 +1 @@\n-old()\n+first()\n@@ -10 +10 @@\n-before()\n+second()\n'
 
 const BAND_PROPS = { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {} }
 
@@ -139,6 +140,24 @@ test('lines selected in the diff are attached alone', async ($, on) => {
   await pane.unmount()
 })
 
+test('a diff hunk can be attached and removed alone', async ($, on) => {
+  const contexts = fake(on, { ...GIT, 'diff --no-renames --no-textconv --no-ext-diff abc -- x.ts': TWO_HUNK_DIFF })
+  await $.tool.call({ tool: 'Bash', command: 'cd /r && git status' })
+  await $.command.run({ command: 'unmerged', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 160 } })
+  const pane = await $.ui.mount({ plugin: 'unmerged', surface: 'terminal', component: 'Pane', requestId: 'unmerged', props: PANE_PROPS })
+  await pane.press({ key: 'file:/r:tracked:x.ts' })
+  await pane.press({ key: 'hunk:1' })
+  await $.prompt.submit({ text: 'a', wait: false, origin: { kind: 'composer' } })
+  expect(contexts[0]?.[0]).toContain('-before()\n+second()\n')
+  expect(contexts[0]?.[0]).not.toContain('@@ -1 +1 @@')
+  await pane.press({ key: 'hunk:1' })
+  expect((await pane.find({ key: 'hunk:1' }))?.props.label).toBe('添付を外す')
+  await pane.press({ key: 'hunk:1' })
+  await $.prompt.submit({ text: 'b', wait: false, origin: { kind: 'composer' } })
+  expect(contexts[1]).toBeUndefined()
+  await pane.unmount()
+})
+
 test('a selection outside the pane attaches the whole file', async ($, on) => {
   const contexts = fake(on, { ...GIT, 'diff --no-renames --no-textconv --no-ext-diff abc -- x.ts': RANGE_DIFF })
   await $.tool.call({ tool: 'Bash', command: 'cd /r && git status' })
@@ -168,7 +187,10 @@ test('several repos start folded and open one at a time', async ($, on) => {
   await pane.press({ key: 'ask' })
   await pane.press({ key: 'repo:/r' })
   expect(await pane.find({ key: 'file:/r:tracked:x.ts' })).toBeUndefined()
+  expect(await pane.find({ key: 'ask' })).toBeUndefined()
   expect((await pane.find({ key: 'repo:/r' }))?.props.label).toBe('▸ r (1) 📎 (表示中)')
+  await pane.press({ key: 'repo:/r' })
+  expect(await pane.find({ key: 'ask' })).toBeDefined()
   await pane.unmount()
 })
 
@@ -179,6 +201,7 @@ test('a repo a delegated tab works in shows up', async ($, on) => {
   await $.command.run({ command: 'unmerged', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 160 } })
   const pane = await $.ui.mount({ plugin: 'unmerged', surface: 'terminal', component: 'Pane', requestId: 'unmerged', props: PANE_PROPS })
   expect(await pane.find({ key: 'file:/s:tracked:y.ts' })).toBeDefined()
+  expect((await pane.find({ key: 'repo:/s' }))?.props.label).toContain('委譲: t')
   await pane.unmount()
 })
 

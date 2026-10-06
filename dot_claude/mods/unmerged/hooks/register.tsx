@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Asked, FileChange, RepoSnapshot } from '../types'
-import { dirsInCommand, fitHunks, pickLines, snapshot, type Git } from './git.ts'
+import { dirsInCommand, fitHunks, hunkRange, pickLines, snapshot, type Git } from './git.ts'
 
 const PANE = 'unmerged'
 const CODE_LIMIT = 10000
@@ -31,16 +31,18 @@ async function track($: EngineInterface, dirs: string[]) {
   if (roots.length) await update($, repos, list => [...new Set([...(list ?? []), ...roots])])
 }
 
-export function parseRepos(text: string): string[] {
+export function parseRepos(text: string): { path: string; task?: string }[] {
   try {
-    const list = (JSON.parse(text) as { repos?: unknown }).repos
-    return Array.isArray(list) ? list.filter((r): r is string => typeof r === 'string') : []
+    const { repos, task } = JSON.parse(text) as { repos?: unknown; task?: unknown }
+    return Array.isArray(repos)
+      ? repos.filter((path): path is string => typeof path === 'string').map(path => ({ path, ...(typeof task === 'string' && { task }) }))
+      : []
   } catch {
     return []
   }
 }
 
-async function delegatedRepos($: EngineInterface): Promise<string[]> {
+async function delegatedRepos($: EngineInterface): Promise<{ path: string; task?: string }[]> {
   const [home, workspace] = await Promise.all([$.env.get('HOME'), $.env.get('HERDR_WORKSPACE_ID')])
   if (!home || !workspace) return []
   const dir = `${home}/.local/state/herdr-team/${workspace}`
@@ -67,6 +69,7 @@ async function diffOf($: EngineInterface, snap: RepoSnapshot, file: FileChange):
 }
 
 let selection = 0
+let delegatedTasks = new Map<string, string | undefined>()
 
 async function select($: EngineInterface, snap: RepoSnapshot, file: FileChange) {
   const mine = ++selection
@@ -83,7 +86,14 @@ async function unselect($: EngineInterface) {
 
 async function refresh($: EngineInterface) {
   const git = gitOf($)
-  const list = [...new Set([...((await read($, repos)) ?? []), ...(await rootsOf(git, await delegatedRepos($)))])]
+  const delegated = await Promise.all(
+    (await delegatedRepos($)).map(async ({ path, task }) => {
+      const root = (await git(path, ['rev-parse', '--show-toplevel']))?.trim()
+      return root ? { root, task } : undefined
+    }),
+  )
+  delegatedTasks = new Map(delegated.filter((repo): repo is { root: string; task?: string } => !!repo).map(({ root, task }) => [root, task]))
+  const list = [...new Set([...((await read($, repos)) ?? []), ...delegatedTasks.keys()])]
   const snaps = (await Promise.all(list.map(root => snapshot(git, root)))).filter(
     (s): s is RepoSnapshot => !!s,
   )
@@ -223,6 +233,59 @@ export const register: Register = on => {
     const isAsked = isSame(at, sel)
     const fit = sel?.diff ? fitHunks(sel.diff, CODE_LIMIT) : undefined
     const isExpanded = (root: string) => opened[root] ?? (snaps.length < 2 || sel?.root === root)
+    const selectedDiff = sel && (
+      <Box flexDirection="column">
+        <Box flexDirection="row" gap={1}>
+          <Button
+            key="ask"
+            label={isAsked ? '添付を外す' : '添付'}
+            onPress={async () => {
+              await $.ui.status(undefined)
+              if (isAsked) return update($, asked, () => null)
+              const picked = await $.ui.selection()
+              const range = sel.diff && picked && !picked.requestId ? pickLines(sel.diff, picked.text) : undefined
+              await update($, asked, () => ({ root: sel.root, path: sel.path, ...(range && { range }) }))
+            }}
+          />
+          <Text bold>
+            {basename(sel.root)}/{sel.path}
+          </Text>
+        </Box>
+        {sel.diff === null ? (
+          <Text dimColor>読み込み中…</Text>
+        ) : fit?.source ? (
+          <Box flexDirection="column">
+            {fit.source.split(/(?=^@@ )/m).map((hunk, index) => {
+              const range = hunkRange(hunk)
+              const isAskedHunk = !!range && isSame(at, sel) && at?.range?.source === range.source
+              return (
+                <Box key={`hunk-box:${index}`} flexDirection="column">
+                  <Button
+                    key={`hunk:${index}`}
+                    label={isAskedHunk ? '添付を外す' : '添付'}
+                    onPress={async () => {
+                      await $.ui.status(undefined)
+                      if (!range) return
+                      await update($, asked, now =>
+                        isSame(now, sel) && now?.range?.source === range.source
+                          ? null
+                          : { root: sel.root, path: sel.path, range },
+                      )
+                    }}
+                  />
+                  <Code source={hunk} format="diff" path={sel.path} />
+                </Box>
+              )
+            })}
+            {fit.isCut && <Text dimColor>(長いので以降のハンクを省略しました)</Text>}
+          </Box>
+        ) : fit ? (
+          <Text dimColor>差分が大きすぎて表示できません</Text>
+        ) : (
+          <Text dimColor>表示できる差分がありません (バイナリ・大きすぎる差分など)</Text>
+        )}
+      </Box>
+    )
 
     return (
       <Box flexDirection="column">
@@ -231,12 +294,14 @@ export const register: Register = on => {
           const isOpenRepo = isExpanded(snap.root)
           const width = Math.max(...snap.files.map(f => countsWidth(counts(f))))
           const marks = isOpenRepo ? '' : `${at?.root === snap.root ? ' 📎' : ''}${sel?.root === snap.root ? ' (表示中)' : ''}`
+          const task = delegatedTasks.get(snap.root)
+          const delegatedMark = delegatedTasks.has(snap.root) ? ` · 委譲${task ? `: ${task}` : ''}` : ''
           return (
             <Box key={`group:${snap.root}`} flexDirection="column" marginBottom={isOpenRepo ? 1 : 0}>
               <Button
                 key={`repo:${snap.root}`}
                 plain
-                label={`${isOpenRepo ? '▾' : '▸'} ${basename(snap.root)} (${snap.files.length})${marks}`}
+                label={`${isOpenRepo ? '▾' : '▸'} ${basename(snap.root)} (${snap.files.length})${marks}${delegatedMark}`}
                 onPress={() => update($, expanded, now => ({ ...now, [snap.root]: !isOpenRepo }))}
               />
               {isOpenRepo && (
@@ -248,67 +313,38 @@ export const register: Register = on => {
                 snap.files.map(f => {
                   const id = `${snap.root}:${f.isUntracked ? 'untracked' : 'tracked'}:${f.path}`
                   return (
-                    <Box key={`row:${id}`} flexDirection="row" gap={1}>
-                      <Text color={STATUS_COLORS[f.status]} dimColor={f.isUntracked}>
-                        {f.status}
-                      </Text>
-                      {width > 0 && (
-                        <Box width={width} flexShrink={0} flexDirection="row" gap={1}>
-                          {counts(f).map(c => (
-                            <Text key={c.text} color={c.color} dimColor={!c.color}>
-                              {c.text}
-                            </Text>
-                          ))}
-                        </Box>
-                      )}
-                      <Button
-                        key={`file:${id}`}
-                        plain
-                        label={`${at?.root === snap.root && at.path === f.path ? '📎 ' : ''}${f.path}`}
-                        onPress={() =>
-                          sel?.root === snap.root && sel.path === f.path && sel.isUntracked === f.isUntracked
-                            ? unselect($)
-                            : select($, snap, f)
-                        }
-                      />
+                    <Box key={`row:${id}`} flexDirection="column">
+                      <Box flexDirection="row" gap={1}>
+                        <Text color={STATUS_COLORS[f.status]} dimColor={f.isUntracked}>
+                          {f.status}
+                        </Text>
+                        {width > 0 && (
+                          <Box width={width} flexShrink={0} flexDirection="row" gap={1}>
+                            {counts(f).map(c => (
+                              <Text key={c.text} color={c.color} dimColor={!c.color}>
+                                {c.text}
+                              </Text>
+                            ))}
+                          </Box>
+                        )}
+                        <Button
+                          key={`file:${id}`}
+                          plain
+                          label={`${at?.root === snap.root && at.path === f.path ? '📎 ' : ''}${f.path}`}
+                          onPress={() =>
+                            sel?.root === snap.root && sel.path === f.path && sel.isUntracked === f.isUntracked
+                              ? unselect($)
+                              : select($, snap, f)
+                          }
+                        />
+                      </Box>
+                      {sel?.root === snap.root && sel.path === f.path && sel.isUntracked === f.isUntracked && selectedDiff}
                     </Box>
                   )
                 })}
             </Box>
           )
         })}
-        {sel && (
-          <Box flexDirection="column">
-            <Box flexDirection="row" gap={1}>
-              <Button
-                key="ask"
-                label={isAsked ? '添付を外す' : '添付'}
-                onPress={async () => {
-                  await $.ui.status(undefined)
-                  if (isAsked) return update($, asked, () => null)
-                  const picked = await $.ui.selection()
-                  const range = sel.diff && picked && !picked.requestId ? pickLines(sel.diff, picked.text) : undefined
-                  await update($, asked, () => ({ root: sel.root, path: sel.path, ...(range && { range }) }))
-                }}
-              />
-              <Text bold>
-                {basename(sel.root)}/{sel.path}
-              </Text>
-            </Box>
-            {sel.diff === null ? (
-              <Text dimColor>読み込み中…</Text>
-            ) : fit?.source ? (
-              <Box flexDirection="column">
-                <Code source={fit.source} format="diff" path={sel.path} />
-                {fit.isCut && <Text dimColor>(長いので以降のハンクを省略しました)</Text>}
-              </Box>
-            ) : fit ? (
-              <Text dimColor>差分が大きすぎて表示できません</Text>
-            ) : (
-              <Text dimColor>表示できる差分がありません (バイナリ・大きすぎる差分など)</Text>
-            )}
-          </Box>
-        )}
       </Box>
     )
   })
