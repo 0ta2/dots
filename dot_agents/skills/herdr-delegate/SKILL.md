@@ -173,11 +173,12 @@ rm -f ~/.local/state/herdr-team/"$HERDR_WORKSPACE_ID"/<前任者の tab_id>.json
 現在のタブは分割しない (依頼元の表示幅が半分になる)。同じスペースに専用タブを作る。
 
 ```bash
-herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$PWD" --label "<タブラベル>" --no-focus
+herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "<worktree のパス>" --label "<タブラベル>" --no-focus
 ```
 
 `.result.root_pane.pane_id` と `.result.tab.tab_id` を控える。`--no-focus` は必須
-(ユーザーの焦点を奪わない)。`--cwd "$PWD"` も必須 (省くと別のディレクトリで起動しうる)。
+(ユーザーの焦点を奪わない)。`--cwd` も必須 (省くと別のディレクトリで起動しうる)。渡すのは
+依頼文に書く専用の worktree (変更の無い作業ツリー) のパス。
 
 `<識別子>` はその実装を一意に指す文字列 (ブランチ名、TickTick のタスク ID など)。
 
