@@ -30,6 +30,8 @@ import {
   underHistory,
 } from './imadoko'
 import type { Locale } from './imadoko'
+import { isReviewerOf, parseUnresolved, parseView, pullKey, pullsCreated } from './prs'
+import type { Checks, Merge, PullRef, PullView } from './prs'
 import { HEIGHT, WIDTH, cells } from './sprite'
 import {
   changes,
@@ -66,9 +68,44 @@ const notes = atom({ plugin: 'imadoko', key: 'notes' } as const, {} as Record<st
 const frame = atom({ plugin: 'imadoko', key: 'frame' } as const, 0)
 // Each workspace's mark book; the store keeps a copy, since a /resume empties this.
 const markBooks = atom({ plugin: 'imadoko', key: 'marks' } as const, {} as Record<string, MarkBook>)
+const pulls = atom({ plugin: 'imadoko', key: 'pulls' } as const, [] as PullRef[])
+const pullViews = atom({ plugin: 'imadoko', key: 'pullViews' } as const, {} as Record<string, (PullView & { unresolved?: number }) | 'unreadable'>)
 const MARKS_KEY = 'imadoko-marks'
 
 const PANE_ID = 'imadoko'
+
+type PullWords = {
+  title: string
+  unreadable: string
+  unresolved: (n: number) => string
+  checks: string
+  reviewer: string
+  merge: Readonly<Record<Merge, string>>
+  check: Readonly<Record<Checks, string>>
+}
+
+const PULL_WORDS: { english: PullWords; japanese: PullWords } = {
+  english: {
+    title: 'PR',
+    unreadable: 'unreadable',
+    unresolved: n => `unresolved ${n}`,
+    checks: 'checks',
+    reviewer: 'Reviewer',
+    merge: { clean: 'mergeable', conflict: 'conflict', blocked: 'blocked', unknown: 'unknown' },
+    check: { pass: '✅', fail: '❌', pending: '…' },
+  },
+  japanese: {
+    title: 'PR',
+    unreadable: '読めません',
+    unresolved: n => `未解決 ${n}`,
+    checks: 'チェック',
+    reviewer: 'レビュー担当',
+    merge: { clean: 'マージ可', conflict: 'コンフリクト', blocked: 'ブロック', unknown: '不明' },
+    check: { pass: '✅', fail: '❌', pending: '…' },
+  },
+}
+
+const pullWordsFor = (language: string) => (/^(ja\b|japanese|日本語)/i.test(language) ? PULL_WORDS.japanese : PULL_WORDS.english)
 
 // The color of the headings: the band's labels and the pane's section titles.
 const HEADING_COLOR = '#ffa500'
@@ -313,6 +350,49 @@ const whereAmI = async ($: EngineInterface): Promise<Where | undefined> => {
 const herdr = async ($: EngineInterface, args: string[]) => {
   const r = await $.process.run(['herdr', ...args], { timeoutMs: 10_000 }).catch(() => undefined)
   return r?.exitCode === 0 && !r.isStdoutTruncated ? r.stdout : undefined
+}
+
+const readPulls = async ($: EngineInterface) => {
+  const known = await read($, pulls)
+  const results = await Promise.all(
+    known.map(async pull => {
+      const [viewResult, threadsResult] = await Promise.all([
+        $.process.run(['gh', 'pr', 'view', String(pull.number), '--repo', `${pull.owner}/${pull.repo}`, '--json', 'title,url,state,mergeStateStatus,statusCheckRollup'], { timeoutMs: 15_000 }).catch(() => undefined),
+        $.process.run(
+          ['gh', 'api', 'graphql', '-f', `query={ repository(owner: \"${pull.owner}\", name: \"${pull.repo}\") { pullRequest(number: ${pull.number}) { reviewThreads(first: 100) { nodes { isResolved } } } } }`],
+          { timeoutMs: 15_000 },
+        ).catch(() => undefined),
+      ])
+      const view = viewResult?.exitCode === 0 && !viewResult.isStdoutTruncated ? parseView(viewResult.stdout) : undefined
+      if (view?.state === 'MERGED' || view?.state === 'CLOSED') return { pull, closed: true as const }
+      const unresolved = threadsResult?.exitCode === 0 && !threadsResult.isStdoutTruncated ? parseUnresolved(threadsResult.stdout) : undefined
+      return { pull, view: view === undefined || unresolved === undefined ? 'unreadable' as const : { ...view, unresolved } }
+    }),
+  )
+  const closed = new Set(results.flatMap(result => (result.closed ? [pullKey(result.pull)] : [])))
+  const views = results.flatMap(result => (result.closed ? [] : [[pullKey(result.pull), result.view!] as const]))
+  await update($, pulls, current => current.filter(pull => !closed.has(pullKey(pull))))
+  await update($, pullViews, current => ({ ...Object.fromEntries(Object.entries(current).filter(([key]) => !closed.has(key))), ...Object.fromEntries(views) }))
+}
+
+let pullPoll: { cancel: () => void } | undefined
+let pullsBusy = false
+
+const refreshPulls = ($: EngineInterface) => {
+  if (pullsBusy) return
+  pullsBusy = true
+  void readPulls($)
+    .catch((error: unknown) => $.ui.log(`imadoko: reading pulls failed: ${String(error)}`, { to: 'debug' }))
+    .finally(() => {
+      pullsBusy = false
+    })
+}
+
+const watchPulls = ($: EngineInterface) => {
+  pullPoll?.cancel()
+  pullPoll = $.clock.every(60_000, () => {
+    void read($, pulls).then(known => (known.length === 0 ? undefined : refreshPulls($)))
+  })
 }
 
 /** The one-line tasks herdr-delegate and herdr-review left for the tabs open now. */
@@ -564,6 +644,7 @@ export const register: Register = on => {
       summarizeLater($, locale)
     }
     await pruneStore($)
+    watchPulls($)
     if ((await $.env.get('HERDR_ENV')) === '1') watchTeam($, locale.language)
 
     return next(e)
@@ -625,6 +706,18 @@ export const register: Register = on => {
     if (line !== undefined && ran.deny === undefined && ran.isError !== true) {
       await update($, imadoko, current => recordActivity(current, line))
     }
+    if (isInteractive && e.agentId === undefined && String(e.tool) === 'Bash' && ran.deny === undefined && ran.isError !== true && typeof e.command === 'string') {
+      const output = ran.result as { stdout?: unknown }
+      const created = pullsCreated(e.command, typeof output.stdout === 'string' ? output.stdout : '')
+      let added = false
+      await update($, pulls, current => {
+        const keys = new Set(current.map(pullKey))
+        const additions = created.filter(pull => !keys.has(pullKey(pull)))
+        added = additions.length > 0
+        return [...current, ...additions]
+      })
+      if (added) refreshPulls($)
+    }
 
     return ran
   })
@@ -641,11 +734,14 @@ export const register: Register = on => {
     const tasks: readonly Task[] = current.sections?.tasks ?? []
     const keys = taskKeys(tasks)
     const elements = $.ui.resolve(e)
-    const { Box, Button, Text } = elements
+    const { Box, Button, Link, Text } = elements
     const mates = (await read($, lead)) ? await read($, team) : []
     const said = await read($, notes)
     const tick = mates.length > 0 ? await read($, frame) : 0
     const tw = teamWordsFor(locale.language)
+    const listedPulls = await read($, pulls)
+    const views = await read($, pullViews)
+    const pw = pullWordsFor(locale.language)
 
     return (
       <Box flexDirection="column">
@@ -694,6 +790,37 @@ export const register: Register = on => {
                 </Box>
               </Box>
             ))}
+          </Box>
+        )}
+        {listedPulls.length === 0 ? null : (
+          <Box flexDirection="column" marginBottom={1}>
+            <Text bold color={HEADING_COLOR} wrap="wrap">
+              {pw.title}
+            </Text>
+            {listedPulls.map(pull => {
+              const view = views[pullKey(pull)]
+              const reviewers = mates.filter(member => isReviewerOf(member.label, pull))
+              const href = `https://github.com/${pull.owner}/${pull.repo}/pull/${pull.number}`
+
+              return (
+                <Box key={`pull:${pullKey(pull)}`} flexDirection="column">
+                  <Box flexDirection="row" gap={1}>
+                    <Link href={href} label={`${pull.repo}#${pull.number}`} />
+                    {view === undefined || view === 'unreadable' ? null : <Text bold wrap="truncate-end">{view.title}</Text>}
+                  </Box>
+                  <Text dimColor wrap="truncate-end">
+                    {view === undefined || view === 'unreadable'
+                      ? pw.unreadable
+                      : [pw.unresolved(view.unresolved ?? 0), pw.merge[view.merge], ...(view.checks === undefined ? [] : [`${pw.checks} ${pw.check[view.checks]}`])].join(' · ')}
+                  </Text>
+                  {reviewers.length === 0 ? null : (
+                    <Text dimColor wrap="truncate-end">
+                      {`${pw.reviewer}: ${reviewers.map(member => `${member.label} (${tw.states[member.status]})`).join(', ')}`}
+                    </Text>
+                  )}
+                </Box>
+              )
+            })}
           </Box>
         )}
         <Box flexDirection="column" marginBottom={1}>

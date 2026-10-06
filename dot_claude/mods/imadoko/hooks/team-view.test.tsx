@@ -31,7 +31,7 @@ const AGENTS = JSON.stringify({
   },
 })
 
-type World = { agents: string; paneGet?: string; space?: string; screenReply?: (n: number) => Promise<string>; store?: Record<string, unknown>; files?: Record<string, string> }
+type World = { agents: string; paneGet?: string; space?: string; screenReply?: (n: number) => Promise<string>; store?: Record<string, unknown>; files?: Record<string, string>; pullView?: string; unresolved?: string }
 
 function standIn(on: On, selfLabel: string, env: Record<string, string>, world: World = { agents: AGENTS }) {
   const prompts: string[] = []
@@ -62,6 +62,12 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
     return { value: undefined }
   })
   on('process.run', (_$, e) => {
+    if (e.argv[0] === 'gh' && e.argv[1] === 'pr' && e.argv[2] === 'view') {
+      return { value: { exitCode: world.pullView === undefined ? 1 : 0, stdout: world.pullView ?? '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+    }
+    if (e.argv[0] === 'gh' && e.argv[1] === 'api' && e.argv[2] === 'graphql') {
+      return { value: { exitCode: world.unresolved === undefined ? 1 : 0, stdout: world.unresolved ?? '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+    }
     const key = e.argv.slice(1).join(' ')
     const out: Record<string, string> = {
       [`tab list --workspace ${world.space ?? 'wW'}`]: tabsOut(selfLabel),
@@ -294,5 +300,47 @@ test('a member whose state herdr cannot tell is still read off its screen', asyn
   await seen.clock.settle()
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await ui.find({ text: /不明 · ログイン方式について質問中/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a pull request the session opened shows in the pane', async ($, on) => {
+  const seen = standIn(on, 'main', ENV, {
+    agents: AGENTS,
+    pullView: JSON.stringify({ title: 'ブランチ強制削除を防ぐ', url: 'https://github.com/0ta2/dots/pull/171', state: 'OPEN', mergeStateStatus: 'CLEAN', statusCheckRollup: [] }),
+    unresolved: JSON.stringify({ data: { repository: { pullRequest: { reviewThreads: { nodes: [{ isResolved: false }] } } } } }),
+  })
+  on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: 'https://github.com/0ta2/dots/pull/171\n', stderr: '', interrupted: false } }))
+
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: 'Bash', command: 'gh pr create --title x' })
+  await seen.clock.settle()
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /dots#171/ })).toBeDefined()
+  expect(await ui.find({ text: /ブランチ強制削除を防ぐ/ })).toBeDefined()
+  expect(await ui.find({ text: /未解決 1/ })).toBeDefined()
+  expect(await ui.find({ text: /マージ可/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a merged pull request leaves the pane', async ($, on) => {
+  const world: World = {
+    agents: AGENTS,
+    pullView: JSON.stringify({ title: 'ブランチ強制削除を防ぐ', url: 'https://github.com/0ta2/dots/pull/171', state: 'OPEN', mergeStateStatus: 'CLEAN', statusCheckRollup: [] }),
+    unresolved: JSON.stringify({ data: { repository: { pullRequest: { reviewThreads: { nodes: [] } } } } }),
+  }
+  const seen = standIn(on, 'main', ENV, world)
+  on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: 'https://github.com/0ta2/dots/pull/171\n', stderr: '', interrupted: false } }))
+
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: 'Bash', command: 'gh pr create --title x' })
+  await seen.clock.settle()
+  let ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /dots#171/ })).toBeDefined()
+  await ui.unmount()
+  world.pullView = JSON.stringify({ title: 'ブランチ強制削除を防ぐ', url: 'https://github.com/0ta2/dots/pull/171', state: 'MERGED', mergeStateStatus: 'CLEAN', statusCheckRollup: [] })
+  await seen.clock.advance(60_000)
+  await seen.clock.settle()
+  ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /dots#171/ })).toBeUndefined()
   await ui.unmount()
 })

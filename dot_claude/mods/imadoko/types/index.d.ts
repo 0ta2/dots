@@ -1,3 +1,8 @@
+export type PullRef = { owner: string; repo: string; number: number }
+export type Merge = 'clean' | 'conflict' | 'blocked' | 'unknown'
+export type Checks = 'pass' | 'fail' | 'pending'
+export type PullView = { title: string; url: string; state: string; merge: Merge; checks?: Checks }
+
 export type Question = { header: string; question: string }
 
 export type QuestionAnswer = Question & {
@@ -99,6 +104,6 @@ export type TeamMember = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'imadoko': { 'imadoko': Imadoko; expanded: string[]; team: TeamMember[]; frame: number; notes: Record<string, string>; isLead: boolean; marks: Record<string, { marks: Record<string, string>; next: Partial<Record<Role, number>> }> }
+    'imadoko': { 'imadoko': Imadoko; expanded: string[]; team: TeamMember[]; frame: number; notes: Record<string, string>; isLead: boolean; marks: Record<string, { marks: Record<string, string>; next: Partial<Record<Role, number>> }>; pulls: PullRef[]; pullViews: Record<string, PullView & { unresolved?: number } | 'unreadable'> }
   }
 }

@@ -1,7 +1,4 @@
-export type PullRef = { owner: string; repo: string; number: number }
-export type Merge = 'clean' | 'conflict' | 'blocked' | 'unknown'
-export type Checks = 'pass' | 'fail' | 'pending'
-export type PullView = { title: string; url: string; state: string; merge: Merge; checks?: Checks }
+import type { Checks, Merge, PullRef, PullView } from '../types'
 
 export const pullKey = (p: PullRef) => `${p.owner}/${p.repo}#${p.number}`
 
