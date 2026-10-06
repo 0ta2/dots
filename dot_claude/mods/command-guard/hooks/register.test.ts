@@ -198,4 +198,9 @@ describe('command-guard', () => {
     engineMerged(on, ['stale'])
     expect((await check($, 'Bash', { command: 'git branch -d topic; git branch -D stale' })).decision).toBe('allow')
   })
+
+  test('asks after a relative cd', async ($, on) => {
+    engineMerged(on, ['b'])
+    expect((await check($, 'Bash', { command: 'cd project && git branch -D b' })).decision).toBe('ask')
+  })
 })
