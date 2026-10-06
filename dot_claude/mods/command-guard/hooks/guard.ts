@@ -7,6 +7,7 @@ export type Rule = {
   scrub?: boolean
   when?: { branch?: string[] }
   exceptRepos?: string[]
+  exceptMerged?: boolean
   action?: 'deny' | 'ask'
 }
 
@@ -86,6 +87,12 @@ export function targetDir(cmd: string, re: RegExp, ctx: Context): string {
   return dir
 }
 
+function branchNames(cmd: string, re: RegExp): string[] {
+  const seg = cmd.split(/&&|\|\||[;|\n]/).find(s => re.test(s)) ?? ''
+  const words = seg.trim().split(/\s+/)
+  return words.slice(words.indexOf('branch') + 1).filter(w => !w.startsWith('-')).map(unquote)
+}
+
 const toolMatches = (glob: string, tool: string) =>
   new RegExp(`^${glob.split('*').map(s => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*')}$`).test(tool)
 
@@ -114,6 +121,12 @@ export async function findRule(config: Config, tool: string, input: unknown, ctx
       }
       if (rule.when?.branch && !rule.when.branch.includes(await ctx.git(dir, ['branch', '--show-current']))) continue
       if (rule.exceptRepos?.some(p => expand(p, ctx.home) === top)) continue
+    }
+    if (rule.exceptMerged) {
+      const dir = targetDir(raw, rule.regexes[0]!, ctx)
+      const names = branchNames(raw, rule.regexes[0]!)
+      const merged = await Promise.all(names.map(n => ctx.git(dir, ['branch', '--list', '--merged', 'origin/HEAD', n])))
+      if (names.length > 0 && merged.every(Boolean)) continue
     }
     return rule
   }

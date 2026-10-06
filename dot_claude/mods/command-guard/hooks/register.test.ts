@@ -34,6 +34,29 @@ const engine = (on: On, branch = 'main', cwd = '/repo') => {
 
 const check = ($: any, tool: string, input: unknown) => $.tool.check({ tool, input })
 
+const engineMerged = (on: On, merged: string[]) => {
+  on('fs.read', () => ({
+    value: JSON.stringify({
+      rules: [{ name: 'branch force delete', pattern: 'git\\s+branch\\s+-D', action: 'ask', exceptMerged: true }],
+    }),
+  }))
+  on('session.cwd', () => ({ value: '/repo' }))
+  on('env.get', () => ({ value: '/home/u' }))
+  on('process.run', (_$, e) => {
+    const name = e.argv.at(-1) ?? ''
+    return {
+      value: {
+        exitCode: 0,
+        stdout: e.argv.includes('--merged') && merged.includes(name) ? `  ${name}\n` : '',
+        stderr: '',
+        isStdoutTruncated: false,
+        isStderrTruncated: false,
+      },
+    }
+  })
+  on('tool.check', () => ({ decision: 'allow' as const }))
+}
+
 describe('command-guard', () => {
   test('denies a matching command', async ($, on) => {
     engine(on)
@@ -108,5 +131,20 @@ describe('command-guard', () => {
     engine(on)
     expect((await check($, 'mcp__db__query', { sql: 'DROP TABLE x' })).decision).toBe('deny')
     expect((await check($, 'mcp__db__query', { sql: 'select 1' })).decision).toBe('allow')
+  })
+
+  test('lets a merged branch be force deleted', async ($, on) => {
+    engineMerged(on, ['a'])
+    expect((await check($, 'Bash', { command: 'git branch -D a' })).decision).toBe('allow')
+  })
+
+  test('asks before force deleting an unmerged branch', async ($, on) => {
+    engineMerged(on, [])
+    expect((await check($, 'Bash', { command: 'git branch -D a' })).decision).toBe('ask')
+  })
+
+  test('asks when any of the branches is unmerged', async ($, on) => {
+    engineMerged(on, ['a'])
+    expect((await check($, 'Bash', { command: 'git branch -D a b' })).decision).toBe('ask')
   })
 })
