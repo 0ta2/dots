@@ -147,4 +147,14 @@ describe('command-guard', () => {
     engineMerged(on, ['a'])
     expect((await check($, 'Bash', { command: 'git branch -D a b' })).decision).toBe('ask')
   })
+
+  test('asks when a later chained deletion is unmerged', async ($, on) => {
+    engineMerged(on, ['a'])
+    expect((await check($, 'Bash', { command: 'git branch -D a; git branch -D b' })).decision).toBe('ask')
+  })
+
+  test('asks when only a safe deletion precedes a forced one', async ($, on) => {
+    engineMerged(on, ['a'])
+    expect((await check($, 'Bash', { command: 'git branch -d a && git branch -D b' })).decision).toBe('ask')
+  })
 })
