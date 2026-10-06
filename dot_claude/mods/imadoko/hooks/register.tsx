@@ -827,7 +827,7 @@ export const register: Register = on => {
                     <elements.Raster key={`sprite:${m.tabId}`} columns={WIDTH} rows={HEIGHT / 2} cells={cells(m.role, m.status, tick, m.kind)} />
                   ) : null}
                   <Box flexDirection="column" flexShrink={1}>
-                    <Text bold wrap="truncate-end">{[m.mark, tw.roles[m.role], m.kind].filter(Boolean).join(' · ')}</Text>
+                    <Button key={`focus:${m.tabId}`} plain label={`${[m.mark, tw.roles[m.role], m.kind].filter(Boolean).join(' · ')} ↗`} onPress={() => void herdr($, ['tab', 'focus', m.tabId])} />
                     <Text wrap="truncate-end">{`${tw.states[m.status]}${said[m.tabId] ? ` · ${said[m.tabId]}` : ''}`}</Text>
                     <Text dimColor wrap="truncate-end">
                       {m.task ?? m.label}
