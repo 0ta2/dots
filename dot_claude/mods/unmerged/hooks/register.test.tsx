@@ -35,11 +35,17 @@ const PANE_PROPS = {
 type On = Parameters<TestBody>[1]
 let picked: { text: string; requestId?: string } | undefined
 
-function fake(on: On, git: Record<string, string>) {
+const TAB_CREATED = JSON.stringify({ result: { tab: { tab_id: 'wW:t2' }, root_pane: { pane_id: 'wW:t2-1' } } })
+
+function fake(on: On, git: Record<string, string>, env: Record<string, string> = {}, herdr: (readonly string[])[] = []) {
   const contexts: (readonly string[] | undefined)[] = []
   on('session.cwd', () => ({ value: '/w' }))
-  on('env.get', () => ({ value: '/h' }))
+  on('env.get', (_$, e) => ({ value: e.name in env ? env[e.name] : '/h' }))
   on('process.run', (_$, e) => {
+    if (e.argv[0] === 'herdr') {
+      herdr.push(e.argv)
+      return { value: { exitCode: 0, stdout: e.argv[2] === 'create' ? TAB_CREATED : '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+    }
     const repo = e.argv[2] === '/s' || e.argv[2]?.startsWith('/s/') ? SECOND : git
     const out = repo[e.argv.slice(8).join(' ')]
     return {
@@ -237,5 +243,34 @@ test('pressing the open file again closes its diff', async ($, on) => {
   expect(await pane.find({ key: 'ask' })).toBeUndefined()
   await pane.press({ key: 'file:/r:tracked:x.ts' })
   expect(await pane.find({ type: 'Code' })).toBeDefined()
+  await pane.unmount()
+})
+
+const HERDR_ENV = { HERDR_ENV: '1', HERDR_WORKSPACE_ID: 'wW' }
+
+for (const [editor, options] of [['nvim', {}], ['hx', { editor: 'hx' }]] as const) {
+  test(`pressing open starts the editor in a new tab at the repo root (${editor})`, { options }, async ($, on) => {
+    const herdr: (readonly string[])[] = []
+    fake(on, { ...GIT }, HERDR_ENV, herdr)
+    await $.tool.call({ tool: 'Bash', command: 'cd /r && git status' })
+    await $.command.run({ command: 'unmerged', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 160 } })
+    const pane = await $.ui.mount({ plugin: 'unmerged', surface: 'terminal', component: 'Pane', requestId: 'unmerged', props: PANE_PROPS })
+    await pane.press({ key: 'open:/r:tracked:x.ts' })
+    expect(herdr).toEqual([
+      ['herdr', 'tab', 'create', '--workspace', 'wW', '--cwd', '/r', '--label', 'edit-r-x.ts', '--no-focus'],
+      ['herdr', 'pane', 'run', 'wW:t2-1', `${editor} x.ts`],
+      ['herdr', 'tab', 'focus', 'wW:t2'],
+    ])
+    await pane.unmount()
+  })
+}
+
+test('open is hidden outside herdr', async ($, on) => {
+  fake(on, { ...GIT }, { HERDR_ENV: '' })
+  await $.tool.call({ tool: 'Bash', command: 'cd /r && git status' })
+  await $.command.run({ command: 'unmerged', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 160 } })
+  const pane = await $.ui.mount({ plugin: 'unmerged', surface: 'terminal', component: 'Pane', requestId: 'unmerged', props: PANE_PROPS })
+  expect(await pane.find({ key: 'file:/r:tracked:x.ts' })).toBeDefined()
+  expect(await pane.find({ key: 'open:/r:tracked:x.ts' })).toBeUndefined()
   await pane.unmount()
 })
