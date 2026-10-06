@@ -1,9 +1,9 @@
 ---
 name: herdr-delegate
-description: 同じ Herdr スペースに専用タブを作って別のコーディングエージェント (codex/claude) を立て、実装を委譲する。「隣の codex に実装頼んで」「別のエージェントにこれ実装させて」など、委譲先が別ペインであることを明示されたときに使う。単に実装を頼まれただけでは使わない。HERDR_ENV=1 が必要。
+description: 同じ Herdr スペースに専用タブを作って別のコーディングエージェント (codex/claude) を立て、実装を委譲する。別のタブ・別のエージェントに実装を任せるときは必ずこの skill を通す (タスク記録を unmerged と imadoko が読むため、herdr を直接叩いて立てない)。「隣の codex に実装頼んで」「別のエージェントにこれ実装させて」などが該当する。自分で実装する依頼には使わない。HERDR_ENV=1 が必要。
 disable-model-invocation: false
 user-invocable: true
-allowed-tools: Bash(herdr *), Bash(grep *), Bash(sed *), Bash(test *), Read, Bash(mkdir -p *), Write(~/.local/state/herdr-team/**)
+allowed-tools: Bash(herdr *), Bash(grep *), Bash(sed *), Bash(test *), Read, Bash(mkdir -p *), Write(~/.local/state/herdr-team/**), Bash(rm -f ~/.local/state/herdr-team/*)
 ---
 
 # herdr-delegate
@@ -154,6 +154,7 @@ slug は人が見分けるための飾りで、一意性はハッシュが担う
 
 ```bash
 herdr tab close <前任者の tab_id>
+rm -f ~/.local/state/herdr-team/"$HERDR_WORKSPACE_ID"/<前任者の tab_id>.json
 ```
 
 名前に世代番号を足さないのはこのため。同じ種別で閉じずに作れば、同じラベルと agent 名になり
@@ -226,7 +227,14 @@ imadoko のチーム表示 (main タブの `/imadoko`) がメンバーの横に�
 mkdir -p "$HOME/.local/state/herdr-team/$HERDR_WORKSPACE_ID"
 ```
 
-`$HOME/.local/state/herdr-team/$HERDR_WORKSPACE_ID/<tab_id>.json` に `{"task": "<依頼の要約 1 行>"}` を書く。
+`$HOME/.local/state/herdr-team/$HERDR_WORKSPACE_ID/<tab_id>.json` に次を書く。
+
+```json
+{"task": "<依頼の要約 1 行>", "repos": ["<依頼で触らせるリポジトリの絶対パス>"]}
+```
+
+`repos` には `--add-dir` で渡す場所も含める。worktree で作業させるなら worktree のパスを書く。
+unmerged はこの `repos` を読み、委譲先の差分を依頼元のペインに並べる。
 役割と状態は imadoko がタブラベルと herdr から読むので書かない。書けなくても依頼は止めない。
 
 ## 依頼を送る
@@ -287,14 +295,14 @@ idle を待つ。
 
 ## 終わったらタブを閉じる
 
-その実装が終わったら、自分が作ったタブを閉じる。
+実装が完了し、レビュー指摘の修正まで含めて手離れしたら、タブを閉じるかどうかにかかわらず記録を消す。自分が作ったタブなら、そのあと閉じる。
 
 ```bash
+rm -f ~/.local/state/herdr-team/"$HERDR_WORKSPACE_ID"/<tab_id>.json
 herdr tab close <tab_id>
 ```
 
-閉じるのは実装が完了し、レビュー指摘の修正まで含めて手離れした時点。続きがある間は
-同じ担当者に任せるので閉じない。既存タブ・ユーザーのペインを借りただけのときも閉じない。
+続きがある間は同じ担当者に任せるので記録を消さない。既存タブ・ユーザーのペインを借りただけのときは記録だけ消し、タブは閉じない。
 
 ## blocked になったら
 

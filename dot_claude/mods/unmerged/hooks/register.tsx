@@ -21,12 +21,36 @@ const gitOf = ($: EngineInterface, okCodes = [0]): Git => async (dir, args) => {
   return r && okCodes.includes(r.exitCode ?? -1) && !r.isStdoutTruncated ? r.stdout : undefined
 }
 
+async function rootsOf(git: Git, dirs: string[]): Promise<string[]> {
+  const roots = await Promise.all(dirs.map(async d => (await git(d, ['rev-parse', '--show-toplevel']))?.trim()))
+  return roots.filter((r): r is string => !!r)
+}
+
 async function track($: EngineInterface, dirs: string[]) {
-  const git = gitOf($)
-  const roots = (await Promise.all(dirs.map(async d => (await git(d, ['rev-parse', '--show-toplevel']))?.trim()))).filter(
-    (r): r is string => !!r,
-  )
+  const roots = await rootsOf(gitOf($), dirs)
   if (roots.length) await update($, repos, list => [...new Set([...(list ?? []), ...roots])])
+}
+
+export function parseRepos(text: string): string[] {
+  try {
+    const list = (JSON.parse(text) as { repos?: unknown }).repos
+    return Array.isArray(list) ? list.filter((r): r is string => typeof r === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+async function delegatedRepos($: EngineInterface): Promise<string[]> {
+  const [home, workspace] = await Promise.all([$.env.get('HOME'), $.env.get('HERDR_WORKSPACE_ID')])
+  if (!home || !workspace) return []
+  const dir = `${home}/.local/state/herdr-team/${workspace}`
+  const entries = await $.fs.list(dir).catch(() => [])
+  const lists = await Promise.all(
+    entries
+      .filter(f => f.kind === 'file' && f.name.endsWith('.json'))
+      .map(async f => parseRepos(await $.fs.read(`${dir}/${f.name}`).catch(() => ''))),
+  )
+  return lists.flat()
 }
 
 async function diffOf($: EngineInterface, snap: RepoSnapshot, file: FileChange): Promise<string> {
@@ -59,7 +83,7 @@ async function unselect($: EngineInterface) {
 
 async function refresh($: EngineInterface) {
   const git = gitOf($)
-  const list = (await read($, repos)) ?? []
+  const list = [...new Set([...((await read($, repos)) ?? []), ...(await rootsOf(git, await delegatedRepos($)))])]
   const snaps = (await Promise.all(list.map(root => snapshot(git, root)))).filter(
     (s): s is RepoSnapshot => !!s,
   )
