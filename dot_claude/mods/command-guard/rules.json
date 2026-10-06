@@ -51,7 +51,9 @@
       "pattern": [
         "${G}branch[^|&;]*\\s(-[a-zA-Z]*[dD][a-zA-Z]*|--delete)(\\s|$)",
         "${G}branch[^|&;]*\\s(-[a-zA-Z]*[fD][a-zA-Z]*|--force)(\\s|$)"
-      ]
+      ],
+      "action": "ask",
+      "exceptMerged": true
     },
     {
       "name": "SQL DELETE / TRUNCATE / DROP",
