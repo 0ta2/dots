@@ -22,12 +22,19 @@ const FAILED = ['FAILURE', 'ERROR', 'CANCELLED', 'TIMED_OUT', 'ACTION_REQUIRED',
 
 export function checksOf(rollup: unknown): Checks | undefined {
   if (!Array.isArray(rollup) || rollup.length === 0) return undefined
-  const results = rollup.map(c => {
-    const one = c as { conclusion?: unknown; state?: unknown }
+  const latest = new Map<string, { one: { conclusion?: unknown; state?: unknown; name?: unknown; context?: unknown; completedAt?: unknown; startedAt?: unknown }; at: string }>()
+  rollup.forEach((check, index) => {
+    const one = check as { conclusion?: unknown; state?: unknown; name?: unknown; context?: unknown; completedAt?: unknown; startedAt?: unknown }
+    const key = typeof one.name === 'string' ? `name:${one.name}` : typeof one.context === 'string' ? `context:${one.context}` : `run:${index}`
+    const at = typeof one.completedAt === 'string' && !one.completedAt.startsWith('0001-') ? one.completedAt : typeof one.startedAt === 'string' ? one.startedAt : ''
+    const previous = latest.get(key)
+    if (previous === undefined || at >= previous.at) latest.set(key, { one, at })
+  })
+  const results = [...latest.values()].map(({ one }) => {
     return String(one.conclusion || one.state || '').toUpperCase()
   })
   if (results.some(r => FAILED.includes(r))) return 'fail'
-  if (results.some(r => r === '' || r === 'PENDING' || r === 'EXPECTED')) return 'pending'
+  if (results.some(r => r === '' || r === 'PENDING' || r === 'EXPECTED' || r === 'STALE')) return 'pending'
   return 'pass'
 }
 

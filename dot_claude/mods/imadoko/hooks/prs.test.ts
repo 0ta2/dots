@@ -21,6 +21,24 @@ test('summarizes checks', () => {
   expect(checksOf([{ status: 'IN_PROGRESS', conclusion: '' }])).toBe('pending')
 })
 
+test('keeps only the newest run of a check', () => {
+  expect(checksOf([
+    { name: 'test', conclusion: 'FAILURE', completedAt: '2026-10-06T10:00:00Z' },
+    { name: 'test', conclusion: 'SUCCESS', completedAt: '2026-10-06T11:00:00Z' },
+  ])).toBe('pass')
+})
+
+test('uses startedAt when a running check has GitHub’s zero completedAt', () => {
+  expect(checksOf([
+    { name: 'test', conclusion: 'FAILURE', completedAt: '2026-10-06T10:00:00Z' },
+    { name: 'test', conclusion: '', status: 'IN_PROGRESS', completedAt: '0001-01-01T00:00:00Z', startedAt: '2026-10-06T11:00:00Z' },
+  ])).toBe('pending')
+})
+
+test('treats stale checks as pending', () => {
+  expect(checksOf([{ conclusion: 'STALE' }])).toBe('pending')
+})
+
 test('parses pull request views', () => {
   expect(parseView('{"title":"t","url":"u","state":"OPEN","mergeStateStatus":"CLEAN","statusCheckRollup":[]}')).toEqual({ title: 't', url: 'u', state: 'OPEN', merge: 'clean' })
   expect(parseView('{')).toBeUndefined()
