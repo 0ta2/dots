@@ -560,14 +560,14 @@ export const bandRows = (imadoko: Imadoko, words: Words): { label: string; text:
 ]
 
 /** The pane's text sections below the timeline, each a heading over its full text. */
-export const paneSections = (imadoko: Imadoko, words: Words): { title: string; rows: string[] }[] => {
+export const paneSections = (imadoko: Imadoko, words: Words): { key: string; title: string; rows: string[] }[] => {
   const sections = imadoko.sections
   const list = (items: readonly string[] | undefined) =>
     items === undefined || items.length === 0 ? [words.none] : items.map(item => `- ${item}`)
 
   return [
-    { title: words.decisions, rows: list(sections?.decisions) },
-    { title: words.pending, rows: list(sections?.pending) },
+    { key: 'decisions', title: words.decisions, rows: list(sections?.decisions) },
+    { key: 'pending', title: words.pending, rows: list(sections?.pending) },
   ]
 }
 

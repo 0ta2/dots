@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, ModelCompleteResult, Register } from 'claude-code'
+import type { EngineInterface, ModelCompleteResult, Register, RenderChildren } from 'claude-code'
 
 import {
   EMPTY,
@@ -65,6 +65,7 @@ const team = atom({ plugin: 'imadoko', key: 'team' } as const, [] as TeamMember[
 const lead = atom({ plugin: 'imadoko', key: 'isLead' } as const, false)
 // One line per member, by tab: what it is doing, from its own status file or its screen.
 const notes = atom({ plugin: 'imadoko', key: 'notes' } as const, {} as Record<string, string>)
+const folded = atom({ plugin: 'imadoko', key: 'folded' } as const, [] as string[])
 const frame = atom({ plugin: 'imadoko', key: 'frame' } as const, 0)
 // Each workspace's mark book; the store keeps a copy, since a /resume empties this.
 const markBooks = atom({ plugin: 'imadoko', key: 'marks' } as const, {} as Record<string, MarkBook>)
@@ -76,6 +77,7 @@ const PANE_ID = 'imadoko'
 
 type PullWords = {
   title: string
+  loading: string
   unreadable: string
   unresolved: (n: number) => string
   checks: string
@@ -87,6 +89,7 @@ type PullWords = {
 const PULL_WORDS: { english: PullWords; japanese: PullWords } = {
   english: {
     title: 'PR',
+    loading: 'loading…',
     unreadable: 'unreadable',
     unresolved: n => `unresolved ${n}`,
     checks: 'checks',
@@ -96,6 +99,7 @@ const PULL_WORDS: { english: PullWords; japanese: PullWords } = {
   },
   japanese: {
     title: 'PR',
+    loading: '読み込み中…',
     unreadable: '読めません',
     unresolved: n => `未解決 ${n}`,
     checks: 'チェック',
@@ -595,6 +599,9 @@ const watchTeam = ($: EngineInterface, language: string) => {
 const toggle = ($: EngineInterface, key: string) =>
   update($, expanded, keys => (keys.includes(key) ? keys.filter(one => one !== key) : [...keys, key]))
 
+const toggleFold = ($: EngineInterface, key: string) =>
+  update($, folded, keys => (keys.includes(key) ? keys.filter(one => one !== key) : [...keys, key]))
+
 /** Keeps the newest imadoko summaries in the store; the oldest go first. */
 const pruneStore = async ($: EngineInterface) => {
   const keys = (await $.store.keys()).filter(key => key.startsWith('imadoko:'))
@@ -737,11 +744,21 @@ export const register: Register = on => {
     const { Box, Button, Link, Text } = elements
     const mates = (await read($, lead)) ? await read($, team) : []
     const said = await read($, notes)
+    const closed = await read($, folded)
     const tick = mates.length > 0 ? await read($, frame) : 0
     const tw = teamWordsFor(locale.language)
     const listedPulls = await read($, pulls)
     const views = await read($, pullViews)
     const pw = pullWordsFor(locale.language)
+    const Section = ({ sectionKey, title, children }: { sectionKey: string; title: string; children: RenderChildren }) => (
+      <Box flexDirection="column" marginBottom={1}>
+        <Box flexDirection="row">
+          <Button key={`section:${sectionKey}`} label={closed.includes(sectionKey) ? '▸' : '▾'} plain onPress={() => toggleFold($, sectionKey)} />
+          <Text bold color={HEADING_COLOR} wrap="wrap">{title}</Text>
+        </Box>
+        {closed.includes(sectionKey) ? null : children}
+      </Box>
+    )
 
     return (
       <Box flexDirection="column">
@@ -756,47 +773,34 @@ export const register: Register = on => {
             onPress={() => $.ui.close({ id: PANE_ID })}
           />
         </Box>
-        {[
-          { title: locale.words.purpose, rows: [current.sections?.purpose ?? locale.words.notYet] },
-          { title: locale.words.status, rows: [current.sections?.status ?? locale.words.notYet] },
-        ].map(section => (
-          <Box flexDirection="column" marginBottom={1}>
-            <Text bold color={HEADING_COLOR} wrap="wrap">
-              {section.title}
-            </Text>
-            {section.rows.map(row => (
-              <Text wrap="wrap">{row}</Text>
-            ))}
-          </Box>
-        ))}
+        <Section sectionKey="purpose" title={locale.words.purpose}>
+          <Text wrap="wrap">{current.sections?.purpose ?? locale.words.notYet}</Text>
+        </Section>
+        <Section sectionKey="status" title={locale.words.status}>
+          <Text wrap="wrap">{current.sections?.status ?? locale.words.notYet}</Text>
+        </Section>
         {mates.length === 0 ? null : (
-          <Box flexDirection="column" marginBottom={1}>
-            <Text bold color={HEADING_COLOR} wrap="wrap">
-              {tw.members}
-            </Text>
-            {mates.map(m => (
-              <Box key={`member:${m.tabId}`} flexDirection="row" gap={1}>
-                {'Raster' in elements ? (
-                  <elements.Raster key={`sprite:${m.tabId}`} columns={WIDTH} rows={HEIGHT / 2} cells={cells(m.role, m.status, tick, m.kind)} />
-                ) : null}
-                <Box flexDirection="column" flexShrink={1}>
-                  <Text bold wrap="truncate-end">
-                    {[m.mark, tw.roles[m.role], m.kind].filter(Boolean).join(' · ')}
-                  </Text>
-                  <Text wrap="truncate-end">{`${tw.states[m.status]}${said[m.tabId] ? ` · ${said[m.tabId]}` : ''}`}</Text>
-                  <Text dimColor wrap="truncate-end">
-                    {m.task ?? m.label}
-                  </Text>
+          <Section sectionKey="team" title={tw.members}>
+            {mates.map(m => {
+              return (
+                <Box key={`member:${m.tabId}`} flexDirection="row" gap={1}>
+                  {'Raster' in elements ? (
+                    <elements.Raster key={`sprite:${m.tabId}`} columns={WIDTH} rows={HEIGHT / 2} cells={cells(m.role, m.status, tick, m.kind)} />
+                  ) : null}
+                  <Box flexDirection="column" flexShrink={1}>
+                    <Text bold wrap="truncate-end">{[m.mark, tw.roles[m.role], m.kind].filter(Boolean).join(' · ')}</Text>
+                    <Text wrap="truncate-end">{`${tw.states[m.status]}${said[m.tabId] ? ` · ${said[m.tabId]}` : ''}`}</Text>
+                    <Text dimColor wrap="truncate-end">
+                      {m.task ?? m.label}
+                    </Text>
+                  </Box>
                 </Box>
-              </Box>
-            ))}
-          </Box>
+              )
+            })}
+          </Section>
         )}
         {listedPulls.length === 0 ? null : (
-          <Box flexDirection="column" marginBottom={1}>
-            <Text bold color={HEADING_COLOR} wrap="wrap">
-              {pw.title}
-            </Text>
+          <Section sectionKey="pulls" title={pw.title}>
             {listedPulls.map(pull => {
               const view = views[pullKey(pull)]
               const reviewers = mates.filter(member => isReviewerOf(member.label, pull))
@@ -809,8 +813,10 @@ export const register: Register = on => {
                     {view === undefined || view === 'unreadable' ? null : <Text bold wrap="truncate-end">{view.title}</Text>}
                   </Box>
                   <Text dimColor wrap="truncate-end">
-                    {view === undefined || view === 'unreadable'
-                      ? pw.unreadable
+                    {view === undefined
+                      ? pw.loading
+                      : view === 'unreadable'
+                        ? pw.unreadable
                       : [pw.unresolved(view.unresolved ?? 0), pw.merge[view.merge], ...(view.checks === undefined ? [] : [`${pw.checks} ${pw.check[view.checks]}`])].join(' · ')}
                   </Text>
                   {reviewers.length === 0 ? null : (
@@ -821,12 +827,9 @@ export const register: Register = on => {
                 </Box>
               )
             })}
-          </Box>
+          </Section>
         )}
-        <Box flexDirection="column" marginBottom={1}>
-          <Text bold color={HEADING_COLOR} wrap="wrap">
-            {locale.words.tasks}
-          </Text>
+        <Section sectionKey="tasks" title={locale.words.tasks}>
           {tasks.length === 0 ? <Text wrap="wrap">{locale.words.none}</Text> : null}
           {tasks.map((task, index) => {
             const key = keys[index] ?? ''
@@ -867,16 +870,13 @@ export const register: Register = on => {
               </Box>
             )
           })}
-        </Box>
+        </Section>
         {paneSections(current, locale.words).map(section => (
-          <Box flexDirection="column" marginBottom={1}>
-            <Text bold color={HEADING_COLOR} wrap="wrap">
-              {section.title}
-            </Text>
+          <Section key={section.key} sectionKey={section.key} title={section.title}>
             {section.rows.map(row => (
               <Text wrap="wrap">{row}</Text>
             ))}
-          </Box>
+          </Section>
         ))}
       </Box>
     )

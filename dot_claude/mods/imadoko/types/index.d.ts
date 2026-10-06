@@ -104,6 +104,6 @@ export type TeamMember = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'imadoko': { 'imadoko': Imadoko; expanded: string[]; team: TeamMember[]; frame: number; notes: Record<string, string>; isLead: boolean; marks: Record<string, { marks: Record<string, string>; next: Partial<Record<Role, number>> }>; pulls: PullRef[]; pullViews: Record<string, PullView & { unresolved?: number } | 'unreadable'> }
+    'imadoko': { 'imadoko': Imadoko; expanded: string[]; folded: string[]; team: TeamMember[]; frame: number; notes: Record<string, string>; isLead: boolean; marks: Record<string, { marks: Record<string, string>; next: Partial<Record<Role, number>> }>; pulls: PullRef[]; pullViews: Record<string, PullView & { unresolved?: number } | 'unreadable'> }
   }
 }

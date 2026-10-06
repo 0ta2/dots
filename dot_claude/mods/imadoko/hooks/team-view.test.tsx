@@ -31,7 +31,7 @@ const AGENTS = JSON.stringify({
   },
 })
 
-type World = { agents: string; paneGet?: string; space?: string; screenReply?: (n: number) => Promise<string>; store?: Record<string, unknown>; files?: Record<string, string>; pullView?: string; unresolved?: string }
+type World = { agents: string; paneGet?: string; space?: string; screenReply?: (n: number) => Promise<string>; store?: Record<string, unknown>; files?: Record<string, string>; summary?: typeof SUMMARY; pullView?: string | Promise<string>; unresolved?: string | Promise<string> }
 
 function standIn(on: On, selfLabel: string, env: Record<string, string>, world: World = { agents: AGENTS }) {
   const prompts: string[] = []
@@ -61,12 +61,14 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
     toasts.push(e.text)
     return { value: undefined }
   })
-  on('process.run', (_$, e) => {
+  on('process.run', async (_$, e) => {
     if (e.argv[0] === 'gh' && e.argv[1] === 'pr' && e.argv[2] === 'view') {
-      return { value: { exitCode: world.pullView === undefined ? 1 : 0, stdout: world.pullView ?? '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+      const stdout = await world.pullView
+      return { value: { exitCode: stdout === undefined ? 1 : 0, stdout: stdout ?? '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
     }
     if (e.argv[0] === 'gh' && e.argv[1] === 'api' && e.argv[2] === 'graphql') {
-      return { value: { exitCode: world.unresolved === undefined ? 1 : 0, stdout: world.unresolved ?? '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+      const stdout = await world.unresolved
+      return { value: { exitCode: stdout === undefined ? 1 : 0, stdout: stdout ?? '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
     }
     const key = e.argv.slice(1).join(' ')
     const out: Record<string, string> = {
@@ -91,7 +93,7 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
     prompts.push(e.prompt)
     const isScreen = e.prompt.includes('<screen>')
     if (isScreen) screens += 1
-    const text = !isScreen ? JSON.stringify(SUMMARY) : world.screenReply ? await world.screenReply(screens) : 'ログイン方式について質問中'
+    const text = !isScreen ? JSON.stringify(world.summary ?? SUMMARY) : world.screenReply ? await world.screenReply(screens) : 'ログイン方式について質問中'
     return { value: { isAnswered: true as const, text, usage: NO_USAGE } }
   })
   on('turn.start', (_$, e) => ({ turnId: e.turnId }))
@@ -303,6 +305,38 @@ test('a member whose state herdr cannot tell is still read off its screen', asyn
   await ui.unmount()
 })
 
+test('pressing Section headings folds and unfolds their bodies', async ($, on) => {
+  const seen = standIn(on, 'main', ENV, { agents: AGENTS, summary: { ...SUMMARY, decisions: ['OAuth を使う'] } })
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await $.turn.start({ turnId: 't', text: '実装を頼んで' })
+  await $.turn.complete({ turnId: 't', answer: '頼みました', durationMs: 1000, isAborted: false, reason: 'answer' })
+  await seen.clock.settle()
+  const press = async (key: string) => {
+    const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+    await ui.press({ key })
+    await ui.unmount()
+  }
+
+  await press('section:purpose')
+  let ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /チケットを片付ける/ })).toBeUndefined()
+  expect((await ui.find({ key: 'section:purpose' }))?.props.label).toBe('▸')
+  await ui.unmount()
+  await press('section:decisions')
+  ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /- OAuth を使う/ })).toBeUndefined()
+  expect((await ui.find({ key: 'section:decisions' }))?.props.label).toBe('▸')
+  await ui.unmount()
+  await press('section:purpose')
+  await press('section:decisions')
+  ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /チケットを片付ける/ })).toBeDefined()
+  expect(await ui.find({ text: /- OAuth を使う/ })).toBeDefined()
+  expect((await ui.find({ key: 'section:purpose' }))?.props.label).toBe('▾')
+  expect((await ui.find({ key: 'section:decisions' }))?.props.label).toBe('▾')
+  await ui.unmount()
+})
+
 test('a pull request the session opened shows in the pane', async ($, on) => {
   const seen = standIn(on, 'main', ENV, {
     agents: AGENTS,
@@ -343,4 +377,25 @@ test('a merged pull request leaves the pane', async ($, on) => {
   ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await ui.find({ text: /dots#171/ })).toBeUndefined()
   await ui.unmount()
+})
+
+test('a new pull request is loading before its view arrives', async ($, on) => {
+  let release: (text: string) => void = () => {}
+  const pullView = new Promise<string>(resolve => {
+    release = resolve
+  })
+  const seen = standIn(on, 'main', ENV, {
+    agents: AGENTS,
+    pullView,
+    unresolved: JSON.stringify({ data: { repository: { pullRequest: { reviewThreads: { nodes: [] } } } } }),
+  })
+  on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: 'https://github.com/0ta2/dots/pull/171\n', stderr: '', interrupted: false } }))
+
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: 'Bash', command: 'gh pr create --title x' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /読み込み中…/ })).toBeDefined()
+  expect(await ui.find({ text: /読めません/ })).toBeUndefined()
+  await ui.unmount()
+  release(JSON.stringify({ title: 'ブランチ強制削除を防ぐ', url: 'https://github.com/0ta2/dots/pull/171', state: 'OPEN', mergeStateStatus: 'CLEAN', statusCheckRollup: [] }))
 })
