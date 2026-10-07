@@ -71,12 +71,14 @@ agent を返し、どれが呼び出し元かを示さない (実測で `wQ` と
 **この作業のタブは、エージェント種別を無視して引く。** 種別はタブを探すための鍵ではなく、
 見つけたあとの判断材料。ユーザーの指定の有無にかかわらず、探し方は 1 つにする。
 
-ラベルを `-` で区切り、**最後の成分 (種別) を落とした残りが `impl-<リポジトリ名>-<識別子>` と
-完全に一致する**タブを採る。文字列の前方一致で済ませないこと。前方一致だと識別子 `feature` が
-`feature-api` のタブにも当たり、別の作業の担当者を掴む。
+ワークスペース内の各タブの `$HOME/.local/state/herdr-team/$HERDR_WORKSPACE_ID/<tab_id>.json` を読み、
+実装用の `key` が完全に一致するタブを採る。`key` は `impl-` + リポジトリ名 + 識別子。文字列の前方一致で済ませないこと。
+前方一致だと識別子 `feature` が `feature-api` のタブにも当たり、別の作業の担当者を掴む。
+記録が無い旧来の長いラベルだけは、最後の `-` 成分を落とした値で同じ `key` と照合する。
 
 ヒットは 0 件か 1 件になるはず (交代のたびに前任者のタブを閉じるため)。見つかったタブに
 いるエージェントは `herdr agent list` の `.result.agents[]` から同じ `tab_id` の要素で取る。
+種別は記録の `kind` から読む。旧来の長いラベルは末尾の種別を使い、無ければ agent の種類を使う。
 
 結果で次のように分岐する。
 
@@ -90,7 +92,7 @@ agent を返し、どれが呼び出し元かを示さない (実測で `wQ` と
 既定の種別で組み立てたラベルで探してはいけない。前回そうでない種別に交代していた場合に、
 既定の種別の古いタブへ戻る (「前回と同じ担当者に送る」を破る)。
 
-**ラベルが一致するタブに agent がいないこともある** (プロセスが落ちた・終了した)。`agent list` に
+**記録が一致するタブに agent がいないこともある** (プロセスが落ちた・終了した)。`agent list` に
 その `tab_id` の要素が無ければ、タブを作り直さずそのタブの pane で起動し直す。pane は
 `herdr pane list` の `tab_id` で引く。この場合それまでの文脈は失われているので、依頼文に経緯を
 書き直し、立て直したことをユーザーに伝える。
@@ -105,17 +107,15 @@ agent を返し、どれが呼び出し元かを示さない (実測で `wQ` と
 
 ### 名前の作り方
 
-タブラベルと agent 名は次で組み立てる。**agent 名はグローバルに一意**で、別ワークスペースに
+ラベルと agent 名は次で組み立てる。**agent 名はグローバルに一意**で、別ワークスペースに
 残った古い agent が名前を占有していると `agent_name_taken` で落ちる (実測)。
 
 | | 形 | 例 |
 | --- | --- | --- |
-| タブラベル | `impl-<リポジトリ名>-<識別子>-<エージェント種別>` | `impl-dots-20260917-1500-codex` |
-| agent 名 | 下のコマンドで組み立てる (小文字のワークスペース ID + 整形したタブラベル + ハッシュ) | `ww-impl-dots-20260917-6fa55e8cfc` |
+| ラベル | `I<n>` | `I3` |
+| agent 名 | 下のコマンドで組み立てる (小文字のワークスペース ID + 整形した key + ハッシュ) | `ww-impl-dots-20260917-6fa55e8cfc` |
 
-- リポジトリ名を入れるのは、ブランチ名やタスク ID が別リポジトリと同じになりうるため
-- エージェント種別を入れるのは、種別を変えて立て直したときに前のタブと区別するため
-  (同じ作業でも種別が変われば別の担当者)
+- `key` は `impl-` + リポジトリ名 + 識別子。リポジトリ名を入れるのは、ブランチ名やタスク ID が別リポジトリと同じになりうるため
 - ワークスペース ID を agent 名にだけ付けるのは、タブ検索が `--workspace` でスコープされる一方、
   agent 名はグローバルに衝突するため
 
@@ -123,19 +123,23 @@ agent 名は **小文字で始まり、小文字・数字・`-`・`_` だけの 
 `herdr agent rename` が `invalid_agent_name` で落ちる (実測。ワークスペース ID は `wW` のように
 大文字を含むので、そのまま付けると必ず落ちる)。整形すると別の作業同士が同じ名前になりうる
 (`feature/foo` と `feature-foo`、切り詰めで末尾だけ違うラベル) ので、元のワークスペース ID と
-タブラベルから取ったハッシュを末尾に付けて区別する:
+`key` から取ったハッシュを末尾に付けて区別する。番号は同じワークスペースに今ある `I<n>` の最大値 + 1（無ければ 1）にする:
 
 ```bash
-label="<タブラベル>"
+repo="<リポジトリ名>"
+identifier="<識別子>"
+key="impl-$repo-$identifier"
+max=$(herdr tab list --workspace "$HERDR_WORKSPACE_ID" | jq -r '[.result.tabs[]?.label | select(test("^I[0-9]+$")) | ltrimstr("I") | tonumber] | max // 0')
+label="I$((max + 1))"
 ws=$(printf '%s' "$HERDR_WORKSPACE_ID" | tr 'A-Z' 'a-z')
-hash=$(printf '%s' "$HERDR_WORKSPACE_ID/$label" | shasum | cut -c1-10)
-slug=$(printf '%s' "$label" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9_-' '-' | cut -c1-$((32 - ${#ws} - 12)))
+hash=$(printf '%s' "$HERDR_WORKSPACE_ID/$key" | shasum | cut -c1-10)
+slug=$(printf '%s' "$key" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9_-' '-' | cut -c1-$((32 - ${#ws} - 12)))
 echo "$ws-$slug-$hash"
 ```
 
-slug は人が見分けるための飾りで、一意性はハッシュが担う。タブラベルは制約を受けないので整形しない。
+slug は人が見分けるための飾りで、一意性はハッシュが担う。ラベルは短い印なので整形しない。
 
-再利用するかどうかは agent 名ではなく、上のタブ照合 (ラベルの完全一致) で決める。照合で
+再利用するかどうかは agent 名ではなく、上の記録の `key` 照合で決める。照合で
 見つけたタブの agent が同じ名前ならそのまま使う。照合で見つからないのに rename が
 `agent_name_taken` で落ちたら、別の作業とのハッシュ衝突なので相手には送らず、ユーザーに報告する。
 
@@ -149,15 +153,14 @@ slug は人が見分けるための飾りで、一意性はハッシュが担う
 種別を変えるときも閉じる。閉じないと種別違いのタブが 2 つ残り、1 実装 = 1 タブ = 1 担当者が崩れて、
 以後の種別未指定の依頼が必ず複数ヒットになる。
 
-前任者のタブは上の照合 (種別を無視した完全一致) で引く。種別を変える交代では、
-種別込みのラベルで探すと前任者が見つからない。
+前任者のタブは上の `key` 照合で引く。種別を変える交代でも同じ `key` を使う。
 
 ```bash
 herdr tab close <前任者の tab_id>
 rm -f ~/.local/state/herdr-team/"$HERDR_WORKSPACE_ID"/<前任者の tab_id>.json
 ```
 
-名前に世代番号を足さないのはこのため。同じ種別で閉じずに作れば、同じラベルと agent 名になり
+名前に世代番号を key に足さないのはこのため。同じ種別で閉じずに作れば、同じ agent 名になり
 `agent_name_taken` で落ちる。モデルは `pane run` の起動時にしか
 渡せないので、モデルを変える場合も立て直しになる。
 
@@ -173,7 +176,7 @@ rm -f ~/.local/state/herdr-team/"$HERDR_WORKSPACE_ID"/<前任者の tab_id>.json
 現在のタブは分割しない (依頼元の表示幅が半分になる)。同じスペースに専用タブを作る。
 
 ```bash
-herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "<worktree のパス>" --label "<タブラベル>" --no-focus
+herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "<worktree のパス>" --label "$label" --no-focus
 ```
 
 `.result.root_pane.pane_id` と `.result.tab.tab_id` を控える。`--no-focus` は必須
@@ -231,12 +234,12 @@ mkdir -p "$HOME/.local/state/herdr-team/$HERDR_WORKSPACE_ID"
 `$HOME/.local/state/herdr-team/$HERDR_WORKSPACE_ID/<tab_id>.json` に次を書く。
 
 ```json
-{"task": "<依頼の要約 1 行>", "repos": ["<依頼で触らせるリポジトリの絶対パス>"]}
+{"task": "<依頼の要約 1 行>", "key": "impl-$repo-$identifier", "role": "impl", "kind": "<codex または claude>", "repos": ["<依頼で触らせるリポジトリの絶対パス>"]}
 ```
 
 `repos` には `--add-dir` で渡す場所も含める。worktree で作業させるなら worktree のパスを書く。
 unmerged はこの `repos` を読み、委譲先の差分を依頼元のペインに並べる。
-役割と状態は imadoko がタブラベルと herdr から読むので書かない。書けなくても依頼は止めない。
+`key`・`role`・`kind` は毎回書く。imadoko は役割と種別を記録から、状態を herdr から読む。書けなくても依頼は止めない。
 
 ## 依頼を送る
 
