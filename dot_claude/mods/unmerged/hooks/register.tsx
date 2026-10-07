@@ -171,7 +171,9 @@ async function openInEditor($: EngineInterface, editor: string, root: string, pa
     const moved = pane ? await herdr('pane', 'get', pane).then(out => JSON.parse(out).result?.pane?.workspace_id, () => undefined) : undefined
     const workspace = (typeof moved === 'string' && moved) || (await $.env.get('HERDR_WORKSPACE_ID'))
     if (!workspace) throw new Error('no workspace')
-    const label = `edit-${basename(root)}-${basename(path)}`
+    const tabs = JSON.parse(await herdr('tab', 'list', '--workspace', workspace)).result?.tabs
+    const number = (label: unknown) => (typeof label === 'string' ? Number(/^E(\d+)$/.exec(label)?.[1] ?? 0) : 0)
+    const label = `E${(Array.isArray(tabs) ? Math.max(0, ...tabs.map(tab => number(tab?.label))) : 0) + 1}`
     const { result } = JSON.parse(await herdr('tab', 'create', '--workspace', workspace, '--cwd', root, '--label', label, '--no-focus'))
     tab = result.tab.tab_id
     await herdr('pane', 'run', result.root_pane.pane_id, `${editor} ${quote(path.startsWith('-') ? `./${path}` : path)}`)
