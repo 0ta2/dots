@@ -74,7 +74,7 @@ agent を返し、どれが呼び出し元かを示さない (実測で `wQ` と
 ワークスペース内の各タブの `$HOME/.local/state/herdr-team/$HERDR_WORKSPACE_ID/<tab_id>.json` を読み、
 実装用の `key` が完全に一致するタブを採る。`key` は `impl-` + リポジトリ名 + 識別子。文字列の前方一致で済ませないこと。
 前方一致だと識別子 `feature` が `feature-api` のタブにも当たり、別の作業の担当者を掴む。
-記録が無い旧来の長いラベルだけは、最後の `-` 成分を落とした値で同じ `key` と照合する。
+記録に `key` が無い旧来の長いラベルだけは、最後の `-` 成分を落とした値で同じ `key` と照合する。
 
 ヒットは 0 件か 1 件になるはず (交代のたびに前任者のタブを閉じるため)。見つかったタブに
 いるエージェントは `herdr agent list` の `.result.agents[]` から同じ `tab_id` の要素で取る。
@@ -239,7 +239,7 @@ mkdir -p "$HOME/.local/state/herdr-team/$HERDR_WORKSPACE_ID"
 
 `repos` には `--add-dir` で渡す場所も含める。worktree で作業させるなら worktree のパスを書く。
 unmerged はこの `repos` を読み、委譲先の差分を依頼元のペインに並べる。
-`key`・`role`・`kind` は毎回書く。imadoko は役割と種別を記録から、状態を herdr から読む。書けなくても依頼は止めない。
+`key`・`role`・`kind` は毎回書く。imadoko は役割と種別を記録から、状態を herdr から読む。書けなければ依頼を送らない。新規に作ったタブは閉じ、再利用したタブは閉じずに止め、ユーザーへ報告する。
 
 ## 依頼を送る
 

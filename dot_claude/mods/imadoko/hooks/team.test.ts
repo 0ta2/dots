@@ -68,6 +68,26 @@ test('short tab labels use their records for role and kind while old labels stay
   ])
 })
 
+test('short tab marks reserve their numbers for old labels', () => {
+  const tabs = [
+    { tabId: 'i1', label: 'I1' },
+    { tabId: 'old-i', label: 'impl-dots-x-codex' },
+    { tabId: 'r2', label: 'R2' },
+    { tabId: 'old-r1', label: 'review-dots-1-claude' },
+    { tabId: 'old-r2', label: 'review-dots-2-claude' },
+  ]
+  const agents = tabs.map((tab, n) => ({ paneId: `p${n}`, tabId: tab.tabId, status: 'working' as const }))
+  const { list, book } = assignMarks(members(tabs, agents, {}, undefined), EMPTY_BOOK)
+  expect(Object.fromEntries(list.map(member => [member.tabId, member.mark]))).toEqual({
+    i1: 'I1',
+    'old-i': 'I2',
+    r2: 'R2',
+    'old-r1': 'R1',
+    'old-r2': 'R3',
+  })
+  expect(book.marks).toMatchObject({ i1: 'I1', r2: 'R2' })
+})
+
 test('a mark stays with its tab and is never handed to another one', () => {
   const tabs = parseTabs(TABS)
   const first = assignMarks(members(tabs, parseAgents(AGENTS), {}, 't1'), EMPTY_BOOK)

@@ -184,12 +184,21 @@ export function members(tabs: Tab[], agents: Agent[], records: Record<string, Te
 export function assignMarks<T extends TeamMember>(list: T[], book: MarkBook): { list: T[]; book: MarkBook } {
   const marks = { ...book.marks }
   const next = { ...book.next }
+  const used = new Set(Object.values(marks))
+  for (const m of list) {
+    if (/^[A-Z]\d+$/.test(m.label)) {
+      marks[m.tabId] = m.label
+      used.add(m.label)
+    }
+  }
   const marked = list.map(m => {
-    if (/^[A-Z]\d+$/.test(m.label)) return { ...m, mark: m.label }
+    if (/^[A-Z]\d+$/.test(m.label)) return { ...m, mark: marks[m.tabId]! }
     if (marks[m.tabId] === undefined) {
-      const n = (next[m.role] ?? 0) + 1
+      let n = (next[m.role] ?? 0) + 1
+      while (used.has(`${MARK_LETTERS[m.role]}${n}`)) n += 1
       next[m.role] = n
       marks[m.tabId] = n <= 9 ? `${MARK_LETTERS[m.role]}${n}` : ''
+      used.add(marks[m.tabId]!)
     }
     return { ...m, mark: marks[m.tabId]! }
   })

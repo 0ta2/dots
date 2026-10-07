@@ -74,7 +74,7 @@ agent を返し、どれが呼び出し元かを示さない (実測で `wQ` と
 ワークスペース内の各タブの `$HOME/.local/state/herdr-team/$HERDR_WORKSPACE_ID/<tab_id>.json` を読み、
 レビュー用の `key` が完全に一致するタブを採る。`key` は `review-` + リポジトリ名 + 識別子。文字列の前方一致で済ませないこと。
 前方一致だと識別子 `feature` が `feature-api` のタブにも当たり、別の作業の担当者を掴む。
-記録が無い旧来の長いラベルだけは、最後の `-` 成分を落とした値で同じ `key` と照合する。
+記録に `key` が無い旧来の長いラベルだけは、最後の `-` 成分を落とした値で同じ `key` と照合する。
 
 ヒットは 0 件か 1 件になるはず (交代のたびに前任者のタブを閉じるため)。見つかったタブに
 いるエージェントは `herdr agent list` の `.result.agents[]` から同じ `tab_id` の要素で取る。
@@ -270,7 +270,7 @@ mkdir -p "$HOME/.local/state/herdr-team/$HERDR_WORKSPACE_ID"
 {"task": "<レビュー対象を 1 行で。例: dots#163 の再レビュー>", "key": "review-$repo-$identifier", "role": "review", "kind": "<codex または claude>", "pr": {"owner": "<owner>", "repo": "<repo>", "number": 174}}
 ```
 
-`key`・`role`・`kind` は毎回書く。PR 以外は `pr` を省く。imadoko は役割と種別を記録から、状態を herdr から読む。書けなくても依頼は止めない。
+`key`・`role`・`kind` は毎回書く。PR 以外は `pr` を省く。imadoko は役割と種別を記録から、状態を herdr から読む。書けなければ依頼を送らない。新規に作ったタブは閉じ、再利用したタブは閉じずに止め、ユーザーへ報告する。
 
 ## 依頼を送る
 
