@@ -31,7 +31,7 @@ const AGENTS = JSON.stringify({
   },
 })
 
-type World = { agents: string; paneGet?: string; space?: string; screenReply?: (n: number) => Promise<string>; store?: Record<string, unknown>; files?: Record<string, string>; summary?: typeof SUMMARY; pullView?: string | Promise<string>; unresolved?: string | Promise<string>; session?: { id: string } }
+type World = { agents: string; tabs?: string; paneGet?: string; space?: string; screenReply?: (n: number) => Promise<string>; store?: Record<string, unknown>; files?: Record<string, string>; summary?: typeof SUMMARY; pullView?: string | Promise<string>; unresolved?: string | Promise<string>; session?: { id: string } }
 
 function standIn(on: On, selfLabel: string, env: Record<string, string>, world: World = { agents: AGENTS }) {
   const prompts: string[] = []
@@ -75,7 +75,7 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
     }
     const key = e.argv.slice(1).join(' ')
     const out: Record<string, string> = {
-      [`tab list --workspace ${world.space ?? 'wW'}`]: tabsOut(selfLabel),
+      [`tab list --workspace ${world.space ?? 'wW'}`]: world.tabs ?? tabsOut(selfLabel),
       'agent list': world.agents,
       'pane read p2': '? Which login provider should I use?',
       'pane read p3': '? Should I block on the naming nits?',
@@ -365,6 +365,25 @@ test('a pull request the session opened shows in the pane', async ($, on) => {
   expect(await ui.find({ text: /ブランチ強制削除を防ぐ/ })).toBeDefined()
   expect(await ui.find({ text: /未解決 1/ })).toBeDefined()
   expect(await ui.find({ text: /マージ可/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a short tab with a matching review record is shown as the reviewer', async ($, on) => {
+  const seen = standIn(on, 'main', ENV, {
+    agents: JSON.stringify({ result: { agents: [{ pane_id: 'p1', tab_id: 't1', agent: 'claude', agent_status: 'working' }, { pane_id: 'p2', tab_id: 't2', agent: 'codex', agent_status: 'working' }] } }),
+    tabs: JSON.stringify({ result: { tabs: [{ tab_id: 't1', label: 'main' }, { tab_id: 't2', label: 'R2' }] } }),
+    files: { '/herdr-team/wW/t2.json': '{"task":"t","role":"review","kind":"codex","pr":{"owner":"0ta2","repo":"dots","number":171}}' },
+    pullView: JSON.stringify({ title: 't', url: 'https://github.com/0ta2/dots/pull/171', state: 'OPEN', mergeStateStatus: 'CLEAN', statusCheckRollup: [] }),
+    unresolved: '0',
+  })
+  on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: 'https://github.com/0ta2/dots/pull/171\n', stderr: '', interrupted: false } }))
+
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: 'Bash', command: 'gh pr create --title x' })
+  await seen.clock.settle()
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ text: /R2 · レビュー · codex/ })).toBeDefined()
+  expect(await ui.find({ text: /レビュー担当: R2/ })).toBeDefined()
   await ui.unmount()
 })
 

@@ -49,8 +49,9 @@ import {
   paneOf,
   parseAgents,
   parseTabs,
-  parseTask,
+  parseRecord,
   savedBooksOf,
+  type TeamRecord,
   withBook,
   summary,
   teamWordsFor,
@@ -434,20 +435,20 @@ const watchPulls = ($: EngineInterface) => {
 }
 
 /** The one-line tasks herdr-delegate and herdr-review left for the tabs open now. */
-const taskRecords = async ($: EngineInterface, at: Where, tabs: Tab[]): Promise<Record<string, string>> => {
+const taskRecords = async ($: EngineInterface, at: Where, tabs: Tab[]): Promise<Record<string, TeamRecord>> => {
   // A PM whose pane moved still writes under the workspace it started in, and
   // a PM started here writes under this one; the record for where the tab is now wins.
   const dirs = [...new Set([at.space, at.workspace])].map(ws => `${at.home}/.local/state/herdr-team/${ws}`)
   const pairs = await Promise.all(
     tabs.map(async t => {
       for (const dir of dirs) {
-        const task = parseTask(await $.fs.read(`${dir}/${t.tabId}.json`).catch(() => ''))
-        if (task !== undefined) return [t.tabId, task] as const
+        const record = parseRecord(await $.fs.read(`${dir}/${t.tabId}.json`).catch(() => ''))
+        if (record !== undefined) return [t.tabId, record] as const
       }
       return [t.tabId, undefined] as const
     }),
   )
-  return Object.fromEntries(pairs.filter((p): p is readonly [string, string] => p[1] !== undefined))
+  return Object.fromEntries(pairs.filter((p): p is readonly [string, TeamRecord] => p[1] !== undefined))
 }
 
 /** This workspace's mark book: the session's own, else the one the store kept. */
@@ -842,7 +843,7 @@ export const register: Register = on => {
           <Section sectionKey="pulls" title={pw.title}>
             {listedPulls.map(pull => {
               const view = views[pullKey(pull)]
-              const reviewers = mates.filter(member => isReviewerOf(member.label, pull))
+              const reviewers = mates.filter(member => isReviewerOf(member, pull))
               const href = `https://github.com/${pull.owner}/${pull.repo}/pull/${pull.number}`
 
               return (

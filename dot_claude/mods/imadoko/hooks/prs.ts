@@ -61,4 +61,5 @@ export function parseUnresolved(text: string): number | undefined {
   }
 }
 
-export const isReviewerOf = (label: string, p: PullRef) => label.startsWith(`review-${p.repo}-${p.number}-`)
+export const isReviewerOf = (member: { label: string; record?: { pr?: PullRef } }, p: PullRef) =>
+  member.record?.pr === undefined ? member.label.startsWith(`review-${p.repo}-${p.number}-`) : member.record.pr.owner === p.owner && member.record.pr.repo === p.repo && member.record.pr.number === p.number
