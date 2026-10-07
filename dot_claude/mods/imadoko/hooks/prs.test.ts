@@ -50,8 +50,10 @@ test('counts unresolved review threads', () => {
   expect(parseUnresolved('{')).toBeUndefined()
 })
 
-test('recognizes a matching reviewer label', () => {
+test('recognizes a matching reviewer record or old label', () => {
   const pull = { owner: '0ta2', repo: 'dots', number: 171 }
-  expect(isReviewerOf('review-dots-171-codex', pull)).toBe(true)
-  expect(isReviewerOf('review-dots-1710-codex', pull)).toBe(false)
+  expect(isReviewerOf({ label: 'R2', record: { pr: pull } }, pull)).toBe(true)
+  expect(isReviewerOf({ label: 'R2', record: { pr: { ...pull, number: 170 } } }, pull)).toBe(false)
+  expect(isReviewerOf({ label: 'review-dots-171-codex' }, pull)).toBe(true)
+  expect(isReviewerOf({ label: 'review-dots-1710-codex' }, pull)).toBe(false)
 })

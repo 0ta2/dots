@@ -7,6 +7,13 @@ export type Tab = { tabId: string; label: string }
 
 export type Agent = { paneId: string; tabId: string; status: MemberState; kind?: string }
 
+export type TeamRecord = {
+  task?: string
+  role?: Extract<Role, 'impl' | 'review'>
+  kind?: string
+  pr?: { owner: string; repo: string; number: number }
+}
+
 /** The tab labels that make this session the team's lead: the PM in the space's main tab. */
 const LEAD_LABELS = ['main', 'pm']
 const STATES: readonly MemberState[] = ['working', 'blocked', 'idle', 'done']
@@ -152,17 +159,19 @@ export const withBook = (saved: SavedBooks, space: string, book: MarkBook, now: 
  * The space's members other than this session: the tabs herdr-delegate and
  * herdr-review opened, and any other tab an agent runs in.
  */
-export function members(tabs: Tab[], agents: Agent[], tasks: Record<string, string>, selfTab?: string): TeamMember[] {
+export function members(tabs: Tab[], agents: Agent[], records: Record<string, TeamRecord>, selfTab?: string): (TeamMember & { record?: TeamRecord })[] {
   const list = tabs.flatMap(tab => {
     if (tab.tabId === selfTab) return []
     const mine = agents.filter(a => a.tabId === tab.tabId)
-    const { role, kind } = roleOf(tab.label)
+    const record = records[tab.tabId]
+    const labelRole = roleOf(tab.label)
+    const shortRole = /^I\d+$/.test(tab.label) ? 'impl' : /^R\d+$/.test(tab.label) ? 'review' : undefined
+    const role = record?.role ?? shortRole ?? labelRole.role
     if (role === 'member' && mine.length === 0) return []
     const status = mine.length ? PRIORITY.find(p => mine.some(a => a.status === p))! : 'absent'
     const paneId = mine.find(a => a.status === status)?.paneId
-    const task = tasks[tab.tabId]
-    const k = kind ?? mine.find(a => a.kind)?.kind
-    return [{ tabId: tab.tabId, label: tab.label, role, status, mark: '', ...(paneId && { paneId }), ...(k && { kind: k }), ...(task && { task }) }]
+    const k = record?.kind ?? labelRole.kind ?? mine.find(a => a.kind)?.kind
+    return [{ tabId: tab.tabId, label: tab.label, role, status, mark: '', ...(paneId && { paneId }), ...(k && { kind: k }), ...(record?.task && { task: record.task }), ...(record && { record }) }]
   })
   return list.sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role) || a.label.localeCompare(b.label))
 }
@@ -172,14 +181,24 @@ export function members(tabs: Tab[], agents: Agent[], tasks: Record<string, stri
  * else the next number of its role. A mark is never handed to another tab,
  * even after its own closes, and none is given past nine of a role.
  */
-export function assignMarks(list: TeamMember[], book: MarkBook): { list: TeamMember[]; book: MarkBook } {
+export function assignMarks<T extends TeamMember>(list: T[], book: MarkBook): { list: T[]; book: MarkBook } {
   const marks = { ...book.marks }
   const next = { ...book.next }
+  const used = new Set(Object.values(marks))
+  for (const m of list) {
+    if (/^[A-Z]\d+$/.test(m.label)) {
+      marks[m.tabId] = m.label
+      used.add(m.label)
+    }
+  }
   const marked = list.map(m => {
+    if (/^[A-Z]\d+$/.test(m.label)) return { ...m, mark: marks[m.tabId]! }
     if (marks[m.tabId] === undefined) {
-      const n = (next[m.role] ?? 0) + 1
+      let n = (next[m.role] ?? 0) + 1
+      while (used.has(`${MARK_LETTERS[m.role]}${n}`)) n += 1
       next[m.role] = n
       marks[m.tabId] = n <= 9 ? `${MARK_LETTERS[m.role]}${n}` : ''
+      used.add(marks[m.tabId]!)
     }
     return { ...m, mark: marks[m.tabId]! }
   })
@@ -189,10 +208,17 @@ export function assignMarks(list: TeamMember[], book: MarkBook): { list: TeamMem
 export const marksOf = (list: TeamMember[], words: TeamWords): MemberMark[] =>
   list.filter(m => m.mark !== '').map(m => ({ mark: m.mark, about: [words.roles[m.role], m.kind, m.task ?? m.label].filter(Boolean).join(' · ') }))
 
-export function parseTask(text: string): string | undefined {
+export function parseRecord(text: string): TeamRecord | undefined {
   try {
-    const task = (JSON.parse(text) as { task?: unknown }).task
-    return str(typeof task === 'string' ? task.trim() : undefined)
+    const value = JSON.parse(text) as Json
+    const task = typeof value.task === 'string' ? str(value.task.trim()) : undefined
+    const role = value.role === 'impl' || value.role === 'review' ? value.role : undefined
+    const kind = typeof value.kind === 'string' && KINDS.includes(value.kind) ? value.kind : undefined
+    const pr = value.pr
+    const pull = pr && typeof pr === 'object' ? pr as Json : undefined
+    const parsedPr = pull && typeof pull.owner === 'string' && typeof pull.repo === 'string' && typeof pull.number === 'number' ? { owner: pull.owner, repo: pull.repo, number: pull.number } : undefined
+    const record = { ...(task && { task }), ...(role && { role }), ...(kind && { kind }), ...(parsedPr && { pr: parsedPr }) }
+    return Object.keys(record).length ? record : undefined
   } catch {
     return undefined
   }

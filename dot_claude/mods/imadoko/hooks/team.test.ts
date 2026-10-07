@@ -33,13 +33,59 @@ test('roles come from the tab label, the main tab leads and is left out, and eac
   expect(roleOf('review-dots-163-claude')).toEqual({ role: 'review', kind: 'claude' })
   expect(isLead(parseTabs(TABS), 't1')).toBe(true)
   expect(isLead(parseTabs(TABS), 't2')).toBe(false)
-  const { list } = assignMarks(members(parseTabs(TABS), parseAgents(AGENTS), { t2: 'ログイン画面を直す' }, 't1'), EMPTY_BOOK)
+  const { list } = assignMarks(members(parseTabs(TABS), parseAgents(AGENTS), { t2: { task: 'ログイン画面を直す' } }, 't1'), EMPTY_BOOK)
   expect(list.map(m => [m.mark, m.role, m.status, m.paneId])).toEqual([
     ['I1', 'impl', 'blocked', 'p2'],
     ['R1', 'review', 'absent', undefined],
     ['M1', 'member', 'idle', 'p5'],
   ])
   expect(marksOf(list, JA)[0]).toEqual({ mark: 'I1', about: '実装 · codex · ログイン画面を直す' })
+})
+
+test('short tab labels use their records for role and kind while old labels stay compatible', () => {
+  const tabs = [
+    { tabId: 'main', label: 'main' },
+    { tabId: 'r2', label: 'R2' },
+    { tabId: 'i1', label: 'I1' },
+    { tabId: 'old', label: 'review-dots-1-claude' },
+  ]
+  const agents = [
+    { paneId: 'p2', tabId: 'r2', status: 'working' as const },
+    { paneId: 'p1', tabId: 'i1', status: 'working' as const, kind: 'codex' },
+    { paneId: 'p3', tabId: 'old', status: 'working' as const },
+  ]
+  const { list } = assignMarks(
+    members(tabs, agents, {
+      r2: { task: 't', role: 'review', kind: 'codex', pr: { owner: '0ta2', repo: 'dots', number: 174 } },
+      i1: { task: 't' },
+    }, 'main'),
+    EMPTY_BOOK,
+  )
+  expect(list.map(member => [member.mark, member.role, member.kind])).toEqual([
+    ['I1', 'impl', 'codex'],
+    ['R2', 'review', 'codex'],
+    ['R1', 'review', 'claude'],
+  ])
+})
+
+test('short tab marks reserve their numbers for old labels', () => {
+  const tabs = [
+    { tabId: 'i1', label: 'I1' },
+    { tabId: 'old-i', label: 'impl-dots-x-codex' },
+    { tabId: 'r2', label: 'R2' },
+    { tabId: 'old-r1', label: 'review-dots-1-claude' },
+    { tabId: 'old-r2', label: 'review-dots-2-claude' },
+  ]
+  const agents = tabs.map((tab, n) => ({ paneId: `p${n}`, tabId: tab.tabId, status: 'working' as const }))
+  const { list, book } = assignMarks(members(tabs, agents, {}, undefined), EMPTY_BOOK)
+  expect(Object.fromEntries(list.map(member => [member.tabId, member.mark]))).toEqual({
+    i1: 'I1',
+    'old-i': 'I2',
+    r2: 'R2',
+    'old-r1': 'R1',
+    'old-r2': 'R3',
+  })
+  expect(book.marks).toMatchObject({ i1: 'I1', r2: 'R2' })
 })
 
 test('a mark stays with its tab and is never handed to another one', () => {
