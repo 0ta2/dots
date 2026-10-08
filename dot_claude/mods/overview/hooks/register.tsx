@@ -154,7 +154,7 @@ export const register: Register = on => {
   on('session.start', async ($, event, next) => {
     await $.command.register({ name: 'overview', description: 'herdr の全 main をカンバンで表示する' })
     if ((await $.env.get('HERDR_ENV')) === '1' && await read($, isOpen)) {
-      void refresh($)
+      void refresh($).catch(() => undefined)
       startPolling($)
     }
     return next(event)
