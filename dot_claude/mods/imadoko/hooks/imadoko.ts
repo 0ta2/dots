@@ -626,8 +626,13 @@ export const setSections = (imadoko: Imadoko, sections: Sections, turn: number, 
   if (turn < imadoko.sectionsTurn) return imadoko
   const before = imadoko.sections?.pendingTurns ?? {}
   const pendingTurns = Object.fromEntries(sections.pending.map(item => [item, before[item] ?? turn]))
-  // A correction about a task holds while that task is on the timeline; a new task of the same title starts fresh.
-  const corrections = (imadoko.corrections ?? []).filter(one => !one.startsWith('The task "') || sections.tasks.some(task => one.startsWith(`The task "${task.title}" `)))
+  // A correction about a task holds while that task is on the timeline; one about a pending item, until a
+  // summary has left the item out. Either way a later task or item of the same text starts fresh.
+  const corrections = (imadoko.corrections ?? []).filter(one =>
+    one.startsWith('The task "')
+      ? sections.tasks.some(task => one.startsWith(`The task "${task.title}" `))
+      : sections.pending.some(item => one.startsWith(`The pending item "${item}" `)),
+  )
   return { ...imadoko, sections: { ...sections, pendingTurns }, sectionsTurn: turn, savedAt, corrections }
 }
 

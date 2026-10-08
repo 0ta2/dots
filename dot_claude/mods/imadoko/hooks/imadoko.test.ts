@@ -262,4 +262,8 @@ test('空の指定は当てず、waiting 以外に直すと url も消し、タ�
   expect(done.sections?.tasks[0]).toEqual({ title: 'テスト', state: 'done', detail: '', owner: '', waitsOn: '', waitsFor: '' })
   const gone = setSections(done, { purpose: 'p', status: 's', tasks: [], decisions: [], pending: [] }, 2, 0)
   expect(gone.corrections).toEqual([])
+  const settled = resolvePending(base, '答える')
+  if (typeof settled === 'string') throw new Error(settled)
+  expect(setSections(settled, { purpose: 'p', status: 's', tasks: [], decisions: [], pending: ['答える'] }, 2, 0).corrections).toEqual(settled.corrections)
+  expect(setSections(settled, { purpose: 'p', status: 's', tasks: [], decisions: [], pending: [] }, 2, 0).corrections).toEqual([])
 })
