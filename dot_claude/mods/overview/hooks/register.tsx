@@ -182,20 +182,23 @@ export const register: Register = on => {
     if ((await $.env.get('HERDR_ENV')) !== '1') return <Text>herdr の中で開いてください</Text>
     const current = await read($, board)
     const columns = [
-      ['reply', '要返信', 'warning'],
-      ['working', '作業中', undefined],
-      ['review', 'レビュー待ち', undefined],
-      ['done', '完了', undefined],
+      ['reply', '要返信', 'warning', '#ffc8d8'],
+      ['working', '作業中', undefined, '#fff3a0'],
+      ['review', 'レビュー待ち', undefined, '#c8e4ff'],
+      ['done', '完了', undefined, '#cdeccd'],
     ] as const
     return (
       <Box flexDirection="row" gap={2}>
-        {columns.map(([column, title, color]) => (
-          <Box key={column} flexDirection="column" flexGrow={1}>
+        {columns.map(([column, title, color, paper]) => (
+          <Box key={column} flexDirection="column" flexGrow={1} gap={1}>
             <Text bold color={color}>{`${title} (${current[column].length})`}</Text>
             {current[column].map((card, index) => (
-              <Box key={`box:${column}:${index}`} flexDirection="column">
-                <Button key={`card:${column}:${index}`} plain label={card.title} onPress={() => herdr($, ['tab', 'focus', card.tabId])} />
-                <Text dimColor>{`${card.workspace} · ${card.mark} · ${elapsed(card.elapsedMs)}`}</Text>
+              <Box key={`box:${column}:${index}`} flexDirection="column" backgroundColor={paper} paddingX={1} paddingY={1}>
+                <Box flexDirection="row" justifyContent="space-between">
+                  <Text bold color="black">{card.title}</Text>
+                  <Button key={`card:${column}:${index}`} plain label="↗" onPress={() => herdr($, ['tab', 'focus', card.tabId])} />
+                </Box>
+                <Text color="#555555">{`${card.workspace} · ${card.mark} · ${elapsed(card.elapsedMs)}`}</Text>
               </Box>
             ))}
           </Box>

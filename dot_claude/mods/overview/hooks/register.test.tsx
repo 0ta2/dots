@@ -63,8 +63,8 @@ test('overview reads lead states and blocked tasks, draws cards, and focuses the
   expect(opened).toEqual([{ id: 'overview', title: 'overview', columns: 200, closeOnEscape: true }])
 
   const ui = await $.ui.mount({ plugin: 'overview', surface: 'terminal', component: 'Pane', requestId: 'overview', props: PANE })
-  expect((await ui.find({ key: 'card:reply:0' }))?.props.label).toBe('承認を待つ')
-  expect((await ui.find({ key: 'card:reply:1' }))?.props.label).toBe('返信してください')
+  expect(await ui.find({ text: '承認を待つ' })).toBeDefined()
+  expect(await ui.find({ text: '返信してください' })).toBeDefined()
   expect(await ui.find({ text: '表示しない' })).toBeUndefined()
   await ui.press({ key: 'card:reply:0' })
   expect(calls.at(-1)).toEqual(['herdr', 'tab', 'focus', 't2'])
@@ -97,6 +97,6 @@ test('overview still updates mains when agent list fails', async ($, on) => {
 
   await $.command.run({ command: 'overview', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 200 } })
   const ui = await $.ui.mount({ plugin: 'overview', surface: 'terminal', component: 'Pane', requestId: 'overview', props: PANE })
-  expect((await ui.find({ key: 'card:reply:0' }))?.props.label).toBe('返信してください')
+  expect(await ui.find({ text: '返信してください' })).toBeDefined()
   await ui.unmount()
 })
