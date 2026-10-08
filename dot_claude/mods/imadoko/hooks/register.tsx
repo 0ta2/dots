@@ -19,6 +19,7 @@ import {
   recordActivity,
   reviewRuleOf,
   setSections,
+  withoutTurns,
   statusFilePath,
   statusFileText,
   startOver,
@@ -72,6 +73,11 @@ const frame = atom({ plugin: 'imadoko', key: 'frame' } as const, 0)
 // Each workspace's mark book; the store keeps a copy, since a /resume empties this.
 const markBooks = atom({ plugin: 'imadoko', key: 'marks' } as const, {} as Record<string, MarkBook>)
 const pulls = atom({ plugin: 'imadoko', key: 'pulls' } as const, [] as PullRef[])
+/** Each reply row drawn while a turn ran, by the turn it was first drawn in; a pending item jumps to its turn's last. */
+const rowTurns = new Map<string, number>()
+let rowsEpoch = 0
+const replyRowOf = (imadoko: Imadoko, turn: number): string | undefined =>
+  imadoko.epoch === rowsEpoch ? [...rowTurns].findLast(([, at]) => at === turn)?.[0] : undefined
 const pullViews = atom({ plugin: 'imadoko', key: 'pullViews' } as const, {} as Record<string, (PullView & { unresolved?: number }) | 'unreadable'>)
 const MARKS_KEY = 'imadoko-marks'
 
@@ -230,7 +236,7 @@ const summarize = async ($: EngineInterface, locale: Locale, cwd: string) => {
   if (applied === undefined || sections === undefined) return
   if (sessionId !== null) {
     await $.store.set(storeKey(sessionId), {
-      sections,
+      sections: withoutTurns(sections),
       turnKey: turnKeyOf(current),
       savedAt,
       usage: applied.usage,
@@ -334,7 +340,7 @@ const saveKnown = async ($: EngineInterface) => {
   if (current.sessionId === null || current.sections === null || current.isWorking || turn === undefined || current.sectionsTurn !== turn.turn) return
 
   await $.store.set(storeKey(current.sessionId), {
-    sections: current.sections,
+    sections: withoutTurns(current.sections),
     turnKey: turnKeyOf(current),
     savedAt: await $.clock.now(),
     usage: current.usage,
@@ -945,13 +951,41 @@ export const register: Register = on => {
         </Section>
         {paneSections(current, locale.words).map(section => (
           <Section key={section.key} sectionKey={section.key} title={section.title}>
-            {section.rows.map(row => (
-              <Text wrap="wrap">{row}</Text>
-            ))}
+            {section.key === 'pending' && current.sections?.pending.length
+              ? current.sections.pending.map((item, index) => {
+                  const turn = current.sections?.pendingTurns?.[item]
+                  const row = turn === undefined ? undefined : replyRowOf(current, turn)
+                  return (
+                    <Box key={`pending:${index}`} flexDirection="row" gap={1}>
+                      <Box flexGrow={1} flexShrink={1}>
+                        <Text wrap="wrap">{`- ${item}`}</Text>
+                      </Box>
+                      {row === undefined ? null : <Button key={`jump:${index}:${row}`} plain label="↩" onPress={() => $.ui.scroll({ to: { requestId: row }, block: 'start' })} />}
+                    </Box>
+                  )
+                })
+              : section.rows.map(row => <Text wrap="wrap">{row}</Text>)}
           </Section>
         ))}
       </Box>
     )
+  })
+
+  // ponytail: rows are tied to the turn running when they are first drawn, so a resumed session has none to jump to.
+  on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {
+    const current = await read($, imadoko)
+    const turn = current.turns.at(-1)?.turn
+    if (isInteractive && current.isWorking && turn !== undefined) {
+      if (current.epoch !== rowsEpoch) {
+        rowTurns.clear()
+        rowsEpoch = current.epoch
+      }
+      const oldest = current.turns[0]?.turn ?? turn
+      for (const [row, at] of rowTurns) if (at < oldest) rowTurns.delete(row)
+      if (!rowTurns.has(e.requestId)) rowTurns.set(e.requestId, turn)
+    }
+
+    return next(e)
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {

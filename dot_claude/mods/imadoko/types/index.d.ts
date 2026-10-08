@@ -47,6 +47,8 @@ export type Sections = {
   tasks: Task[]
   decisions: string[]
   pending: string[]
+  /** The turn each pending item first showed up after, keyed by its text. */
+  pendingTurns?: Record<string, number>
 }
 
 /** The Haiku calls a session's imadoko summary took: how many, and the tokens they read and wrote. */

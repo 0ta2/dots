@@ -411,10 +411,10 @@ test('/imadoko の Pane に目的・現状・タスクの時系列・決定事�
       '┆',
       '◌ wait  Write the release notes ▸',
       '     with: R1 · waits on: the pull request merging',
-      'Decisions',
-      '- English by default (answer to: which language?)',
       'Waiting on you',
       '- Approve publishing the repository',
+      'Decisions',
+      '- English by default (answer to: which language?)',
     ])
   }
 })
@@ -482,7 +482,7 @@ test('/imadoko の Pane では見出しをオレンジの太字で、本文を�
     walk(drawn)
     const lines = texts.map(one => ({ text: shownTextOf(one), props: one.props }))
     expect(lines.filter(one => one.props?.bold === true && one.props?.wrap === 'wrap'), surface).toEqual(
-      ['Purpose', 'Status', 'Tasks', 'Decisions', 'Waiting on you'].map(heading),
+      ['Purpose', 'Status', 'Tasks', 'Waiting on you', 'Decisions'].map(heading),
     )
     expect(lines.filter(one => one.text === IMADOKO.purpose || one.text === '(none)'), surface).toEqual([
       body(IMADOKO.purpose),
@@ -506,7 +506,7 @@ test('空の項目は (none) と書く', async ($, on) => {
   await startInteractive($)
   await runTurn($, clock, 'パネルを作りたい', '作りました', 't1')
 
-  expect((await paneRows($)).slice(4)).toEqual(['Tasks', '(none)', 'Decisions', '(none)', 'Waiting on you', '(none)'])
+  expect((await paneRows($)).slice(4)).toEqual(['Tasks', '(none)', 'Waiting on you', '(none)', 'Decisions', '(none)'])
 })
 
 test('Haiku には前回の概要・依頼・回答・質問と回答・そのターンの操作を渡し、JSON で返させる', async ($, on) => {
@@ -670,9 +670,9 @@ test('最初の概要から Haiku が答えないときは、依頼を目的に�
     '作り方を決めた',
     'Tasks',
     '(none)',
-    'Decisions',
-    '(none)',
     'Waiting on you',
+    '(none)',
+    'Decisions',
     '(none)',
   ])
 })
@@ -702,8 +702,49 @@ test('確認待ちとこれからのタスクは件数で切らずに全部出�
   await runTurn($, clock, 'パネルを作りたい', '作りました', 't1')
 
   const rows = await paneRows($)
-  expect(rows.slice(rows.indexOf('Waiting on you') + 1)).toEqual(many.map(one => `- ${one}`))
+  expect(rows.slice(rows.indexOf('Waiting on you') + 1, rows.indexOf('Decisions'))).toEqual(many.map(one => `- ${one}`))
   expect(rows.filter(row => row.startsWith('◌'))).toEqual(many.map(one => `◌ wait  ${one} ▸`))
+})
+
+test('確認待ちの行に、その項目が出たターンの最後の返答へ移るボタンを出す', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  standInForEngine(on)
+  recordModelCalls(on)
+
+  await startInteractive($)
+  await $.turn.start({ text: 'パネルを作りたい', turnId: 't1' })
+  for (const requestId of ['m1', 'm2']) {
+    const row = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'AssistantMessage', requestId, props: { text: requestId, isFirstOfReply: requestId === 'm1' } })
+    await row.unmount()
+  }
+  await completeTurn($, '作りました', 't1')
+  await clock.settle()
+
+  const ui = await $.ui.mount(paneOn('terminal'))
+  expect(await ui.find({ key: 'jump:0:m2' })).toBeDefined()
+  await ui.unmount()
+})
+
+test('/clear の後は前の会話の返答へ移るボタンを出さない', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  const session = { id: 'sess-1' }
+  standInForEngine(on, [], {}, [], session)
+  recordModelCalls(on)
+
+  await startInteractive($)
+  await $.turn.start({ text: 'クリア前の依頼', turnId: 't1' })
+  const row = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'AssistantMessage', requestId: 'old', props: { text: 'old', isFirstOfReply: true } })
+  await row.unmount()
+  await completeTurn($, 'クリア前の回答', 't1')
+  await clock.settle()
+  await $.session.end({ reason: 'clear', sessionId: 'sess-1', resume: { id: 'sess-1' } })
+  session.id = 'sess-2'
+  await clock.advance(1_000)
+  await runTurn($, clock, 'クリア後の依頼', 'クリア後の回答', 't2')
+
+  const ui = await $.ui.mount(paneOn('terminal'))
+  expect(await ui.find({ key: 'jump:0:old' })).toBeUndefined()
+  await ui.unmount()
 })
 
 test('subagent のターンでは概要を作り直さない', async ($, on) => {
@@ -1029,10 +1070,10 @@ test('Claude Code の language が Japanese なら見出しを日本語にし、
     '┆',
     '◌ 待  Write the release notes ▸',
     '     担当: R1 · 待ち: the pull request merging',
-    '決定事項',
-    '- English by default (answer to: which language?)',
     '確認待ち',
     '- Approve publishing the repository',
+    '決定事項',
+    '- English by default (answer to: which language?)',
   ])
   expect(requests[0]?.system?.split('\n').at(-1)).toBe('Write every value in Japanese.')
   expect(opened).toEqual([{ id: PANE_ID, title: '今どこ', focus: true, closeOnEscape: true, columns: 59 }])
@@ -1046,7 +1087,7 @@ test('language が Japanese なら、空の項目もほかの表示と同じく�
   await startInteractive($)
   await runTurn($, clock, 'パネルを作りたい', '作りました', 't1')
 
-  expect((await paneRows($)).slice(4)).toEqual(['タスク', '(なし)', '決定事項', '(なし)', '確認待ち', '(なし)'])
+  expect((await paneRows($)).slice(4)).toEqual(['タスク', '(なし)', '確認待ち', '(なし)', '決定事項', '(なし)'])
 })
 
 const FALLBACK_BAND = ['Purpose: パネルを作りたい', 'Status: 作りました']

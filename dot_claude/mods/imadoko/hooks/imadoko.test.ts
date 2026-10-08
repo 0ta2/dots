@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { EMPTY, activityOf, completeTurn, fallbackSummary, localeFor, parseSections, rebuild, startTurn, statusFilePath, storedImadokoOf, summaryRequest, turnKeyOf, underHistory } from './imadoko'
+import { EMPTY, activityOf, completeTurn, fallbackSummary, localeFor, parseSections, rebuild, setSections, startTurn, statusFilePath, storedImadokoOf, summaryRequest, turnKeyOf, underHistory } from './imadoko'
 
 describe('fallbackSummary は最終回答の最初の本文行を現状の代わりにする', () => {
   const cases: [string, string, string | undefined][] = [
@@ -219,4 +219,11 @@ describe('rebuild は失敗した操作を作業記録に入れない', () => {
     ])
     expect(rebuilt.turns[0]?.activity).toEqual(['Bash: Push the commits'])
   })
+})
+
+test('setSections は確認待ちの項目ごとに最初に出たターンを覚える', () => {
+  const sections = { purpose: 'p', status: 's', tasks: [], decisions: [], pending: ['a'] }
+  const first = setSections(EMPTY, sections, 1, 0)
+  const second = setSections(first, { ...sections, pending: ['a', 'b'] }, 2, 0)
+  expect(second.sections?.pendingTurns).toEqual({ a: 1, b: 2 })
 })

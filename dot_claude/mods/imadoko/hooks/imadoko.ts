@@ -402,7 +402,7 @@ export const summaryRequest = (
   const turn = lastTurn(imadoko)
   const answered = turn === undefined ? [] : answeredIn(imadoko, turn, words)
   const prompt = [
-    `<previous_imadoko>${imadoko.sections === null ? '(none)' : JSON.stringify(imadoko.sections)}</previous_imadoko>`,
+    `<previous_imadoko>${imadoko.sections === null ? '(none)' : JSON.stringify(withoutTurns(imadoko.sections))}</previous_imadoko>`,
     ...historyLines(imadoko, words),
     `<latest_request>${turn === undefined ? '(none)' : (turn.ask ?? words.continued)}</latest_request>`,
     `<latest_answer>${turn?.answer ?? ''}</latest_answer>`,
@@ -565,8 +565,15 @@ export const storedImadokoOf = (value: unknown): StoredImadoko | undefined => {
 }
 
 /** Keeps the imadoko summary of the newest turn: a slow reply for an older one is dropped. */
-export const setSections = (imadoko: Imadoko, sections: Sections, turn: number, savedAt: number): Imadoko =>
-  turn < imadoko.sectionsTurn ? imadoko : { ...imadoko, sections, sectionsTurn: turn, savedAt }
+/** The sections as the model writes them and the store keeps them: without the turns the pending items came from. */
+export const withoutTurns = ({ pendingTurns: _, ...sections }: Sections): Sections => sections
+
+export const setSections = (imadoko: Imadoko, sections: Sections, turn: number, savedAt: number): Imadoko => {
+  if (turn < imadoko.sectionsTurn) return imadoko
+  const before = imadoko.sections?.pendingTurns ?? {}
+  const pendingTurns = Object.fromEntries(sections.pending.map(item => [item, before[item] ?? turn]))
+  return { ...imadoko, sections: { ...sections, pendingTurns }, sectionsTurn: turn, savedAt }
+}
 
 /** The band's two rows, each a label and its text: the purpose, and the status, marked while a turn runs. */
 export const bandRows = (imadoko: Imadoko, words: Words): { label: string; text: string }[] => [
@@ -584,8 +591,8 @@ export const paneSections = (imadoko: Imadoko, words: Words): { key: string; tit
     items === undefined || items.length === 0 ? [words.none] : items.map(item => `- ${item}`)
 
   return [
-    { key: 'decisions', title: words.decisions, rows: list(sections?.decisions) },
     { key: 'pending', title: words.pending, rows: list(sections?.pending) },
+    { key: 'decisions', title: words.decisions, rows: list(sections?.decisions) },
   ]
 }
 
