@@ -35,6 +35,8 @@ export type Task = {
   waitsOn: string
   /** Who it waits for: the user, others, or neither. */
   waitsFor: 'you' | 'others' | ''
+  /** The URL of what it waits on: a pull request, a Slack thread. */
+  url?: string
 }
 
 /** The imadoko summary Haiku keeps of the session, rewritten after every turn. */

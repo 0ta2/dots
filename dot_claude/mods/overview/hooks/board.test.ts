@@ -55,6 +55,23 @@ test('only waiting tasks for others become review cards', () => {
   ])
 })
 
+test('a review card carries the http(s) url of what it waits on', () => {
+  const status = {
+    tasks: [
+      { title: 'PR を待つ', state: 'waiting', waitsFor: 'others', detail: '', url: 'https://github.com/0ta2/dots/pull/181' },
+      { title: '変な URL', state: 'waiting', waitsFor: 'others', detail: '', url: 'file:///etc/passwd' },
+    ],
+    pending: [],
+    isWorking: false,
+    idleSince: now,
+    updatedAt: now,
+  }
+  expect(cards([main(status)], [], now).review).toEqual([
+    { column: 'review', title: 'PR を待つ', workspace: 'dots', mark: 'main', tabId: 't1', url: 'https://github.com/0ta2/dots/pull/181' },
+    { column: 'review', title: '変な URL', workspace: 'dots', mark: 'main', tabId: 't1' },
+  ])
+})
+
 test('a main whose tasks are all done and has no pending item becomes one done card', () => {
   const task = { title: '実装を終えた', state: 'done' as const, waitsFor: '', detail: '' }
   const yesterday = new Date(2026, 9, 7, 12).valueOf()

@@ -40,7 +40,7 @@ function fake(on: On, environment: Record<string, string> = { HERDR_ENV: '1', HO
   on('fs.read', (_$, e) => {
     const value =
       e.path === '/home/u/.local/state/imadoko/ws1/p1.json'
-        ? JSON.stringify({ isLead: true, tasks: [], pending: ['返信してください'], isWorking: false, idleSince: NOW - 3_000, updatedAt: NOW })
+        ? JSON.stringify({ isLead: true, tasks: [{ title: 'PR を待つ', state: 'waiting', waitsFor: 'others', url: 'https://github.com/o/r/pull/1' }], pending: ['返信してください'], isWorking: false, idleSince: NOW - 3_000, updatedAt: NOW })
         : e.path === '/home/u/.local/state/imadoko/ws1/p2.json'
           ? JSON.stringify({ isLead: false, tasks: [{ title: '表示しない', state: 'doing', waitsFor: '' }], pending: [], isWorking: true, idleSince: null, updatedAt: NOW })
           : e.path === '/home/u/.local/state/herdr-team/ws1/t2.json'
@@ -63,11 +63,16 @@ test('overview reads lead states and blocked tasks, draws cards, and focuses the
   expect(opened).toEqual([{ id: 'overview', title: 'overview', columns: 200, closeOnEscape: true }])
 
   const ui = await $.ui.mount({ plugin: 'overview', surface: 'terminal', component: 'Pane', requestId: 'overview', props: PANE })
-  expect((await ui.find({ key: 'card:reply:0' }))?.props.label).toBe('承認を待つ')
-  expect((await ui.find({ key: 'card:reply:1' }))?.props.label).toBe('返信してください')
+  expect(await ui.find({ text: '承認を待つ' })).toBeDefined()
+  expect(await ui.find({ text: '返信してください' })).toBeDefined()
   expect(await ui.find({ text: '表示しない' })).toBeUndefined()
   await ui.press({ key: 'card:reply:0' })
   expect(calls.at(-1)).toEqual(['herdr', 'tab', 'focus', 't2'])
+  expect(await ui.find({ text: 'ws1 · main · — · github.com' })).toBeDefined()
+  await ui.press({ key: 'url:review:0' })
+  expect(calls.at(-1)).toEqual(['open', 'https://github.com/o/r/pull/1'])
+  await ui.press({ key: 'card:review:0' })
+  expect(calls.at(-1)).toEqual(['herdr', 'tab', 'focus', 't1'])
   await ui.unmount()
 })
 
@@ -97,6 +102,6 @@ test('overview still updates mains when agent list fails', async ($, on) => {
 
   await $.command.run({ command: 'overview', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 200 } })
   const ui = await $.ui.mount({ plugin: 'overview', surface: 'terminal', component: 'Pane', requestId: 'overview', props: PANE })
-  expect((await ui.find({ key: 'card:reply:0' }))?.props.label).toBe('返信してください')
+  expect(await ui.find({ text: '返信してください' })).toBeDefined()
   await ui.unmount()
 })

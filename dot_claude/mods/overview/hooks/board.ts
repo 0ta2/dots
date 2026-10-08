@@ -1,4 +1,4 @@
-export type Task = { title?: unknown; state?: unknown; waitsFor?: unknown }
+export type Task = { title?: unknown; state?: unknown; waitsFor?: unknown; url?: unknown }
 
 export type Status = {
   purpose?: unknown
@@ -22,7 +22,7 @@ export type Blocked = { workspace: string; tabId: string; name: string; label: s
 
 export type Column = 'reply' | 'working' | 'review' | 'done'
 
-export type Card = { column: Column; title: string; workspace: string; mark: string; tabId: string; elapsedMs?: number }
+export type Card = { column: Column; title: string; workspace: string; mark: string; tabId: string; elapsedMs?: number; url?: string }
 
 export type Board = Record<Column, Card[]>
 
@@ -56,7 +56,7 @@ export const cards = (mains: Main[], blocked: Blocked[], now: number): Board => 
       }
       if (task.state === 'waiting' && task.waitsFor === 'others') {
         const next = card('review', main, task.title)
-        if (next !== undefined) review.push(next)
+        if (next !== undefined) review.push(typeof task.url === 'string' && /^https?:\/\/\S+$/.test(task.url) ? { ...next, url: task.url } : next)
       }
     }
     if (status.isWorking !== true && tasks.length > 0 && tasks.every(task => task.state === 'done') && Array.isArray(status.pending) && status.pending.length === 0) {
