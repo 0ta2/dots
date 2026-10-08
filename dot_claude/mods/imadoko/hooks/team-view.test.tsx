@@ -182,6 +182,20 @@ test('a pane moved to another workspace reads the team of the workspace it is in
   await ui.unmount()
 })
 
+test('移動先のスペースでターンが終わると、状態ファイルを移動先に書く', async ($, on) => {
+  const seen = standIn(on, 'main', ENV, {
+    agents: AGENTS,
+    space: 'wX',
+    paneGet: JSON.stringify({ result: { pane: { tab_id: 't1', workspace_id: 'wX' } } }),
+  })
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await $.turn.start({ turnId: 't', text: '実装を頼んで' })
+  await $.turn.complete({ turnId: 't', answer: '頼みました', durationMs: 1000, isAborted: false, reason: 'answer' })
+  await seen.clock.settle()
+
+  expect(seen.writes.at(-1)?.path).toBe('/h/.local/state/imadoko/wX/p1.json')
+})
+
 test('a summary that comes back after the member moved on is dropped and the member is read again', async ($, on) => {
   let release: (text: string) => void = () => {}
   const first = new Promise<string>(resolve => {

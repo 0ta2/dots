@@ -1123,6 +1123,7 @@ for (const { name, reply, answer, logs, band } of HAIKU_REPLIES) {
       'ワークスペースとペインがあれば書く',
       HERDR,
       [
+        { path: '/home/u/.local/state/imadoko/ws1/p2.json', text: `${JSON.stringify({ status: '', savedAt: START, updatedAt: START, isLead: false, sessionId: 'sess-1', purpose: '', tasks: [], pending: [], isWorking: false, idleSince: null })}\n` },
         { path: '/home/u/.local/state/imadoko/ws1/p2.json', text: `${JSON.stringify({ status: '', savedAt: START, updatedAt: START, isLead: false, sessionId: 'sess-1', purpose: '', tasks: [], pending: [], isWorking: true, idleSince: null })}\n` },
         { path: '/home/u/.local/state/imadoko/ws1/p2.json', text: `${JSON.stringify({ status: '', savedAt: START, updatedAt: START, isLead: false, sessionId: 'sess-1', purpose: '', tasks: [], pending: [], isWorking: false, idleSince: START })}\n` },
         { path: '/home/u/.local/state/imadoko/ws1/p2.json', text: `${JSON.stringify({ status: IMADOKO.status, savedAt: START, updatedAt: START, isLead: false, sessionId: 'sess-1', purpose: IMADOKO.purpose, tasks: IMADOKO.tasks.map(({ title, state, waitsFor, detail }) => ({ title, state, waitsFor, detail })), pending: IMADOKO.pending, isWorking: false, idleSince: START })}\n` },
@@ -1168,6 +1169,27 @@ test('ターン開始で状態ファイルを書き直しても、要約の save
   await $.turn.start({ text: '次の依頼', turnId: 't2' })
 
   expect(JSON.parse(written.at(-1)?.text ?? '')).toMatchObject({ savedAt: START, updatedAt: START + 1_000, isWorking: true })
+})
+
+test('/clear で空の会話に切り替わると、状態ファイルも新しいセッションにする', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  const session = { id: 'sess-1' }
+  const environment = { HOME: '/home/u', HERDR_WORKSPACE_ID: 'ws1', HERDR_PANE_ID: 'p2' }
+  standInForEngine(on, [], {}, [], session, {}, false, async () => {}, environment)
+  recordModelCalls(on)
+  const written: { path: string; text: string }[] = []
+  on('fs.write', (_$, e) => {
+    written.push({ path: e.path, text: e.text })
+    return { value: undefined }
+  })
+
+  await startInteractive($)
+  await runTurn($, clock, '前の依頼', '前の回答', 't1')
+  await $.session.end({ reason: 'clear', sessionId: 'sess-1', resume: { id: 'sess-1' } })
+  session.id = 'sess-2'
+  await clock.advance(1_000)
+
+  expect(JSON.parse(written.at(-1)?.text ?? '')).toMatchObject({ sessionId: 'sess-2', tasks: [], pending: [] })
 })
 
 test('前のターンの返答が後から届いても、新しいターンの概要を上書きしない', async ($, on) => {

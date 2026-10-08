@@ -177,6 +177,8 @@ const reviewRule = async ($: EngineInterface, cwd: string): Promise<string | und
   return reviewRuleOf(await $.fs.read(`${root}/AGENTS.md`).catch(() => ''))
 }
 
+let statusWorkspace: string | undefined
+
 const writeStatus = async ($: EngineInterface, updatedAt: number) => {
   const [home, workspace, pane, current, isLead] = await Promise.all([
     $.env.get('HOME'),
@@ -185,7 +187,7 @@ const writeStatus = async ($: EngineInterface, updatedAt: number) => {
     read($, imadoko),
     read($, lead),
   ])
-  const path = statusFilePath(home, workspace, pane)
+  const path = statusFilePath(home, statusWorkspace ?? workspace, pane)
   if (path === undefined) return
 
   await $.fs.write(path, statusFileText(current, isLead, updatedAt)).catch((error: unknown) => {
@@ -314,6 +316,7 @@ const openSession = async ($: EngineInterface, locale: Locale, cwd: string) => {
   if (!isApplied) return
   await update($, pulls, () => storedPullsOf(savedPulls))
   await update($, pullViews, () => ({}))
+  await writeStatus($, await $.clock.now())
   if (isJoined ? shouldSummarize : !isUpToDate && (rebuilt.turns.length > 0 || rebuilt.background !== null)) {
     summarizeLater($, locale, cwd)
   } else if (isJoined) {
@@ -602,6 +605,8 @@ const refreshTeam = async ($: EngineInterface, language: string) => {
   if (started === undefined) return
   const here = paneOf((await herdr($, ['pane', 'get', started.pane])) ?? '')
   const at = { ...started, space: here.workspaceId ?? started.workspace }
+  const moved = statusWorkspace !== at.space
+  statusWorkspace = at.space
   const [tabsOut, agentsOut] = await Promise.all([herdr($, ['tab', 'list', '--workspace', at.space]), herdr($, ['agent', 'list'])])
   if (tabsOut === undefined || agentsOut === undefined) return
   const tabs = parseTabs(tabsOut)
@@ -620,7 +625,7 @@ const refreshTeam = async ($: EngineInterface, language: string) => {
   const before = seen
   seen = new Map(list.map(m => [m.tabId, m.status]))
   await update($, lead, () => true)
-  if (!isLeading) await writeStatus($, now)
+  if (!isLeading || moved) await writeStatus($, now)
   await update($, team, () => list)
   await noteMembers($, at, before, list, language)
   $.ui.status(summary(list, words))
