@@ -28,7 +28,7 @@ function fake(on: On, environment: Record<string, string> = { HERDR_ENV: '1', HO
   on('fs.list', (_$, e) => {
     const value =
       e.path === '/home/u/.local/state/imadoko'
-        ? [{ name: 'ws1', kind: 'directory' as const, size: 0, mtimeMs: 0, isLink: false }]
+        ? [{ name: 'ws1', kind: 'dir' as const, size: 0, mtimeMs: 0, isLink: false }]
         : e.path === '/home/u/.local/state/imadoko/ws1'
           ? [
               { name: 'p1.json', kind: 'file' as const, size: 0, mtimeMs: 0, isLink: false },
