@@ -91,9 +91,44 @@ export const EMPTY: Imadoko = {
   sessionId: null,
   epoch: 0,
   usage: NO_USAGE,
+  corrections: [],
 }
 
 /** A new, empty conversation: the counts start over and the epoch moves on. */
+const KEPT_CORRECTIONS = 20
+
+const corrected = (imadoko: Imadoko, sections: Sections, correction: string): Imadoko => ({
+  ...imadoko,
+  sections,
+  corrections: [...(imadoko.corrections ?? []), correction].slice(-KEPT_CORRECTIONS),
+})
+
+/** The one item whose text is `query` or, failing that, the only one containing it. */
+const pick = (items: readonly string[], query: string): string | undefined => {
+  const wanted = query.trim().toLowerCase()
+  const exact = items.find(item => item.toLowerCase() === wanted)
+  if (exact !== undefined) return exact
+  const partial = items.filter(item => item.toLowerCase().includes(wanted))
+  return partial.length === 1 ? partial[0] : undefined
+}
+
+/** Sets a task's state as the user says it is, and remembers that for later summaries. */
+export const correctTask = (imadoko: Imadoko, title: string, state: TaskState): Imadoko | string => {
+  const sections = imadoko.sections
+  const found = sections === null ? undefined : pick(sections.tasks.map(task => task.title), title)
+  if (sections === null || found === undefined) return `No single task matches "${title}". Tasks: ${(sections?.tasks ?? []).map(task => task.title).join(' / ') || '(none)'}`
+  const tasks = sections.tasks.map(task => (task.title === found ? { ...task, state, ...(state === 'done' && { waitsFor: '' as const, waitsOn: '' }) } : task))
+  return corrected(imadoko, { ...sections, tasks }, `The task "${found}" is ${state}.`)
+}
+
+/** Drops a pending item the user says is settled, and keeps it out of later summaries. */
+export const resolvePending = (imadoko: Imadoko, text: string): Imadoko | string => {
+  const sections = imadoko.sections
+  const found = sections === null ? undefined : pick(sections.pending, text)
+  if (sections === null || found === undefined) return `No single pending item matches "${text}". Pending: ${(sections?.pending ?? []).join(' / ') || '(none)'}`
+  return corrected(imadoko, { ...sections, pending: sections.pending.filter(item => item !== found) }, `The pending item "${found}" is settled: leave it out.`)
+}
+
 export const startOver = (imadoko: Imadoko): Imadoko => ({ ...EMPTY, epoch: imadoko.epoch + 1 })
 
 // What a turn keeps, and what the summary request gets of it.
@@ -337,6 +372,7 @@ const systemPrompt = (language: string): string =>
     '  - url: the URL of what it waits on (a pull request, a Slack thread), copied exactly as it appears in the session; an empty string when none appears. Never make one up.',
     '- decisions: what has been decided, including the answers the user gave to questions, oldest first, at most 5 items.',
     '- pending: the user\'s own to-do list, oldest first: what the user has to answer, decide or do (reply to a question, approve, merge, run a command). Leave none of those out. Never work that Claude or another agent will do, even when its result will be shown to the user ("I will show you once X is done"). An empty list when nothing.',
+    '<user_corrections> are the user\'s own corrections to earlier summaries: follow every one of them over anything else you are given.',
     `Write every value in ${language}.`,
   ].join('\n')
 
@@ -407,6 +443,7 @@ export const summaryRequest = (
     `<latest_request>${turn === undefined ? '(none)' : (turn.ask ?? words.continued)}</latest_request>`,
     `<latest_answer>${turn?.answer ?? ''}</latest_answer>`,
     `<review_rule>${reviewRule}</review_rule>`,
+    ...listBlock('user_corrections', imadoko.corrections ?? [], '(none)'),
     ...listBlock('questions_and_answers', answered, '(none)'),
     ...listBlock('activity', turn?.activity ?? [], '(none)'),
     ...(members.length === 0 ? [] : listBlock('members', members.map(member => `${member.mark}: ${member.about}`), '(none)')),

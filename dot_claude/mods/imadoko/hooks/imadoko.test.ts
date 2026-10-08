@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { EMPTY, activityOf, completeTurn, fallbackSummary, localeFor, parseSections, rebuild, setSections, startTurn, statusFilePath, storedImadokoOf, summaryRequest, turnKeyOf, underHistory } from './imadoko'
+import { EMPTY, activityOf, completeTurn, correctTask, resolvePending, fallbackSummary, localeFor, parseSections, rebuild, setSections, startTurn, statusFilePath, storedImadokoOf, summaryRequest, turnKeyOf, underHistory } from './imadoko'
 
 describe('fallbackSummary は最終回答の最初の本文行を現状の代わりにする', () => {
   const cases: [string, string, string | undefined][] = [
@@ -226,4 +226,16 @@ test('setSections は確認待ちの項目ごとに最初に出たターンを�
   const first = setSections(EMPTY, sections, 1, 0)
   const second = setSections(first, { ...sections, pending: ['a', 'b'] }, 2, 0)
   expect(second.sections?.pendingTurns).toEqual({ a: 1, b: 2 })
+})
+
+test('correctTask と resolvePending は概要を直し、訂正を覚え、当てはまらなければ理由を返す', () => {
+  const task = { title: 'PR を出す', state: 'waiting' as const, detail: '', owner: '', waitsOn: 'merge', waitsFor: 'others' as const }
+  const base = { ...EMPTY, sections: { purpose: 'p', status: 's', tasks: [task, { ...task, title: 'テストを書く' }], decisions: [], pending: ['マージ可否を答える', 'ブランチ名を決める'] } }
+  const done = correctTask(base, 'PR', 'done')
+  expect(typeof done === 'string' ? done : done.sections?.tasks[0]).toEqual({ ...task, state: 'done', waitsOn: '', waitsFor: '' })
+  expect(typeof done === 'string' ? done : done.corrections).toEqual(['The task "PR を出す" is done.'])
+  expect(typeof correctTask(base, 'を', 'done')).toBe('string')
+  const settled = resolvePending(base, 'マージ')
+  expect(typeof settled === 'string' ? settled : settled.sections?.pending).toEqual(['ブランチ名を決める'])
+  expect(typeof resolvePending(base, 'ない')).toBe('string')
 })

@@ -75,6 +75,8 @@ export type Imadoko = {
   epoch: number
   /** The calls made for this conversation, saved with its imadoko summary. */
   usage: Usage
+  /** What the user corrected in the summary, oldest first: every later summary follows them. */
+  corrections: string[]
 }
 
 /** What the store keeps of a session's imadoko summary, under `imadoko:<session id>`. */
