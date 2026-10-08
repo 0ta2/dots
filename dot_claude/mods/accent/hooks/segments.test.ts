@@ -41,4 +41,6 @@ test('references in fences and in code spans across lines stay as written; a hea
 test('a reference that is already a link stays as written', () => {
   const linked = '[0ta2/dots#1](https://github.com/0ta2/dots/pull/1)'
   expect(linkRefs(`${linked} and 0ta2/dots#2`)).toBe(`${linked} and [0ta2/dots#2](https://github.com/0ta2/dots/issues/2)`)
+  const titled = '[0ta2/dots#1](https://github.com/0ta2/dots/pull/1 "PR")'
+  expect(linkRefs(titled)).toBe(titled)
 })

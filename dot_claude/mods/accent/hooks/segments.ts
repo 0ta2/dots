@@ -9,7 +9,7 @@ const DANGER = /(^|[\s;&|(])(rm\s+-\w*[rf]|sudo\b|git\s+(push|reset\s+--hard|cle
 export const isDangerous = (command: string): boolean => DANGER.test(command)
 
 /** What a reference inside stays as written: an inline code span of any backtick count, or a Markdown link. */
-const KEPT = /(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)|\[[^\]\n]*\]\([^)\s]*\)/g
+const KEPT = /(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)|\[[^\]\n]*\]\([^)\n]*\)/g
 const link = (text: string) => text.replace(REPO_REF, (all, repo, number) => `[${all}](https://github.com/${repo}/issues/${number})`)
 
 const fenceOf = (line: string): string | undefined => /^\s*(`{3,}|~{3,})/.exec(line)?.[1]
