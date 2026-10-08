@@ -73,9 +73,11 @@ const frame = atom({ plugin: 'imadoko', key: 'frame' } as const, 0)
 // Each workspace's mark book; the store keeps a copy, since a /resume empties this.
 const markBooks = atom({ plugin: 'imadoko', key: 'marks' } as const, {} as Record<string, MarkBook>)
 const pulls = atom({ plugin: 'imadoko', key: 'pulls' } as const, [] as PullRef[])
-/** The last reply row drawn while each turn ran, by turn: where a pending item's jump lands. */
-const replyRows = new Map<number, string>()
-const seenRows = new Set<string>()
+/** Each reply row drawn while a turn ran, by the turn it was first drawn in; a pending item jumps to its turn's last. */
+const rowTurns = new Map<string, number>()
+let rowsEpoch = 0
+const replyRowOf = (imadoko: Imadoko, turn: number): string | undefined =>
+  imadoko.epoch === rowsEpoch ? [...rowTurns].findLast(([, at]) => at === turn)?.[0] : undefined
 const pullViews = atom({ plugin: 'imadoko', key: 'pullViews' } as const, {} as Record<string, (PullView & { unresolved?: number }) | 'unreadable'>)
 const MARKS_KEY = 'imadoko-marks'
 
@@ -952,7 +954,7 @@ export const register: Register = on => {
             {section.key === 'pending' && current.sections?.pending.length
               ? current.sections.pending.map((item, index) => {
                   const turn = current.sections?.pendingTurns?.[item]
-                  const row = turn === undefined ? undefined : replyRows.get(turn)
+                  const row = turn === undefined ? undefined : replyRowOf(current, turn)
                   return (
                     <Box key={`pending:${index}`} flexDirection="row" gap={1}>
                       <Box flexGrow={1} flexShrink={1}>
@@ -973,9 +975,14 @@ export const register: Register = on => {
   on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {
     const current = await read($, imadoko)
     const turn = current.turns.at(-1)?.turn
-    if (isInteractive && current.isWorking && turn !== undefined && !seenRows.has(e.requestId)) {
-      seenRows.add(e.requestId)
-      replyRows.set(turn, e.requestId)
+    if (isInteractive && current.isWorking && turn !== undefined) {
+      if (current.epoch !== rowsEpoch) {
+        rowTurns.clear()
+        rowsEpoch = current.epoch
+      }
+      const oldest = current.turns[0]?.turn ?? turn
+      for (const [row, at] of rowTurns) if (at < oldest) rowTurns.delete(row)
+      if (!rowTurns.has(e.requestId)) rowTurns.set(e.requestId, turn)
     }
 
     return next(e)

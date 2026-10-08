@@ -725,6 +725,28 @@ test('確認待ちの行に、その項目が出たターンの最後の返答�
   await ui.unmount()
 })
 
+test('/clear の後は前の会話の返答へ移るボタンを出さない', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  const session = { id: 'sess-1' }
+  standInForEngine(on, [], {}, [], session)
+  recordModelCalls(on)
+
+  await startInteractive($)
+  await $.turn.start({ text: 'クリア前の依頼', turnId: 't1' })
+  const row = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'AssistantMessage', requestId: 'old', props: { text: 'old', isFirstOfReply: true } })
+  await row.unmount()
+  await completeTurn($, 'クリア前の回答', 't1')
+  await clock.settle()
+  await $.session.end({ reason: 'clear', sessionId: 'sess-1', resume: { id: 'sess-1' } })
+  session.id = 'sess-2'
+  await clock.advance(1_000)
+  await runTurn($, clock, 'クリア後の依頼', 'クリア後の回答', 't2')
+
+  const ui = await $.ui.mount(paneOn('terminal'))
+  expect(await ui.find({ key: 'jump:0:old' })).toBeUndefined()
+  await ui.unmount()
+})
+
 test('subagent のターンでは概要を作り直さない', async ($, on) => {
   const clock = mock.clock(on, { now: START })
   standInForEngine(on)
