@@ -1,1 +1,1 @@
-{ "modules": ["./board.ts"] }
+{ "modules": ["./register.tsx"] }

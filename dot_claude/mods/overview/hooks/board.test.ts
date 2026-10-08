@@ -13,10 +13,11 @@ const main = (status: Main['status'], extra: Partial<Main> = {}): Main => ({
   ...extra,
 })
 
-test('blocked agents become reply cards first', () => {
-  expect(cards([], [{ workspace: 'harness', tabId: 't2', name: '質問に回答してほしい', label: 'I1' }], now).reply).toEqual([
-    { column: 'reply', title: '質問に回答してほしい', workspace: 'harness', mark: 'I1', tabId: 't2' },
+test('blocked agents use their task or tab label for reply cards', () => {
+  expect(cards([], [{ workspace: 'harness', tabId: 't2', name: 'claude', label: 'I1', task: '質問に回答する' }], now).reply).toEqual([
+    { column: 'reply', title: '質問に回答する', workspace: 'harness', mark: 'I1', tabId: 't2' },
   ])
+  expect(cards([], [{ workspace: 'harness', tabId: 't2', name: 'claude', label: 'I1' }], now).reply[0]?.title).toBe('I1')
 })
 
 test('each pending item on an idle main becomes a reply card', () => {
@@ -64,5 +65,5 @@ test('only tasks completed today become done cards', () => {
 
 test('reply cards keep blocked agents first and then sort idle mains by oldest wait', () => {
   const idle = (title: string, idleSince: number, tabId: string) => main({ tasks: [], pending: [title], isWorking: false, idleSince, updatedAt: now }, { tabId })
-  expect(cards([idle('new', now - 1_000, 'new'), idle('old', now - 5_000, 'old')], [{ workspace: 'harness', tabId: 'blocked', name: '承認待ち', label: 'I1' }], now).reply.map(card => card.title)).toEqual(['承認待ち', 'old', 'new'])
+  expect(cards([idle('new', now - 1_000, 'new'), idle('old', now - 5_000, 'old')], [{ workspace: 'harness', tabId: 'blocked', name: 'claude', label: 'I1', task: '承認待ち' }], now).reply.map(card => card.title)).toEqual(['承認待ち', 'old', 'new'])
 })

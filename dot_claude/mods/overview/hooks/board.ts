@@ -16,7 +16,7 @@ export type Main = {
   status: Status
 }
 
-export type Blocked = { workspace: string; tabId: string; name: string; label: string }
+export type Blocked = { workspace: string; tabId: string; name: string; label: string; task?: string }
 
 export type Column = 'reply' | 'working' | 'review' | 'done'
 
@@ -34,7 +34,7 @@ const card = (column: Column, main: Main, title: string): Card | undefined =>
   main.tabId === undefined ? undefined : { column, title, workspace: main.workspace, mark: main.mark ?? '', tabId: main.tabId }
 
 export const cards = (mains: Main[], blocked: Blocked[], now: number): Board => {
-  const reply = blocked.map(agent => ({ column: 'reply' as const, title: agent.name, workspace: agent.workspace, mark: agent.label, tabId: agent.tabId }))
+  const reply = blocked.map(agent => ({ column: 'reply' as const, title: agent.task ?? agent.label, workspace: agent.workspace, mark: agent.label, tabId: agent.tabId }))
   const pending: Card[] = []
   const working: Card[] = []
   const review: Card[] = []
