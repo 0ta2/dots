@@ -584,8 +584,8 @@ export const paneSections = (imadoko: Imadoko, words: Words): { key: string; tit
     items === undefined || items.length === 0 ? [words.none] : items.map(item => `- ${item}`)
 
   return [
-    { key: 'decisions', title: words.decisions, rows: list(sections?.decisions) },
     { key: 'pending', title: words.pending, rows: list(sections?.pending) },
+    { key: 'decisions', title: words.decisions, rows: list(sections?.decisions) },
   ]
 }
 
