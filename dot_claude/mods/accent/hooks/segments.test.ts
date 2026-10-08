@@ -1,0 +1,46 @@
+import { expect, test } from 'claude-code/testing'
+
+import { isDangerous, linkRefs, segmentsOf } from './segments'
+
+test('headings and callouts split out of the markdown, fences left alone', () => {
+  const text = ['## 結論', '本文', '> [!IMPORTANT]', '> 判断してください', '> [!NOTE] x', '> [!WARNING]', '> 気をつける', '後の文', '```', '## コード内', '```'].join('\n')
+  expect(segmentsOf(text)).toEqual([
+    { kind: 'heading', level: 2, text: '結論' },
+    { kind: 'markdown', text: '本文' },
+    { kind: 'callout', callout: 'important', text: '判断してください\n[!NOTE] x' },
+    { kind: 'callout', callout: 'warning', text: '気をつける' },
+    { kind: 'markdown', text: '後の文\n```\n## コード内\n```' },
+  ])
+})
+
+test('owner/repo#123 links to GitHub except inside inline code', () => {
+  expect(linkRefs('see 0ta2/dots#181 and `0ta2/dots#1`')).toBe('see [0ta2/dots#181](https://github.com/0ta2/dots/issues/181) and `0ta2/dots#1`')
+})
+
+test('commands that are hard to undo are dangerous', () => {
+  for (const command of ['rm -rf x', 'cd a && git push', 'git reset --hard', 'sudo ls', 'gh pr merge 1 --merge', 'mise run chezmoi:apply']) expect(isDangerous(command)).toBe(true)
+  for (const command of ['ls', 'git status', 'git log', 'grep rm file', 'gh pr view 1']) expect(isDangerous(command)).toBe(false)
+})
+
+test('code spans of several backticks and nested fences are left alone', () => {
+  expect(linkRefs('see ``0ta2/dots#181`` and 0ta2/dots#2')).toBe('see ``0ta2/dots#181`` and [0ta2/dots#2](https://github.com/0ta2/dots/issues/2)')
+  const text = ['````md', '```', '## 例の中', '```', '````', '## 外'].join('\n')
+  expect(segmentsOf(text)).toEqual([
+    { kind: 'markdown', text: '````md\n```\n## 例の中\n```\n````' },
+    { kind: 'heading', level: 2, text: '外' },
+  ])
+})
+
+test('references in fences and in code spans across lines stay as written; a heading may end in #', () => {
+  expect(linkRefs(['```sh', 'gh pr view 0ta2/dots#1', '```', 'see 0ta2/dots#2'].join('\n'))).toBe(['```sh', 'gh pr view 0ta2/dots#1', '```', 'see [0ta2/dots#2](https://github.com/0ta2/dots/issues/2)'].join('\n'))
+  expect(linkRefs('`\n0ta2/dots#181\n`')).toBe('`\n0ta2/dots#181\n`')
+  expect(segmentsOf('## C#')).toEqual([{ kind: 'heading', level: 2, text: 'C#' }])
+  expect(segmentsOf('## 見出し ##')).toEqual([{ kind: 'heading', level: 2, text: '見出し' }])
+})
+
+test('a reference that is already a link stays as written', () => {
+  const linked = '[0ta2/dots#1](https://github.com/0ta2/dots/pull/1)'
+  expect(linkRefs(`${linked} and 0ta2/dots#2`)).toBe(`${linked} and [0ta2/dots#2](https://github.com/0ta2/dots/issues/2)`)
+  const titled = '[0ta2/dots#1](https://github.com/0ta2/dots/pull/1 "PR")'
+  expect(linkRefs(titled)).toBe(titled)
+})
