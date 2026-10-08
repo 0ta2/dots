@@ -18,6 +18,10 @@ mise run chezmoi:status    # status確認
 mise run chezmoi:add       # ファイルをchezmoi管理下に追加
 mise run chezmoi:template  # ファイルをテンプレートとして管理
 
+# Claude Code mods (dot_claude/mods/)
+mise run mods:check            # 全 mod の test・validate・tsc
+mise run mods:check -- imadoko # mod を絞る
+
 # homebrew
 mise run brew:sync         # Brewfileを元にパッケージを同期
 
@@ -56,6 +60,14 @@ Lua ファイル（Neovim設定）のLint:
 ```bash
 selene dot_config/nvim/
 ```
+
+## Claude Code mods
+
+- `dot_claude/mods/` の mod を変えた PR は、出す前に `mise run mods:check` を通す。`claude plugin test` /
+  `validate` は型を見ないので、`tsc --noEmit` まで回す (`kind === 'directory'` のような型の食い違いが test を素通りした)
+- tsc の型定義はセッションが mod を読み込んだときに `~/.claude/mods/<mod>/.claude-plugin/types/` へ生成され、リポジトリには無い。
+  新しい mod は apply してセッションで一度読み込んでから回す
+- 新しい mod を足したら `dot_claude/settings.json` の `CLAUDE_CODE_PLUGIN_DIRS` にも足す (足さないと読み込まれない)
 
 ## chezmoi のファイル命名規則
 - `dot_` prefix → デプロイ時に `.` prefix になる（例: `dot_config/` → `~/.config/`）
