@@ -14,8 +14,8 @@ const SUMMARY = {
   purpose: 'チケットを片付ける',
   status: '実装を待っている',
   tasks: [{ title: 'ログイン画面を直す', state: 'waiting', detail: '', owner: 'I1', waitsOn: '', waitsFor: '' }],
-  decisions: [],
-  pending: [],
+  decisions: [] as string[],
+  pending: [] as string[],
 }
 
 const tabsOut = (selfLabel: string) =>
@@ -37,7 +37,7 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
   const prompts: string[] = []
   const statuses: (string | undefined)[] = []
   const toasts: string[] = []
-  const runs: string[][] = []
+  const runs: (readonly string[])[] = []
   const writes: { path: string; text: string }[] = []
   mock.env(on, env)
   const clock = mock.clock(on, { now: 1_790_000_000_000 })
