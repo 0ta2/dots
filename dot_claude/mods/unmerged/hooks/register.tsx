@@ -93,12 +93,14 @@ async function refresh($: EngineInterface) {
       return root ? { root, task } : undefined
     }),
   )
+  const delegatedBefore = JSON.stringify([...delegatedTasks])
   delegatedTasks = new Map(delegated.filter((repo): repo is { root: string; task?: string } => !!repo).map(({ root, task }) => [root, task]))
   const list = [...new Set([...((await read($, repos)) ?? []), ...delegatedTasks.keys()])]
   const snaps = (await Promise.all(list.map(root => snapshot(git, root)))).filter(
     (s): s is RepoSnapshot => !!s,
   )
-  await update($, snapshots, now => (JSON.stringify(now) === JSON.stringify(snaps) ? now : snaps))
+  const isDelegationSame = delegatedBefore === JSON.stringify([...delegatedTasks])
+  await update($, snapshots, now => (isDelegationSame && JSON.stringify(now) === JSON.stringify(snaps) ? now : snaps))
   const sel = await read($, selected)
   if (!sel) return
   const snap = snaps.find(s => s.root === sel.root)
