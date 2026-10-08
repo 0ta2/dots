@@ -706,6 +706,25 @@ test('確認待ちとこれからのタスクは件数で切らずに全部出�
   expect(rows.filter(row => row.startsWith('◌'))).toEqual(many.map(one => `◌ wait  ${one} ▸`))
 })
 
+test('確認待ちの行に、その項目が出たターンの最後の返答へ移るボタンを出す', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  standInForEngine(on)
+  recordModelCalls(on)
+
+  await startInteractive($)
+  await $.turn.start({ text: 'パネルを作りたい', turnId: 't1' })
+  for (const requestId of ['m1', 'm2']) {
+    const row = await $.ui.mount({ plugin: PLUGIN, surface: 'terminal', component: 'AssistantMessage', requestId, props: { text: requestId, isFirstOfReply: requestId === 'm1' } })
+    await row.unmount()
+  }
+  await completeTurn($, '作りました', 't1')
+  await clock.settle()
+
+  const ui = await $.ui.mount(paneOn('terminal'))
+  expect(await ui.find({ key: 'jump:0:m2' })).toBeDefined()
+  await ui.unmount()
+})
+
 test('subagent のターンでは概要を作り直さない', async ($, on) => {
   const clock = mock.clock(on, { now: START })
   standInForEngine(on)
