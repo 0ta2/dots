@@ -33,6 +33,8 @@ export type Task = {
   owner: string
   /** What it waits on: a pull request merging, a review, a reply; '' when nothing. */
   waitsOn: string
+  /** Who it waits for: the user, others, or neither. */
+  waitsFor: 'you' | 'others' | ''
 }
 
 /** The imadoko summary Haiku keeps of the session, rewritten after every turn. */
@@ -61,6 +63,8 @@ export type Imadoko = {
   /** What a compaction kept of the turns before it, read back on a resume. */
   background: string | null
   isWorking: boolean
+  savedAt: number | null
+  idleSince: number | null
   /** The session the imadoko summary is of; null until the mod has opened the conversation. */
   sessionId: string | null
   /** Counts the conversations this process has held; a /clear or /resume moves it on. */

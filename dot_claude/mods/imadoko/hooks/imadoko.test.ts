@@ -18,7 +18,7 @@ describe('fallbackSummary は最終回答の最初の本文行を現状の代わ
 })
 
 describe('parseSections は Haiku の返答から概要を取り出す', () => {
-  const task = { title: 't', state: 'doing', detail: 'd', owner: '', waitsOn: '' }
+  const task = { title: 't', state: 'doing', detail: 'd', owner: '', waitsOn: '', waitsFor: '' }
   const imadoko = { purpose: 'p', status: 's', tasks: [task], decisions: [], pending: [] }
   const cases: [string, string, unknown][] = [
     ['JSON だけの返答', JSON.stringify(imadoko), imadoko],
@@ -26,7 +26,8 @@ describe('parseSections は Haiku の返答から概要を取り出す', () => {
     ['目的が無ければ使えない', JSON.stringify({ ...imadoko, purpose: '' }), undefined],
     ['現状が無ければ使えない', JSON.stringify({ ...imadoko, status: 3 }), undefined],
     ['リストでない値は空にし、文字列でない項目を落とす', JSON.stringify({ ...imadoko, tasks: 'x', pending: ['a', 1] }), { ...imadoko, tasks: [], pending: ['a'] }],
-    ['タスクは waits_on を読み、題名か状態の無いものを落とす', JSON.stringify({ ...imadoko, tasks: [{ title: 'w', state: 'waiting', detail: '', owner: 'R1', waits_on: 'merge' }, { title: '', state: 'next' }, { title: 'x', state: 'later' }] }), { ...imadoko, tasks: [{ title: 'w', state: 'waiting', detail: '', owner: 'R1', waitsOn: 'merge' }] }],
+    ['タスクは waits_on を読み、題名か状態の無いものを落とす', JSON.stringify({ ...imadoko, tasks: [{ title: 'w', state: 'waiting', detail: '', owner: 'R1', waits_on: 'merge' }, { title: '', state: 'next' }, { title: 'x', state: 'later' }] }), { ...imadoko, tasks: [{ title: 'w', state: 'waiting', detail: '', owner: 'R1', waitsOn: 'merge', waitsFor: '' }] }],
+    ['タスクは waits_for または waitsFor の you と others だけを読む', JSON.stringify({ ...imadoko, tasks: [{ ...task, title: 'you', waits_for: 'you' }, { ...task, title: 'others', waitsFor: 'others' }, { ...task, title: 'none', waits_for: 'AI' }] }), { ...imadoko, tasks: [{ ...task, title: 'you', waitsFor: 'you' }, { ...task, title: 'others', waitsFor: 'others' }, { ...task, title: 'none', waitsFor: '' }] }],
     ['担当は 2 文字までの記号だけを読み、長いものは空にする', JSON.stringify({ ...imadoko, tasks: [{ ...task, owner: 'I1' }, { ...task, title: 'u', owner: 'Codex' }] }), { ...imadoko, tasks: [{ ...task, owner: 'I1' }, { ...task, title: 'u', owner: '' }] }],
     ['済んだタスクは新しい方から 5 件まで、ほかは全部残す', JSON.stringify({ ...imadoko, tasks: [...Array.from({ length: 7 }, (_, index) => ({ ...task, title: `done ${index + 1}`, state: 'done' })), ...Array.from({ length: 7 }, (_, index) => ({ ...task, title: `wait ${index + 1}`, state: 'waiting' }))] }), { ...imadoko, tasks: [...Array.from({ length: 5 }, (_, index) => ({ ...task, title: `done ${index + 3}`, state: 'done' })), ...Array.from({ length: 7 }, (_, index) => ({ ...task, title: `wait ${index + 1}`, state: 'waiting' }))] }],
     ['壊れた JSON は使えない', '{"purpose": "p", ', undefined],
@@ -169,6 +170,22 @@ describe('summaryRequest はメンバーの一覧があるときだけ記号と�
       expect(summaryRequest(turn, localeFor(undefined), members).prompt.match(/<members>[\s\S]*<\/members>/)?.[0]).toBe(expected)
     })
   }
+})
+
+describe('summaryRequest はレビュー待ちの基準を渡す', () => {
+  const turn = completeTurn(startTurn(EMPTY, '依頼'), '回答')
+
+  test('指定があればその基準を渡す', () => {
+    expect(summaryRequest(turn, localeFor(undefined), [], '社内レビュー担当の返答を待つ').prompt).toContain(
+      '<review_rule>社内レビュー担当の返答を待つ</review_rule>',
+    )
+  })
+
+  test('指定がなければ既定の基準を渡す', () => {
+    expect(summaryRequest(turn, localeFor(undefined)).prompt).toContain(
+      '<review_rule>自分 (ユーザー) と AI 以外の人や仕組み (レビュー・承認・CI・外部の返事など) の応答を待つもの</review_rule>',
+    )
+  })
 })
 
 describe('statusFilePath は herdr のワークスペースとペインが分かるときだけ書き出し先を決める', () => {

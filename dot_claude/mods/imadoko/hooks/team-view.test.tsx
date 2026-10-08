@@ -13,7 +13,7 @@ const NO_USAGE = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0
 const SUMMARY = {
   purpose: 'チケットを片付ける',
   status: '実装を待っている',
-  tasks: [{ title: 'ログイン画面を直す', state: 'waiting', detail: '', owner: 'I1', waitsOn: '' }],
+  tasks: [{ title: 'ログイン画面を直す', state: 'waiting', detail: '', owner: 'I1', waitsOn: '', waitsFor: '' }],
   decisions: [],
   pending: [],
 }
@@ -38,6 +38,7 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
   const statuses: (string | undefined)[] = []
   const toasts: string[] = []
   const runs: string[][] = []
+  const writes: { path: string; text: string }[] = []
   mock.env(on, env)
   const clock = mock.clock(on, { now: 1_790_000_000_000 })
   const store = new Map<string, unknown>(Object.entries(world.store ?? {}))
@@ -90,7 +91,10 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
     if (e.path.endsWith('/imadoko/wW/p3.json')) return { value: JSON.stringify({ status: 'レビュー指摘を読んでいる', savedAt: 1_790_000_000_000 - 1000 }) }
     throw new Error('ENOENT')
   })
-  on('fs.write', () => ({ value: undefined }))
+  on('fs.write', (_$, e) => {
+    writes.push({ path: e.path, text: e.text })
+    return { value: undefined }
+  })
   let screens = 0
   on('model.complete', async (_$, e) => {
     prompts.push(e.prompt)
@@ -105,7 +109,7 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
     const { Box } = $.ui.resolve(e)
     return <Box />
   })
-  return { prompts, statuses, toasts, runs, clock, store }
+  return { prompts, statuses, toasts, runs, writes, clock, store }
 }
 
 const ENV = { HERDR_ENV: '1', HERDR_WORKSPACE_ID: 'wW', HERDR_PANE_ID: 'p1', HOME: '/h' }
@@ -158,12 +162,38 @@ test('a tab other than main keeps no team', async ($, on) => {
   expect(seen.statuses.filter(Boolean)).toEqual([])
 })
 
+test('待機中に main でなくなると、次のターンを待たずに isLead を書き直す', async ($, on) => {
+  const world: World = { agents: AGENTS, tabs: tabsOut('main') }
+  const seen = standIn(on, 'main', ENV, world)
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await seen.clock.settle()
+  world.tabs = tabsOut('impl-dots-y-claude')
+  await seen.clock.advance(3000)
+  await seen.clock.settle()
+
+  expect(JSON.parse(seen.writes.at(-1)?.text ?? '')).toMatchObject({ isLead: false })
+})
+
 test('a pane moved to another workspace reads the team of the workspace it is in now', async ($, on) => {
   standIn(on, 'main', ENV, { agents: AGENTS, space: 'wX', paneGet: JSON.stringify({ result: { pane: { tab_id: 't1', workspace_id: 'wX' } } }) })
   await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await ui.find({ text: /I1 · 実装 · codex/ })).toBeDefined()
   await ui.unmount()
+})
+
+test('移動先のスペースでターンが終わると、状態ファイルを移動先に書く', async ($, on) => {
+  const seen = standIn(on, 'main', ENV, {
+    agents: AGENTS,
+    space: 'wX',
+    paneGet: JSON.stringify({ result: { pane: { tab_id: 't1', workspace_id: 'wX' } } }),
+  })
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await $.turn.start({ turnId: 't', text: '実装を頼んで' })
+  await $.turn.complete({ turnId: 't', answer: '頼みました', durationMs: 1000, isAborted: false, reason: 'answer' })
+  await seen.clock.settle()
+
+  expect(seen.writes.at(-1)?.path).toBe('/h/.local/state/imadoko/wX/p1.json')
 })
 
 test('a summary that comes back after the member moved on is dropped and the member is read again', async ($, on) => {
