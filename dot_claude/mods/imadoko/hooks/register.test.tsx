@@ -94,6 +94,8 @@ const standInForEngine = (
   isCommandRefused = false,
   beforeStoreGet: (key: string) => Promise<void> = async () => {},
   environment: Readonly<Record<string, string>> = {},
+  root: string | undefined = '/work',
+  files: Readonly<Record<string, string>> = {},
 ) => {
   mock.env(on, environment)
   // The plugin's own store, kept in memory so a test can read what was saved.
@@ -115,6 +117,8 @@ const standInForEngine = (
   })
   on('store.keys', () => ({ value: [...store.keys()] }))
   on('session.start', (_$, e) => ({ cwd: e.cwd }))
+  on('session.root', () => ({ value: root }))
+  on('fs.read', (_$, e) => ({ value: files[e.path] ?? '' }))
   on('prompt.submit', (_$, e) => ({ text: e.text, context: e.context, origin: e.origin }))
   on('session.id', () => ({ value: session.id }))
   on('ui.panes', () => ({ value: [...panes] }))
@@ -133,6 +137,32 @@ const standInForEngine = (
   })
 
   return store
+}
+
+for (const { name, root, files, rule } of [
+  {
+    name: 'セッションのルートの節',
+    root: '/repo',
+    files: { '/repo/AGENTS.md': '# rules\n\n## imadoko: レビュー待ちの基準\n\n社内レビュー担当の返答\nCI の完了\n\n## 次の節\n対象外' },
+    rule: '社内レビュー担当の返答\nCI の完了',
+  },
+  {
+    name: 'ルートが無いときの cwd の節',
+    root: undefined,
+    files: { '/work/AGENTS.md': '## imadoko: レビュー待ちの基準\ncwd の基準' },
+    rule: 'cwd の基準',
+  },
+] as const) {
+  test(`AGENTS.md の${name}を要約に渡す`, async ($, on) => {
+    const clock = mock.clock(on, { now: START })
+    standInForEngine(on, [], {}, [], undefined, {}, false, async () => {}, {}, root, files)
+    const requests = recordModelCalls(on)
+
+    await startInteractive($)
+    await runTurn($, clock, 'パネルを作りたい', '回答', 't1')
+
+    expect(blockOf(requests[0]?.prompt, 'review_rule')).toBe(rule)
+  })
 }
 
 const recordModelCalls = (on: On, reply: (call: number) => { value: ModelCompleteResult } = () => imadokoReply()) => {
@@ -1089,7 +1119,15 @@ for (const { name, reply, answer, logs, band } of HAIKU_REPLIES) {
 {
   const HERDR = { HOME: '/home/u', HERDR_WORKSPACE_ID: 'ws1', HERDR_PANE_ID: 'p2' }
   const cases: [string, Record<string, string>, { path: string; text: string }[]][] = [
-    ['ワークスペースとペインがあれば書く', HERDR, [{ path: '/home/u/.local/state/imadoko/ws1/p2.json', text: `${JSON.stringify({ status: IMADOKO.status, savedAt: START })}\n` }]],
+    [
+      'ワークスペースとペインがあれば書く',
+      HERDR,
+      [
+        { path: '/home/u/.local/state/imadoko/ws1/p2.json', text: `${JSON.stringify({ status: '', savedAt: START, isLead: false, sessionId: 'sess-1', purpose: '', tasks: [], pending: [], isWorking: true, idleSince: null })}\n` },
+        { path: '/home/u/.local/state/imadoko/ws1/p2.json', text: `${JSON.stringify({ status: '', savedAt: START, isLead: false, sessionId: 'sess-1', purpose: '', tasks: [], pending: [], isWorking: false, idleSince: START })}\n` },
+        { path: '/home/u/.local/state/imadoko/ws1/p2.json', text: `${JSON.stringify({ status: IMADOKO.status, savedAt: START, isLead: false, sessionId: 'sess-1', purpose: IMADOKO.purpose, tasks: IMADOKO.tasks.map(({ title, state, waitsFor, detail }) => ({ title, state, waitsFor, detail })), pending: IMADOKO.pending, isWorking: false, idleSince: START })}\n` },
+      ],
+    ],
     ['ペインが分からなければ書かない', { HOME: '/home/u', HERDR_WORKSPACE_ID: 'ws1' }, []],
     ['herdr の外では書かない', { HOME: '/home/u' }, []],
   ]

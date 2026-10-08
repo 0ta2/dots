@@ -120,6 +120,14 @@ const headLine = (text: string): string => oneLine(text.split('\n').find(line =>
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null
 
+export const reviewRuleOf = (text: string): string | undefined => {
+  const heading = /^## imadoko: レビュー待ちの基準[ \t]*\r?$/m.exec(text)
+  if (heading === null) return undefined
+
+  const rule = text.slice(heading.index + heading[0].length).split(/^##\s/m, 1)[0]?.trim()
+  return rule === '' ? undefined : rule
+}
+
 // A command the model runs (a skill, a prompt command) opens with its message;
 // a local one (/clear, /compact) opens with its name and starts no turn.
 const PROMPT_COMMAND =
@@ -649,4 +657,18 @@ export const statusFilePath = (home: string | undefined, workspace: string | und
     ? undefined
     : `${home}/.local/state/imadoko/${workspace}/${pane}.json`
 
-export const statusFileText = (sections: Sections, savedAt: number): string => `${JSON.stringify({ status: sections.status, savedAt })}\n`
+export const statusFileText = (imadoko: Imadoko, isLead: boolean, savedAt: number, idleSince: number | null): string => {
+  const sections = imadoko.sections
+
+  return `${JSON.stringify({
+    status: sections?.status ?? '',
+    savedAt,
+    isLead,
+    sessionId: imadoko.sessionId,
+    purpose: sections?.purpose ?? '',
+    tasks: (sections?.tasks ?? []).map(({ title, state, waitsFor, detail }) => ({ title, state, waitsFor, detail })),
+    pending: sections?.pending ?? [],
+    isWorking: imadoko.isWorking,
+    idleSince: imadoko.isWorking ? null : idleSince,
+  })}\n`
+}

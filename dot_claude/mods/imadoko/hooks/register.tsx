@@ -17,6 +17,7 @@ import {
   parseSections,
   rebuild,
   recordActivity,
+  reviewRuleOf,
   setSections,
   statusFilePath,
   statusFileText,
@@ -171,9 +172,30 @@ const whyNoImadoko = (reply: ModelCompleteResult): string => {
  * is not the JSON asked for), the answer's own first line stands in. Every
  * call counts toward the conversation's usage, saved with the imadoko summary.
  */
-const summarize = async ($: EngineInterface, locale: Locale) => {
+const reviewRule = async ($: EngineInterface, cwd: string): Promise<string | undefined> => {
+  const root = (await $.session.root().catch(() => cwd)) ?? cwd
+  return reviewRuleOf(await $.fs.read(`${root}/AGENTS.md`).catch(() => ''))
+}
+
+const writeStatus = async ($: EngineInterface, savedAt: number, idleSince: number | null) => {
+  const [home, workspace, pane, current, isLead] = await Promise.all([
+    $.env.get('HOME'),
+    $.env.get('HERDR_WORKSPACE_ID'),
+    $.env.get('HERDR_PANE_ID'),
+    read($, imadoko),
+    read($, lead),
+  ])
+  const path = statusFilePath(home, workspace, pane)
+  if (path === undefined) return
+
+  await $.fs.write(path, statusFileText(current, isLead, savedAt, idleSince)).catch((error: unknown) => {
+    $.ui.log(`imadoko: could not write ${path}: ${String(error)}`, { to: 'debug' })
+  })
+}
+
+const summarize = async ($: EngineInterface, locale: Locale, cwd: string, idleSince: number | null) => {
   const current = await read($, imadoko)
-  const request = summaryRequest(current, locale, marksOf(await read($, team), teamWordsFor(locale.language)))
+  const request = summaryRequest(current, locale, marksOf(await read($, team), teamWordsFor(locale.language)), await reviewRule($, cwd))
   const turn = current.turns.at(-1)
   const turnNumber = turn?.turn ?? 0
   const { epoch, sessionId } = current
@@ -212,12 +234,7 @@ const summarize = async ($: EngineInterface, locale: Locale) => {
       usage: applied.usage,
     })
   }
-  const path = statusFilePath(await $.env.get('HOME'), await $.env.get('HERDR_WORKSPACE_ID'), await $.env.get('HERDR_PANE_ID'))
-  if (path !== undefined) {
-    await $.fs.write(path, statusFileText(sections, savedAt)).catch((error: unknown) => {
-      $.ui.log(`imadoko: could not write ${path}: ${String(error)}`, { to: 'debug' })
-    })
-  }
+  await writeStatus($, savedAt, idleSince)
 }
 
 // One summary at a time: each starts from the one before it, so a turn that
@@ -232,7 +249,7 @@ let isQueued = false
  * no turn is held up by the model call and the call is not cut short when
  * that dispatch ends.
  */
-const summarizeLater = ($: EngineInterface, locale: Locale) => {
+const summarizeLater = ($: EngineInterface, locale: Locale, cwd: string, idleSince: number | null) => {
   $.clock.after(0, () => {
     if (isQueued) return
     isQueued = true
@@ -240,7 +257,7 @@ const summarizeLater = ($: EngineInterface, locale: Locale) => {
       .then(() => {
         isQueued = false
 
-        return summarize($, locale)
+        return summarize($, locale, cwd, idleSince)
       })
       .catch((error: unknown) => $.ui.log(`imadoko: summary failed: ${String(error)}`, { to: 'debug' }))
   })
@@ -253,7 +270,7 @@ const summarizeLater = ($: EngineInterface, locale: Locale) => {
  * /clear or /resume, before the new session was known, stays after the
  * history the session already held.
  */
-const openSession = async ($: EngineInterface, locale: Locale) => {
+const openSession = async ($: EngineInterface, locale: Locale, cwd: string) => {
   const { epoch } = await read($, imadoko)
   const sessionId = await $.session.id()
   const [messages, saved, savedPulls] = await Promise.all([$.session.messages(), $.store.get(storeKey(sessionId)), $.store.get(pullsStoreKey(sessionId))])
@@ -298,7 +315,7 @@ const openSession = async ($: EngineInterface, locale: Locale) => {
   await update($, pulls, () => storedPullsOf(savedPulls))
   await update($, pullViews, () => ({}))
   if (isJoined ? shouldSummarize : !isUpToDate && (rebuilt.turns.length > 0 || rebuilt.background !== null)) {
-    summarizeLater($, locale)
+    summarizeLater($, locale, cwd, null)
   } else if (isJoined) {
     await saveKnown($)
   }
@@ -331,7 +348,7 @@ const savePulls = async ($: EngineInterface) => {
  * session that follows is not there yet when the old one ends: watch for the
  * id to change, then open that session.
  */
-const followNextSession = ($: EngineInterface, endedId: string, locale: Locale) => {
+const followNextSession = ($: EngineInterface, endedId: string, locale: Locale, cwd: string) => {
   let tries = 0
   let isOpening = false
   const timer = $.clock.every(SESSION_POLL_MS, () => {
@@ -342,7 +359,7 @@ const followNextSession = ($: EngineInterface, endedId: string, locale: Locale) 
       .id()
       .then(async sessionId => {
         if (sessionId === endedId) return
-        if ((await read($, imadoko)).sessionId === null) await openSession($, locale)
+        if ((await read($, imadoko)).sessionId === null) await openSession($, locale, cwd)
         timer.cancel()
       })
       .catch((error: unknown) => $.ui.log(`imadoko: following the session failed: ${String(error)}`, { to: 'debug' }))
@@ -653,6 +670,8 @@ export const register: Register = on => {
   // Set by session.start, which fires again on every reload of this module.
   let isInteractive = false
   let locale = localeFor(undefined)
+  let cwd = ''
+  let idleSince: number | null = null
   // ponytail: image-only prompts are recognized live only; preserve attachment metadata in SessionMessage to rebuild them after reload.
   let imagePromptQueued = false
   const pane = (terminalColumns: number) =>
@@ -667,6 +686,7 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     isInteractive = e.isInteractive
     if (!isInteractive) return next(e)
+    cwd = e.cwd
 
     locale = localeFor((await $.settings.read()).language)
     // Command registration can be refused; the pane must still open from its button.
@@ -681,9 +701,9 @@ export const register: Register = on => {
     // new one. A reload of this module finds its state kept, and analyzes it
     // only when no imadoko summary was written yet.
     const current = await read($, imadoko)
-    if (current.sessionId === null) await openSession($, locale)
+    if (current.sessionId === null) await openSession($, locale, cwd)
     else if (current.sections === null && (current.turns.length > 0 || current.background !== null)) {
-      summarizeLater($, locale)
+      summarizeLater($, locale, cwd, idleSince)
     }
     await pruneStore($)
     watchPulls($)
@@ -699,7 +719,7 @@ export const register: Register = on => {
       await update($, imadoko, startOver)
       await update($, pulls, () => [])
       await update($, pullViews, () => ({}))
-      followNextSession($, e.sessionId, locale)
+      followNextSession($, e.sessionId, locale, cwd)
     }
 
     return next(e)
@@ -714,15 +734,21 @@ export const register: Register = on => {
   on('turn.start', async ($, e, next) => {
     const hasImage = imagePromptQueued && e.text.trim() === ''
     imagePromptQueued &&= !hasImage
-    if (isInteractive) await update($, imadoko, current => startTurn(current, e.text, hasImage))
+    if (isInteractive) {
+      idleSince = null
+      await update($, imadoko, current => startTurn(current, e.text, hasImage))
+      await writeStatus($, await $.clock.now(), idleSince)
+    }
 
     return next(e)
   })
 
   on('turn.complete', async ($, e, next) => {
     if (isInteractive && e.agentId === undefined) {
+      idleSince = await $.clock.now()
       await update($, imadoko, current => completeTurn(current, e.answer))
-      summarizeLater($, locale)
+      await writeStatus($, idleSince, idleSince)
+      summarizeLater($, locale, cwd, idleSince)
     }
 
     return next(e)
