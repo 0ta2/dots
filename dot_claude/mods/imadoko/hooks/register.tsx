@@ -697,15 +697,17 @@ const fix = async ($: EngineInterface, e: unknown): Promise<{ result: string }> 
     ...(typeof input.task === 'string' && state !== undefined ? [(one: Imadoko) => correctTask(one, input.task as string, state)] : []),
     ...(typeof input.pending === 'string' ? [(one: Imadoko) => resolvePending(one, input.pending as string)] : []),
   ]
-  const outcomes: string[] = steps.length === 0 ? ['Give task with state, or pending.'] : []
-  await update($, imadoko, current =>
-    steps.reduce((now, step) => {
+  // update may run the updater again on a conflict, so the outcomes are rebuilt on every run.
+  let outcomes: string[] = []
+  await update($, imadoko, current => {
+    outcomes = []
+    return steps.reduce((now, step) => {
       const next = step(now)
       outcomes.push(typeof next === 'string' ? next : `Corrected: ${next.corrections.at(-1)}`)
       return typeof next === 'string' ? now : next
-    }, current),
-  )
-  const outcome = outcomes.join('\n')
+    }, current)
+  })
+  const outcome = steps.length === 0 ? 'Give task with state, or pending.' : outcomes.join('\n')
   await writeStatus($, await $.clock.now())
   await saveKnown($)
 
