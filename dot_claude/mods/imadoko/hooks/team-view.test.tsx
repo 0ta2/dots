@@ -13,7 +13,7 @@ const NO_USAGE = { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0
 const SUMMARY = {
   purpose: 'チケットを片付ける',
   status: '実装を待っている',
-  tasks: [{ title: 'ログイン画面を直す', state: 'waiting', detail: '', owner: 'I1', waitsOn: '' }],
+  tasks: [{ title: 'ログイン画面を直す', state: 'waiting', detail: '', owner: 'I1', waitsOn: '', waitsFor: '' }],
   decisions: [],
   pending: [],
 }

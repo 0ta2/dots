@@ -33,6 +33,8 @@ export type Task = {
   owner: string
   /** What it waits on: a pull request merging, a review, a reply; '' when nothing. */
   waitsOn: string
+  /** Who it waits for: the user, others, or neither. */
+  waitsFor: 'you' | 'others' | ''
 }
 
 /** The imadoko summary Haiku keeps of the session, rewritten after every turn. */
