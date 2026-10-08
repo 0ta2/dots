@@ -63,6 +63,8 @@ export type Imadoko = {
   /** What a compaction kept of the turns before it, read back on a resume. */
   background: string | null
   isWorking: boolean
+  savedAt: number | null
+  idleSince: number | null
   /** The session the imadoko summary is of; null until the mod has opened the conversation. */
   sessionId: string | null
   /** Counts the conversations this process has held; a /clear or /resume moves it on. */

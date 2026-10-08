@@ -86,6 +86,8 @@ export const EMPTY: Imadoko = {
   sectionsTurn: 0,
   background: null,
   isWorking: false,
+  savedAt: null,
+  idleSince: null,
   sessionId: null,
   epoch: 0,
   usage: NO_USAGE,
@@ -231,6 +233,7 @@ export const underHistory = (current: Imadoko, rebuilt: Imadoko, stored: StoredI
     ],
     sections: isFresh ? stored.sections : null,
     sectionsTurn: offset,
+    savedAt: isFresh ? stored.savedAt : null,
     epoch: current.epoch + 1,
     background: current.background ?? rebuilt.background,
   }
@@ -561,8 +564,8 @@ export const storedImadokoOf = (value: unknown): StoredImadoko | undefined => {
 }
 
 /** Keeps the imadoko summary of the newest turn: a slow reply for an older one is dropped. */
-export const setSections = (imadoko: Imadoko, sections: Sections, turn: number): Imadoko =>
-  turn < imadoko.sectionsTurn ? imadoko : { ...imadoko, sections, sectionsTurn: turn }
+export const setSections = (imadoko: Imadoko, sections: Sections, turn: number, savedAt: number): Imadoko =>
+  turn < imadoko.sectionsTurn ? imadoko : { ...imadoko, sections, sectionsTurn: turn, savedAt }
 
 /** The band's two rows, each a label and its text: the purpose, and the status, marked while a turn runs. */
 export const bandRows = (imadoko: Imadoko, words: Words): { label: string; text: string }[] => [
@@ -657,18 +660,19 @@ export const statusFilePath = (home: string | undefined, workspace: string | und
     ? undefined
     : `${home}/.local/state/imadoko/${workspace}/${pane}.json`
 
-export const statusFileText = (imadoko: Imadoko, isLead: boolean, savedAt: number, idleSince: number | null): string => {
+export const statusFileText = (imadoko: Imadoko, isLead: boolean, updatedAt: number): string => {
   const sections = imadoko.sections
 
   return `${JSON.stringify({
     status: sections?.status ?? '',
-    savedAt,
+    savedAt: imadoko.savedAt ?? updatedAt,
+    updatedAt,
     isLead,
     sessionId: imadoko.sessionId,
     purpose: sections?.purpose ?? '',
     tasks: (sections?.tasks ?? []).map(({ title, state, waitsFor, detail }) => ({ title, state, waitsFor, detail })),
     pending: sections?.pending ?? [],
     isWorking: imadoko.isWorking,
-    idleSince: imadoko.isWorking ? null : idleSince,
+    idleSince: imadoko.idleSince,
   })}\n`
 }

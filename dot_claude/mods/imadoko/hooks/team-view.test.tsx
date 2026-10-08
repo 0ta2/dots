@@ -38,6 +38,7 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
   const statuses: (string | undefined)[] = []
   const toasts: string[] = []
   const runs: string[][] = []
+  const writes: { path: string; text: string }[] = []
   mock.env(on, env)
   const clock = mock.clock(on, { now: 1_790_000_000_000 })
   const store = new Map<string, unknown>(Object.entries(world.store ?? {}))
@@ -90,7 +91,10 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
     if (e.path.endsWith('/imadoko/wW/p3.json')) return { value: JSON.stringify({ status: 'レビュー指摘を読んでいる', savedAt: 1_790_000_000_000 - 1000 }) }
     throw new Error('ENOENT')
   })
-  on('fs.write', () => ({ value: undefined }))
+  on('fs.write', (_$, e) => {
+    writes.push({ path: e.path, text: e.text })
+    return { value: undefined }
+  })
   let screens = 0
   on('model.complete', async (_$, e) => {
     prompts.push(e.prompt)
@@ -105,7 +109,7 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
     const { Box } = $.ui.resolve(e)
     return <Box />
   })
-  return { prompts, statuses, toasts, runs, clock, store }
+  return { prompts, statuses, toasts, runs, writes, clock, store }
 }
 
 const ENV = { HERDR_ENV: '1', HERDR_WORKSPACE_ID: 'wW', HERDR_PANE_ID: 'p1', HOME: '/h' }
@@ -156,6 +160,18 @@ test('a tab other than main keeps no team', async ($, on) => {
   expect(await ui.find({ text: /I1 · 実装/ })).toBeUndefined()
   await ui.unmount()
   expect(seen.statuses.filter(Boolean)).toEqual([])
+})
+
+test('待機中に main でなくなると、次のターンを待たずに isLead を書き直す', async ($, on) => {
+  const world: World = { agents: AGENTS, tabs: tabsOut('main') }
+  const seen = standIn(on, 'main', ENV, world)
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await seen.clock.settle()
+  world.tabs = tabsOut('impl-dots-y-claude')
+  await seen.clock.advance(3000)
+  await seen.clock.settle()
+
+  expect(JSON.parse(seen.writes.at(-1)?.text ?? '')).toMatchObject({ isLead: false })
 })
 
 test('a pane moved to another workspace reads the team of the workspace it is in now', async ($, on) => {

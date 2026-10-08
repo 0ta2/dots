@@ -1123,9 +1123,9 @@ for (const { name, reply, answer, logs, band } of HAIKU_REPLIES) {
       'ワークスペースとペインがあれば書く',
       HERDR,
       [
-        { path: '/home/u/.local/state/imadoko/ws1/p2.json', text: `${JSON.stringify({ status: '', savedAt: START, isLead: false, sessionId: 'sess-1', purpose: '', tasks: [], pending: [], isWorking: true, idleSince: null })}\n` },
-        { path: '/home/u/.local/state/imadoko/ws1/p2.json', text: `${JSON.stringify({ status: '', savedAt: START, isLead: false, sessionId: 'sess-1', purpose: '', tasks: [], pending: [], isWorking: false, idleSince: START })}\n` },
-        { path: '/home/u/.local/state/imadoko/ws1/p2.json', text: `${JSON.stringify({ status: IMADOKO.status, savedAt: START, isLead: false, sessionId: 'sess-1', purpose: IMADOKO.purpose, tasks: IMADOKO.tasks.map(({ title, state, waitsFor, detail }) => ({ title, state, waitsFor, detail })), pending: IMADOKO.pending, isWorking: false, idleSince: START })}\n` },
+        { path: '/home/u/.local/state/imadoko/ws1/p2.json', text: `${JSON.stringify({ status: '', savedAt: START, updatedAt: START, isLead: false, sessionId: 'sess-1', purpose: '', tasks: [], pending: [], isWorking: true, idleSince: null })}\n` },
+        { path: '/home/u/.local/state/imadoko/ws1/p2.json', text: `${JSON.stringify({ status: '', savedAt: START, updatedAt: START, isLead: false, sessionId: 'sess-1', purpose: '', tasks: [], pending: [], isWorking: false, idleSince: START })}\n` },
+        { path: '/home/u/.local/state/imadoko/ws1/p2.json', text: `${JSON.stringify({ status: IMADOKO.status, savedAt: START, updatedAt: START, isLead: false, sessionId: 'sess-1', purpose: IMADOKO.purpose, tasks: IMADOKO.tasks.map(({ title, state, waitsFor, detail }) => ({ title, state, waitsFor, detail })), pending: IMADOKO.pending, isWorking: false, idleSince: START })}\n` },
       ],
     ],
     ['ペインが分からなければ書かない', { HOME: '/home/u', HERDR_WORKSPACE_ID: 'ws1' }, []],
@@ -1150,6 +1150,25 @@ for (const { name, reply, answer, logs, band } of HAIKU_REPLIES) {
     })
   }
 }
+
+test('ターン開始で状態ファイルを書き直しても、要約の savedAt を保ち updatedAt を進める', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  const environment = { HOME: '/home/u', HERDR_WORKSPACE_ID: 'ws1', HERDR_PANE_ID: 'p2' }
+  standInForEngine(on, [], {}, [], { id: 'sess-1' }, {}, false, async () => {}, environment)
+  recordModelCalls(on)
+  const written: { path: string; text: string }[] = []
+  on('fs.write', (_$, e) => {
+    written.push({ path: e.path, text: e.text })
+    return { value: undefined }
+  })
+
+  await startInteractive($)
+  await runTurn($, clock, '最初の依頼', '最初の回答', 't1')
+  await clock.advance(1_000)
+  await $.turn.start({ text: '次の依頼', turnId: 't2' })
+
+  expect(JSON.parse(written.at(-1)?.text ?? '')).toMatchObject({ savedAt: START, updatedAt: START + 1_000, isWorking: true })
+})
 
 test('前のターンの返答が後から届いても、新しいターンの概要を上書きしない', async ($, on) => {
   const clock = mock.clock(on, { now: START })
