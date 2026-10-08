@@ -8,18 +8,25 @@ const DANGER = /(^|[\s;&|(])(rm\s+-\w*[rf]|sudo\b|git\s+(push|reset\s+--hard|cle
 
 export const isDangerous = (command: string): boolean => DANGER.test(command)
 
-/** `owner/repo#123` becomes a link to it on GitHub, outside inline code. */
-export const linkRefs = (text: string): string =>
-  text
-    .split(/(`[^`\n]*`)/)
-    .map((part, index) => (index % 2 === 1 ? part : part.replace(REPO_REF, (all, repo, number) => `[${all}](https://github.com/${repo}/issues/${number})`)))
-    .join('')
+const CODE_SPAN = /(?<!`)(`+)(?!`)[^\n]*?(?<!`)\1(?!`)/g
+const link = (text: string) => text.replace(REPO_REF, (all, repo, number) => `[${all}](https://github.com/${repo}/issues/${number})`)
+
+/** `owner/repo#123` becomes a link to it on GitHub, outside inline code of any backtick count. */
+export const linkRefs = (text: string): string => {
+  let out = ''
+  let last = 0
+  for (const span of text.matchAll(CODE_SPAN)) {
+    out += link(text.slice(last, span.index)) + span[0]
+    last = span.index + span[0].length
+  }
+  return out + link(text.slice(last))
+}
 
 export const segmentsOf = (text: string): Segment[] => {
   const out: Segment[] = []
   let markdown: string[] = []
   let callout: { callout: Callout; lines: string[] } | undefined
-  let isFenced = false
+  let fence: string | undefined
   const flush = () => {
     if (markdown.join('').trim()) out.push({ kind: 'markdown', text: markdown.join('\n') })
     markdown = []
@@ -35,7 +42,10 @@ export const segmentsOf = (text: string): Segment[] => {
       continue
     }
     close()
-    if (/^\s*(```|~~~)/.test(line)) isFenced = !isFenced
+    const marker = /^\s*(`{3,}|~{3,})/.exec(line)?.[1]
+    if (marker && fence === undefined) fence = marker
+    else if (marker && fence !== undefined && marker[0] === fence[0] && marker.length >= fence.length && line.trim() === marker) fence = undefined
+    const isFenced = fence !== undefined || marker !== undefined
     const heading = isFenced ? null : HEADING.exec(line)
     const opened = isFenced ? null : CALLOUT.exec(line)
     if (opened) {
