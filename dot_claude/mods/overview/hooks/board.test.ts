@@ -55,12 +55,18 @@ test('only waiting tasks for others become review cards', () => {
   ])
 })
 
-test('only tasks completed today become done cards', () => {
+test('a main whose tasks are all done and has no pending item becomes one done card', () => {
   const task = { title: '実装を終えた', state: 'done' as const, waitsFor: '', detail: '' }
   const yesterday = new Date(2026, 9, 7, 12).valueOf()
-  expect(cards([main({ tasks: [task], pending: [], isWorking: false, idleSince: now, updatedAt: now }), main({ tasks: [task], pending: [], isWorking: false, idleSince: now, updatedAt: yesterday }, { tabId: 't2' })], [], now).done).toEqual([
-    { column: 'done', title: '実装を終えた', workspace: 'dots', mark: 'main', tabId: 't1' },
+  expect(cards([main({ tasks: [task, task], pending: [], isWorking: false, idleSince: now, updatedAt: yesterday }, { purpose: 'overview を完成した' })], [], now).done).toEqual([
+    { column: 'done', title: 'overview を完成した', workspace: 'dots', mark: 'main', tabId: 't1' },
   ])
+})
+
+test('a main with both done and doing tasks is not done', () => {
+  const done = { title: '終えた', state: 'done' as const, waitsFor: '', detail: '' }
+  const doing = { title: '進めている', state: 'doing' as const, waitsFor: '', detail: '' }
+  expect(cards([main({ tasks: [done, doing], pending: [], isWorking: true, idleSince: null, updatedAt: now })], [], now).done).toEqual([])
 })
 
 test('reply cards keep blocked agents first and then sort idle mains by oldest wait', () => {

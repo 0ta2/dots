@@ -98,20 +98,21 @@ async function mainsOf($: EngineInterface, home: string, panes: Pane[], labels: 
   }
   return [...newest].flatMap(([paneId, status]) => {
     const pane = live.get(paneId)!
-    return [{ workspace: pane.workspace, pane: pane.pane, tabId: pane.tabId, mark: labels.get(key(pane.workspace, pane.tabId)) ?? '', status }]
+    return [{ workspace: pane.workspace, pane: pane.pane, tabId: pane.tabId, mark: labels.get(key(pane.workspace, pane.tabId)) ?? '', purpose: typeof status.purpose === 'string' ? status.purpose : '', status }]
   })
 }
 
 async function refresh($: EngineInterface) {
   const now = await $.clock.now()
-  const [home, paneText, agentText] = await Promise.all([$.env.get('HOME'), herdr($, ['pane', 'list']), herdr($, ['agent', 'list'])])
-  if (!home || !paneText || !agentText) return
+  const [home, paneText] = await Promise.all([$.env.get('HOME'), herdr($, ['pane', 'list'])])
+  if (!home || !paneText) return
+  const agentText = await herdr($, ['agent', 'list'])
   const panes = panesOf(paneText)
   const workspaces = [...new Set(panes.map(pane => pane.workspace))]
   const tabTexts = await Promise.all(workspaces.map(workspace => herdr($, ['tab', 'list', '--workspace', workspace])))
   const labels = new Map(tabTexts.flatMap((text, index) => text === undefined ? [] : tabsOf(text).map(tab => [key(workspaces[index]!, tab.tabId), tab.label] as const)))
   const blocked = await Promise.all(
-    agentsOf(agentText)
+    agentsOf(agentText ?? '')
       .filter(agent => agent.status === 'blocked')
       .flatMap(agent => {
         const pane = panes.find(item => item.pane === agent.pane && item.tabId === agent.tabId)
@@ -153,6 +154,10 @@ const elapsed = (ms: number | undefined) => {
 export const register: Register = on => {
   on('session.start', async ($, event, next) => {
     await $.command.register({ name: 'overview', description: 'herdr の全 main をカンバンで表示する' })
+    if ((await $.env.get('HERDR_ENV')) === '1' && await read($, isOpen)) {
+      await refresh($)
+      startPolling($)
+    }
     return next(event)
   })
 

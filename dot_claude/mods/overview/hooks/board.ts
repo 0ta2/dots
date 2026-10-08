@@ -1,6 +1,7 @@
 export type Task = { title?: unknown; state?: unknown; waitsFor?: unknown }
 
 export type Status = {
+  purpose?: unknown
   tasks?: Task[]
   pending?: unknown[]
   isWorking?: unknown
@@ -13,6 +14,7 @@ export type Main = {
   pane: string
   tabId?: string
   mark?: string
+  purpose?: string
   status: Status
 }
 
@@ -23,12 +25,6 @@ export type Column = 'reply' | 'working' | 'review' | 'done'
 export type Card = { column: Column; title: string; workspace: string; mark: string; tabId: string; elapsedMs?: number }
 
 export type Board = Record<Column, Card[]>
-
-const today = (left: number, right: number) => {
-  const a = new Date(left)
-  const b = new Date(right)
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
-}
 
 const card = (column: Column, main: Main, title: string): Card | undefined =>
   main.tabId === undefined ? undefined : { column, title, workspace: main.workspace, mark: main.mark ?? '', tabId: main.tabId }
@@ -51,7 +47,8 @@ export const cards = (mains: Main[], blocked: Blocked[], now: number): Board => 
       }
     }
 
-    for (const task of status.tasks ?? []) {
+    const tasks = status.tasks ?? []
+    for (const task of tasks) {
       if (typeof task.title !== 'string') continue
       if (task.state === 'doing') {
         const next = card('working', main, task.title)
@@ -61,10 +58,10 @@ export const cards = (mains: Main[], blocked: Blocked[], now: number): Board => 
         const next = card('review', main, task.title)
         if (next !== undefined) review.push(next)
       }
-      if (task.state === 'done' && typeof status.updatedAt === 'number' && today(status.updatedAt, now)) {
-        const next = card('done', main, task.title)
-        if (next !== undefined) done.push(next)
-      }
+    }
+    if (tasks.length > 0 && tasks.every(task => task.state === 'done') && Array.isArray(status.pending) && status.pending.length === 0) {
+      const next = card('done', main, main.purpose?.trim() || (main.mark ?? ''))
+      if (next !== undefined) done.push(next)
     }
   }
 

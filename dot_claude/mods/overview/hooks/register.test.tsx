@@ -9,10 +9,11 @@ const panes = JSON.stringify({ result: { panes: [{ pane_id: 'p1', workspace_id: 
 const tabs = JSON.stringify({ result: { tabs: [{ tab_id: 't1', label: 'main' }, { tab_id: 't2', label: 'I1' }] } })
 const agents = JSON.stringify({ result: { agents: [{ pane_id: 'p2', tab_id: 't2', agent: 'claude', agent_status: 'blocked' }] } })
 
-function fake(on: On, environment: Record<string, string> = { HERDR_ENV: '1', HOME: '/home/u' }) {
-  const calls: readonly string[][] = []
+function fake(on: On, environment: Record<string, string> = { HERDR_ENV: '1', HOME: '/home/u' }, agentList = true) {
+  const calls: (readonly string[])[] = []
   const opened: unknown[] = []
   mock.env(on, environment)
+  on('session.start', (_$, e) => ({ cwd: e.cwd }))
   on('command.register', (_$, e) => ({ value: { command: e.name } }))
   on('ui.open', (_$, e) => {
     opened.push(e)
@@ -22,7 +23,7 @@ function fake(on: On, environment: Record<string, string> = { HERDR_ENV: '1', HO
     calls.push(e.argv)
     const action = `${e.argv[1]} ${e.argv[2]}`
     const stdout = action === 'pane list' ? panes : action === 'tab list' ? tabs : action === 'agent list' ? agents : ''
-    return { value: { exitCode: 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+    return { value: { exitCode: action === 'agent list' && !agentList ? 1 : 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
   })
   on('fs.list', (_$, e) => {
     const value =
@@ -77,5 +78,25 @@ test('overview outside herdr shows only its instruction', async ($, on) => {
   const ui = await $.ui.mount({ plugin: 'overview', surface: 'terminal', component: 'Pane', requestId: 'overview', props: PANE })
   expect(await ui.find({ text: 'herdr の中で開いてください' })).toBeDefined()
   expect(calls).toEqual([])
+  await ui.unmount()
+})
+
+test('overview restores polling and refreshes when an open pane resumes', async ($, on) => {
+  mock.clock(on, { now: NOW })
+  const { calls } = fake(on)
+
+  await $.command.run({ command: 'overview', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 200 } })
+  const before = calls.length
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  expect(calls.length).toBeGreaterThan(before)
+})
+
+test('overview still updates mains when agent list fails', async ($, on) => {
+  mock.clock(on, { now: NOW })
+  fake(on, { HERDR_ENV: '1', HOME: '/home/u' }, false)
+
+  await $.command.run({ command: 'overview', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 200 } })
+  const ui = await $.ui.mount({ plugin: 'overview', surface: 'terminal', component: 'Pane', requestId: 'overview', props: PANE })
+  expect((await ui.find({ key: 'card:reply:0' }))?.props.label).toBe('返信してください')
   await ui.unmount()
 })
