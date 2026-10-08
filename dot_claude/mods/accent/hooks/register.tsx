@@ -85,7 +85,8 @@ export const register: Register = on => {
     const { origin, from } = e.props
     const isMine = origin.kind === 'composer'
     const sender = from?.name ?? (origin.kind === 'channel' ? origin.server : undefined)
-    if (!isMine && sender === undefined) return next(e)
+    // A collapsed row from someone else already names its sender in one line.
+    if (!isMine && (sender === undefined || !e.props.isExpanded)) return next(e)
     const drawn = await next(e)
     const { Box, Text } = $.ui.resolve(e)
 

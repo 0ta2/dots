@@ -693,21 +693,21 @@ const pruneStore = async ($: EngineInterface) => {
 const fix = async ($: EngineInterface, e: unknown): Promise<{ result: string }> => {
   const input = e as { task?: unknown; state?: unknown; pending?: unknown }
   const state = STATES.find(one => one === input.state)
-  let outcome = 'Give task with state, or pending.'
+  const steps = [
+    ...(typeof input.task === 'string' && state !== undefined ? [(one: Imadoko) => correctTask(one, input.task as string, state)] : []),
+    ...(typeof input.pending === 'string' ? [(one: Imadoko) => resolvePending(one, input.pending as string)] : []),
+  ]
+  // update may run the updater again on a conflict, so the outcomes are rebuilt on every run.
+  let outcomes: string[] = []
   await update($, imadoko, current => {
-    const next =
-      typeof input.task === 'string' && state !== undefined
-        ? correctTask(current, input.task, state)
-        : typeof input.pending === 'string'
-          ? resolvePending(current, input.pending)
-          : outcome
-    if (typeof next === 'string') {
-      outcome = next
-      return current
-    }
-    outcome = `Corrected: ${next.corrections.at(-1)}`
-    return next
+    outcomes = []
+    return steps.reduce((now, step) => {
+      const next = step(now)
+      outcomes.push(typeof next === 'string' ? next : `Corrected: ${next.corrections.at(-1)}`)
+      return typeof next === 'string' ? now : next
+    }, current)
   })
+  const outcome = steps.length === 0 ? 'Give task with state, or pending.' : outcomes.join('\n')
   await writeStatus($, await $.clock.now())
   await saveKnown($)
 
