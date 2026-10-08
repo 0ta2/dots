@@ -11,9 +11,11 @@ for mod in "${mods[@]}"; do
   src="$root/dot_claude/mods/$mod"
   types="$HOME/.claude/mods/$mod/.claude-plugin/types"
   echo "== $mod"
+  # 型定義は engine が生成し mod 間で同じ (MCP の一覧だけ読み込んだ時点で違う) なので、未読み込みの mod は他の mod のものを借りる
+  [ -d "$types" ] || types=$(ls -d "$HOME"/.claude/mods/*/.claude-plugin/types 2>/dev/null | head -1)
   if [ ! -d "$types" ]; then
-    echo "  型定義がありません: $types"
-    echo "  mise run chezmoi:apply のあと、Claude Code のセッションで一度 $mod を読み込んでから実行してください"
+    echo "  型定義がありません: ~/.claude/mods/*/.claude-plugin/types"
+    echo "  mise run chezmoi:apply のあと、Claude Code のセッションで mod を一度読み込んでから実行してください"
     failed+=("$mod")
     continue
   fi
