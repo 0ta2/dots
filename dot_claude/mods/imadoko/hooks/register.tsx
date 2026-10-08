@@ -749,9 +749,9 @@ export const register: Register = on => {
         inputSchema: {
           type: 'object',
           properties: {
-            task: { type: 'string', description: 'The task\'s title, or a part of it that matches only that task.' },
+            task: { type: 'string', minLength: 1, description: 'The task\'s title, or a part of it that matches only that task.' },
             state: { type: 'string', enum: ['done', 'doing', 'next', 'waiting'], description: 'The state the task is really in. Required with task.' },
-            pending: { type: 'string', description: 'A pending item\'s text, or a part of it that matches only that item, to drop.' },
+            pending: { type: 'string', minLength: 1, description: 'A pending item\'s text, or a part of it that matches only that item, to drop.' },
           },
         },
         isDeferred: false,

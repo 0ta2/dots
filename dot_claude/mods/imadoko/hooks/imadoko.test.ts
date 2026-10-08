@@ -251,3 +251,15 @@ test('同じ題名が 2 つなら直さず、待ちの情報は waiting 以外�
   const done = correctTask(doing, 'PR を出す', 'done')
   expect(typeof done === 'string' ? done : done.corrections).toEqual(['The task "PR を出す" is done.'])
 })
+
+test('空の指定は当てず、waiting 以外に直すと url も消し、タスクが消えたらその訂正も消える', () => {
+  const task = { title: 'テスト', state: 'waiting' as const, detail: '', owner: '', waitsOn: 'CI', waitsFor: 'others' as const, url: 'https://example.com/1' }
+  const base = { ...EMPTY, sections: { purpose: 'p', status: 's', tasks: [task], decisions: [], pending: ['答える'] } }
+  expect(typeof correctTask(base, '  ', 'done')).toBe('string')
+  expect(typeof resolvePending(base, '')).toBe('string')
+  const done = correctTask(base, 'テスト', 'done')
+  if (typeof done === 'string') throw new Error(done)
+  expect(done.sections?.tasks[0]).toEqual({ title: 'テスト', state: 'done', detail: '', owner: '', waitsOn: '', waitsFor: '' })
+  const gone = setSections(done, { purpose: 'p', status: 's', tasks: [], decisions: [], pending: [] }, 2, 0)
+  expect(gone.corrections).toEqual([])
+})

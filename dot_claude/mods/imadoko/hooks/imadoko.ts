@@ -107,6 +107,7 @@ const corrected = (imadoko: Imadoko, sections: Sections, subject: string, correc
 /** The index of the one item whose text is `query` or, failing that, the only one containing it. */
 const pick = (items: readonly string[], query: string): number | undefined => {
   const wanted = query.trim().toLowerCase()
+  if (wanted === '') return undefined
   const indexes = (match: (item: string) => boolean) => items.flatMap((item, index) => (match(item.toLowerCase()) ? [index] : []))
   const exact = indexes(item => item === wanted)
   if (exact.length > 0) return exact.length === 1 ? exact[0] : undefined
@@ -120,7 +121,12 @@ export const correctTask = (imadoko: Imadoko, title: string, state: TaskState): 
   const at = sections === null ? undefined : pick(sections.tasks.map(task => task.title), title)
   if (sections === null || at === undefined) return `No single task matches "${title}". Tasks: ${(sections?.tasks ?? []).map(task => task.title).join(' / ') || '(none)'}`
   const found = sections.tasks[at]!.title
-  const tasks = sections.tasks.map((task, index) => (index === at ? { ...task, state, ...(state !== 'waiting' && { waitsFor: '' as const, waitsOn: '' }) } : task))
+  const tasks = sections.tasks.map((task, index) => {
+    if (index !== at) return task
+    if (state === 'waiting') return { ...task, state }
+    const { url: _, ...rest } = task
+    return { ...rest, state, waitsFor: '' as const, waitsOn: '' }
+  })
   const subject = `The task "${found}" `
   return corrected(imadoko, { ...sections, tasks }, subject, `${subject}is ${state}.`)
 }
@@ -620,7 +626,9 @@ export const setSections = (imadoko: Imadoko, sections: Sections, turn: number, 
   if (turn < imadoko.sectionsTurn) return imadoko
   const before = imadoko.sections?.pendingTurns ?? {}
   const pendingTurns = Object.fromEntries(sections.pending.map(item => [item, before[item] ?? turn]))
-  return { ...imadoko, sections: { ...sections, pendingTurns }, sectionsTurn: turn, savedAt }
+  // A correction about a task holds while that task is on the timeline; a new task of the same title starts fresh.
+  const corrections = (imadoko.corrections ?? []).filter(one => !one.startsWith('The task "') || sections.tasks.some(task => one.startsWith(`The task "${task.title}" `)))
+  return { ...imadoko, sections: { ...sections, pendingTurns }, sectionsTurn: turn, savedAt, corrections }
 }
 
 /** The band's two rows, each a label and its text: the purpose, and the status, marked while a turn runs. */
