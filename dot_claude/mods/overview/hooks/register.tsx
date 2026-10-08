@@ -143,6 +143,8 @@ const startPolling = ($: EngineInterface) => {
   })
 }
 
+const hostOf = (url: string | undefined) => url?.match(/^https?:\/\/([^/?#]+)/)?.[1]
+
 const elapsed = (ms: number | undefined) => {
   if (ms === undefined) return '—'
   if (ms < 60_000) return `${Math.floor(ms / 1000)}秒`
@@ -196,9 +198,12 @@ export const register: Register = on => {
               <Box key={`box:${column}:${index}`} flexDirection="column" backgroundColor={paper} paddingX={1} paddingY={1}>
                 <Box flexDirection="row" justifyContent="space-between">
                   <Text bold color="black">{card.title}</Text>
-                  <Button key={`card:${column}:${index}`} plain label="↗" onPress={() => card.url ? $.process.run(['open', card.url], { timeoutMs: 10_000 }).catch(() => undefined) : herdr($, ['tab', 'focus', card.tabId])} />
+                  <Box flexDirection="row" gap={1}>
+                    {card.url ? <Button key={`url:${column}:${index}`} plain label="🔗" onPress={() => $.process.run(['open', card.url!], { timeoutMs: 10_000 }).catch(() => undefined)} /> : null}
+                    <Button key={`card:${column}:${index}`} plain label="↗" onPress={() => herdr($, ['tab', 'focus', card.tabId])} />
+                  </Box>
                 </Box>
-                <Text color="#555555">{`${card.workspace} · ${card.mark} · ${elapsed(card.elapsedMs)}`}</Text>
+                <Text color="#555555">{[card.workspace, card.mark, elapsed(card.elapsedMs), hostOf(card.url)].filter(Boolean).join(' · ')}</Text>
               </Box>
             ))}
           </Box>

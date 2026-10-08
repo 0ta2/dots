@@ -437,9 +437,7 @@ const taskOf = (value: unknown): Task[] => {
 
   const waitsFor = value.waits_for === 'you' || value.waits_for === 'others' ? value.waits_for : value.waitsFor === 'you' || value.waitsFor === 'others' ? value.waitsFor : ''
 
-  const url = textOf(value.url)
-
-  return [{ title, state, detail: textOf(value.detail), owner: Array.from(owner).length <= MARK_CHARS ? owner : '', waitsOn: textOf(value.waits_on ?? value.waitsOn), waitsFor, ...(/^https?:\/\/\S+$/.test(url) && { url }) }]
+  return [{ title, state, detail: textOf(value.detail), owner: Array.from(owner).length <= MARK_CHARS ? owner : '', waitsOn: textOf(value.waits_on ?? value.waitsOn), waitsFor, ...(typeof value.url === 'string' && value.url.length <= SECTION_CHARS && /^https?:\/\/\S+$/.test(value.url) && { url: value.url }) }]
 }
 
 /** The tasks of a reply, oldest first: of the done ones only the newest few, of the rest every one, up to a bound. */
