@@ -127,6 +127,7 @@ const standInForEngine = (
   on('command.register', (_$, e) =>
     isCommandRefused ? { deny: `${e.name} registration was refused` } : { value: { command: e.name } },
   )
+  on('tool.register', (_$, e) => ({ value: { tool: `mcp__imadoko__${e.name}` } }))
   on('turn.start', (_$, e) => ({ turnId: e.turnId }))
   on('turn.complete', (_$, e) => ({ text: e.answer }))
   on('session.end', (_$, e) => ({ sessionId: e.sessionId }))
@@ -548,6 +549,7 @@ test('Haiku には前回の概要・依頼・回答・質問と回答・その�
       '  - url: the URL of what it waits on (a pull request, a Slack thread), copied exactly as it appears in the session; an empty string when none appears. Never make one up.',
       '- decisions: what has been decided, including the answers the user gave to questions, oldest first, at most 5 items.',
       '- pending: the user\'s own to-do list, oldest first: what the user has to answer, decide or do (reply to a question, approve, merge, run a command). Leave none of those out. Never work that Claude or another agent will do, even when its result will be shown to the user ("I will show you once X is done"). An empty list when nothing.',
+      '<user_corrections> are the user\'s own corrections to earlier summaries: follow every one of them over anything else you are given.',
       'Write every value in English.',
     ].join('\n'),
     prompt: [
@@ -555,6 +557,9 @@ test('Haiku には前回の概要・依頼・回答・質問と回答・その�
       '<latest_request>二つ目</latest_request>',
       `<latest_answer>${'い'.repeat(2999)}…</latest_answer>`,
       '<review_rule>自分 (ユーザー) と AI 以外の人や仕組み (レビュー・承認・CI・外部の返事など) の応答を待つもの</review_rule>',
+      '<user_corrections>',
+      '(none)',
+      '</user_corrections>',
       '<questions_and_answers>',
       '- Q1: 一覧で見たいですか? → B: 切り替え先で分かれば良い',
       '</questions_and_answers>',
@@ -630,6 +635,9 @@ test('自由入力の回答はその文を、答えずに閉じた質問は (no 
       '<latest_request>パネルを作りたい</latest_request>',
       '<latest_answer>回答</latest_answer>',
       '<review_rule>自分 (ユーザー) と AI 以外の人や仕組み (レビュー・承認・CI・外部の返事など) の応答を待つもの</review_rule>',
+      '<user_corrections>',
+      '(none)',
+      '</user_corrections>',
       '<questions_and_answers>',
       '- Q1: 一覧で見たいですか? → 別案を考えたい',
       '- Q1: 一覧で見たいですか? → (no answer)',
@@ -747,6 +755,22 @@ test('/clear の後は前の会話の返答へ移るボタンを出さない', a
   await ui.unmount()
 })
 
+test('fix ツールでタスクを完了に直すと、帯の元の概要が変わり、次の Haiku 依頼に訂正が渡る', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  standInForEngine(on)
+  const requests = recordModelCalls(on)
+
+  await startInteractive($)
+  await runTurn($, clock, 'パネルを作りたい', '作りました', 't1')
+  const title = IMADOKO.tasks.find(task => task.state !== 'done')!.title
+  const fixed = await $.tool.call({ tool: 'mcp__imadoko__fix', task: title, state: 'done' } as never)
+  expect((fixed as { result?: unknown }).result).toBe(`Corrected: The task "${title}" is done.`)
+  expect(await paneRows($)).toContain(`● done  ${title} ▸`)
+
+  await runTurn($, clock, '次へ', '進めました', 't2')
+  expect(blockOf(requests.at(-1)?.prompt, 'user_corrections')).toBe(`\n- The task "${title}" is done.\n`)
+})
+
 test('subagent のターンでは概要を作り直さない', async ($, on) => {
   const clock = mock.clock(on, { now: START })
   standInForEngine(on)
@@ -853,6 +877,9 @@ test('resume で始まると履歴から作り直し、それまでの依頼も�
       '<latest_request>次の依頼</latest_request>',
       '<latest_answer>実装しました</latest_answer>',
       '<review_rule>自分 (ユーザー) と AI 以外の人や仕組み (レビュー・承認・CI・外部の返事など) の応答を待つもの</review_rule>',
+      '<user_corrections>',
+      '(none)',
+      '</user_corrections>',
       '<questions_and_answers>',
       '(none)',
       '</questions_and_answers>',
@@ -882,6 +909,9 @@ test('resume の作り直しは、最初の依頼より前の行・ツール結�
       '<latest_request>最初の依頼</latest_request>',
       '<latest_answer>方針を決めました</latest_answer>',
       '<review_rule>自分 (ユーザー) と AI 以外の人や仕組み (レビュー・承認・CI・外部の返事など) の応答を待つもの</review_rule>',
+      '<user_corrections>',
+      '(none)',
+      '</user_corrections>',
       '<questions_and_answers>',
       '- Q1: 一覧で見たいですか? → B: 切り替え先で分かれば良い',
       '</questions_and_answers>',
@@ -908,6 +938,9 @@ test('compact の直後でターンが無くても、開いた時点で compact 
       '<latest_request>(none)</latest_request>',
       '<latest_answer></latest_answer>',
       '<review_rule>自分 (ユーザー) と AI 以外の人や仕組み (レビュー・承認・CI・外部の返事など) の応答を待つもの</review_rule>',
+      '<user_corrections>',
+      '(none)',
+      '</user_corrections>',
       '<questions_and_answers>',
       '(none)',
       '</questions_and_answers>',
@@ -1495,6 +1528,17 @@ test('保存済みの概要の後に会話が進んでいたら、開いた時�
 
   expect(requests).toHaveLength(1)
   expect((await bandRows($))[0]).toBe(`Purpose: ${IMADOKO.purpose}`)
+})
+
+test('保存した訂正は、セッションを開き直しても Haiku への依頼に渡る', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  standInForEngine(on, RESUMED, {}, [], undefined, { 'imadoko:sess-1': { sections: { ...IMADOKO, purpose: '古い概要' }, turnKey: turnKey('最初の依頼', '方針を決めました', 1), savedAt: START - 1000, corrections: ['The task "x" is done.'] } })
+  const requests = recordModelCalls(on)
+
+  await startInteractive($)
+  await clock.settle()
+
+  expect(blockOf(requests.at(-1)?.prompt, 'user_corrections')).toBe('\n- The task "x" is done.\n')
 })
 
 test('reload のときに概要がまだ無ければ、その場で解析する', async ($, on) => {

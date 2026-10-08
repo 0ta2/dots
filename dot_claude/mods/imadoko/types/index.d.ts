@@ -75,6 +75,8 @@ export type Imadoko = {
   epoch: number
   /** The calls made for this conversation, saved with its imadoko summary. */
   usage: Usage
+  /** What the user corrected in the summary, oldest first: every later summary follows them. */
+  corrections: string[]
 }
 
 /** What the store keeps of a session's imadoko summary, under `imadoko:<session id>`. */
@@ -89,6 +91,8 @@ export type StoredImadoko = {
   savedAt: number
   /** Zero for an imadoko summary saved before the mod counted its calls. */
   usage: Usage
+  /** The user's corrections to the session's summaries; absent before the mod kept them. */
+  corrections?: string[]
 }
 
 /** A member's part in the team, read off its herdr tab label. */

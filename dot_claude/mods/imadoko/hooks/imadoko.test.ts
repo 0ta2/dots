@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { EMPTY, activityOf, completeTurn, fallbackSummary, localeFor, parseSections, rebuild, setSections, startTurn, statusFilePath, storedImadokoOf, summaryRequest, turnKeyOf, underHistory } from './imadoko'
+import { EMPTY, activityOf, completeTurn, correctTask, resolvePending, fallbackSummary, localeFor, parseSections, rebuild, setSections, startTurn, statusFilePath, storedImadokoOf, summaryRequest, turnKeyOf, underHistory } from './imadoko'
 
 describe('fallbackSummary は最終回答の最初の本文行を現状の代わりにする', () => {
   const cases: [string, string, string | undefined][] = [
@@ -226,4 +226,44 @@ test('setSections は確認待ちの項目ごとに最初に出たターンを�
   const first = setSections(EMPTY, sections, 1, 0)
   const second = setSections(first, { ...sections, pending: ['a', 'b'] }, 2, 0)
   expect(second.sections?.pendingTurns).toEqual({ a: 1, b: 2 })
+})
+
+test('correctTask と resolvePending は概要を直し、訂正を覚え、当てはまらなければ理由を返す', () => {
+  const task = { title: 'PR を出す', state: 'waiting' as const, detail: '', owner: '', waitsOn: 'merge', waitsFor: 'others' as const }
+  const base = { ...EMPTY, sections: { purpose: 'p', status: 's', tasks: [task, { ...task, title: 'テストを書く' }], decisions: [], pending: ['マージ可否を答える', 'ブランチ名を決める'] } }
+  const done = correctTask(base, 'PR', 'done')
+  expect(typeof done === 'string' ? done : done.sections?.tasks[0]).toEqual({ ...task, state: 'done', waitsOn: '', waitsFor: '' })
+  expect(typeof done === 'string' ? done : done.corrections).toEqual(['The task "PR を出す" is done.'])
+  expect(typeof correctTask(base, 'を', 'done')).toBe('string')
+  const settled = resolvePending(base, 'マージ')
+  expect(typeof settled === 'string' ? settled : settled.sections?.pending).toEqual(['ブランチ名を決める'])
+  expect(typeof resolvePending(base, 'ない')).toBe('string')
+})
+
+test('同じ題名が 2 つなら直さず、待ちの情報は waiting 以外で消し、同じ対象の訂正は新しい方だけ残す', () => {
+  const task = { title: 'PR を出す', state: 'waiting' as const, detail: '', owner: '', waitsOn: 'merge', waitsFor: 'others' as const }
+  const twice = { ...EMPTY, sections: { purpose: 'p', status: 's', tasks: [task, task], decisions: [], pending: [] } }
+  expect(typeof correctTask(twice, 'PR を出す', 'done')).toBe('string')
+  const once = { ...twice, sections: { ...twice.sections, tasks: [task] } }
+  const doing = correctTask(once, 'PR を出す', 'doing')
+  if (typeof doing === 'string') throw new Error(doing)
+  expect(doing.sections?.tasks[0]).toEqual({ ...task, state: 'doing', waitsOn: '', waitsFor: '' })
+  const done = correctTask(doing, 'PR を出す', 'done')
+  expect(typeof done === 'string' ? done : done.corrections).toEqual(['The task "PR を出す" is done.'])
+})
+
+test('空の指定は当てず、waiting 以外に直すと url も消し、タスクが消えたらその訂正も消える', () => {
+  const task = { title: 'テスト', state: 'waiting' as const, detail: '', owner: '', waitsOn: 'CI', waitsFor: 'others' as const, url: 'https://example.com/1' }
+  const base = { ...EMPTY, sections: { purpose: 'p', status: 's', tasks: [task], decisions: [], pending: ['答える'] } }
+  expect(typeof correctTask(base, '  ', 'done')).toBe('string')
+  expect(typeof resolvePending(base, '')).toBe('string')
+  const done = correctTask(base, 'テスト', 'done')
+  if (typeof done === 'string') throw new Error(done)
+  expect(done.sections?.tasks[0]).toEqual({ title: 'テスト', state: 'done', detail: '', owner: '', waitsOn: '', waitsFor: '' })
+  const gone = setSections(done, { purpose: 'p', status: 's', tasks: [], decisions: [], pending: [] }, 2, 0)
+  expect(gone.corrections).toEqual([])
+  const settled = resolvePending(base, '答える')
+  if (typeof settled === 'string') throw new Error(settled)
+  expect(setSections(settled, { purpose: 'p', status: 's', tasks: [], decisions: [], pending: ['答える'] }, 2, 0).corrections).toEqual(settled.corrections)
+  expect(setSections(settled, { purpose: 'p', status: 's', tasks: [], decisions: [], pending: [] }, 2, 0).corrections).toEqual([])
 })

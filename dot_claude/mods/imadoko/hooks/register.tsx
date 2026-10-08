@@ -10,6 +10,7 @@ import {
   askQuestions,
   bandRows,
   completeTurn,
+  correctTask,
   fallbackSections,
   freeTextOf,
   localeFor,
@@ -17,6 +18,7 @@ import {
   parseSections,
   rebuild,
   recordActivity,
+  resolvePending,
   reviewRuleOf,
   setSections,
   withoutTurns,
@@ -78,6 +80,7 @@ const rowTurns = new Map<string, number>()
 let rowsEpoch = 0
 const replyRowOf = (imadoko: Imadoko, turn: number): string | undefined =>
   imadoko.epoch === rowsEpoch ? [...rowTurns].findLast(([, at]) => at === turn)?.[0] : undefined
+const STATES = ['done', 'doing', 'next', 'waiting'] as const
 const pullViews = atom({ plugin: 'imadoko', key: 'pullViews' } as const, {} as Record<string, (PullView & { unresolved?: number }) | 'unreadable'>)
 const MARKS_KEY = 'imadoko-marks'
 
@@ -206,7 +209,7 @@ const summarize = async ($: EngineInterface, locale: Locale, cwd: string) => {
   const request = summaryRequest(current, locale, marksOf(await read($, team), teamWordsFor(locale.language)), await reviewRule($, cwd))
   const turn = current.turns.at(-1)
   const turnNumber = turn?.turn ?? 0
-  const { epoch, sessionId } = current
+  const { epoch, sessionId, corrections } = current
 
   const reply = await $.model.complete({
     model: 'haiku',
@@ -224,15 +227,19 @@ const summarize = async ($: EngineInterface, locale: Locale, cwd: string) => {
   // and a later turn's imadoko summary may have landed first. A call whose imadoko summary is not
   // kept still counts; the next imadoko summary saved carries it.
   let applied: Imadoko | undefined
+  let isOutdated = false
   await update($, imadoko, latest => {
     if (latest.epoch !== epoch) return latest
 
     const counted = addUsage(latest, reply.usage)
-    if (sections === undefined || turnNumber < latest.sectionsTurn) return counted
+    // The user corrected the summary while Haiku answered from before it: ask again.
+    isOutdated = JSON.stringify(latest.corrections) !== JSON.stringify(corrections)
+    if (sections === undefined || isOutdated || turnNumber < latest.sectionsTurn) return counted
     applied = setSections(counted, sections, turnNumber, savedAt)
 
     return applied
   })
+  if (isOutdated) summarizeLater($, locale, cwd)
   if (applied === undefined || sections === undefined) return
   if (sessionId !== null) {
     await $.store.set(storeKey(sessionId), {
@@ -240,6 +247,7 @@ const summarize = async ($: EngineInterface, locale: Locale, cwd: string) => {
       turnKey: turnKeyOf(current),
       savedAt,
       usage: applied.usage,
+      ...(applied.corrections.length > 0 && { corrections: applied.corrections }),
     })
   }
   await writeStatus($, savedAt)
@@ -302,6 +310,7 @@ const openSession = async ($: EngineInterface, locale: Locale, cwd: string) => {
 
       return {
         ...joined,
+        corrections: joined.corrections.length > 0 ? joined.corrections : (stored?.corrections ?? []),
         usage: {
           calls: joined.usage.calls + usage.calls,
           inputTokens: joined.usage.inputTokens + usage.inputTokens,
@@ -315,7 +324,7 @@ const openSession = async ($: EngineInterface, locale: Locale, cwd: string) => {
       sessionId,
       epoch: current.epoch,
       // The calls counted so far go on, whether or not the imadoko summary is up to date.
-      ...(stored === undefined ? {} : { usage: stored.usage }),
+      ...(stored === undefined ? {} : { usage: stored.usage, corrections: stored.corrections ?? [] }),
       ...(isUpToDate ? { sections: stored.sections, sectionsTurn: rebuilt.turns.at(-1)?.turn ?? 0, savedAt: stored.savedAt } : {}),
     }
   })
@@ -344,6 +353,7 @@ const saveKnown = async ($: EngineInterface) => {
     turnKey: turnKeyOf(current),
     savedAt: await $.clock.now(),
     usage: current.usage,
+    ...(current.corrections.length > 0 && { corrections: current.corrections }),
   })
 }
 
@@ -680,6 +690,30 @@ const pruneStore = async ($: EngineInterface) => {
   await Promise.all(oldest.flatMap(one => [$.store.delete(one.key), $.store.delete(pullsStoreKey(one.key.slice(storeKey('').length)))]))
 }
 
+const fix = async ($: EngineInterface, e: unknown): Promise<{ result: string }> => {
+  const input = e as { task?: unknown; state?: unknown; pending?: unknown }
+  const state = STATES.find(one => one === input.state)
+  let outcome = 'Give task with state, or pending.'
+  await update($, imadoko, current => {
+    const next =
+      typeof input.task === 'string' && state !== undefined
+        ? correctTask(current, input.task, state)
+        : typeof input.pending === 'string'
+          ? resolvePending(current, input.pending)
+          : outcome
+    if (typeof next === 'string') {
+      outcome = next
+      return current
+    }
+    outcome = `Corrected: ${next.corrections.at(-1)}`
+    return next
+  })
+  await writeStatus($, await $.clock.now())
+  await saveKnown($)
+
+  return { result: outcome }
+}
+
 export const register: Register = on => {
   // Set by session.start, which fires again on every reload of this module.
   let isInteractive = false
@@ -708,6 +742,21 @@ export const register: Register = on => {
     } catch (error: unknown) {
       $.ui.log(`imadoko: /imadoko was not registered: ${String(error)}`, { to: 'debug' })
     }
+    await $.tool
+      .register({
+        name: 'fix',
+        description: 'Corrects this session\'s imadoko summary when the user says it is wrong: sets a task\'s state (e.g. a finished task still shown as doing or waiting), or drops a pending item that is already settled. The correction holds for every later summary.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            task: { type: 'string', minLength: 1, description: 'The task\'s title, or a part of it that matches only that task.' },
+            state: { type: 'string', enum: ['done', 'doing', 'next', 'waiting'], description: 'The state the task is really in. Required with task.' },
+            pending: { type: 'string', minLength: 1, description: 'A pending item\'s text, or a part of it that matches only that item, to drop.' },
+          },
+        },
+        isDeferred: false,
+      })
+      .catch((error: unknown) => $.ui.log(`imadoko: the fix tool was not registered: ${String(error)}`, { to: 'debug' }))
 
     // No session id yet means the mod meets this conversation for the first
     // time: a resumed session, one that ran before the mod was installed, or a
@@ -766,6 +815,7 @@ export const register: Register = on => {
     return next(e)
   })
 
+
   on('tool.call', { tool: 'AskUserQuestion' }, async ($, e, next) => {
     if (!isInteractive || e.agentId !== undefined) return next(e)
 
@@ -783,6 +833,7 @@ export const register: Register = on => {
   })
 
   on('tool.call', async ($, e, next) => {
+    if (String(e.tool) === 'mcp__imadoko__fix') return fix($, e)
     const line = isInteractive && e.agentId === undefined ? activityOf(String(e.tool), e) : undefined
     const ran = await next(e)
     if (line !== undefined && ran.deny === undefined && ran.isError !== true) {
