@@ -59,7 +59,7 @@ export const cards = (mains: Main[], blocked: Blocked[], now: number): Board => 
         if (next !== undefined) review.push(next)
       }
     }
-    if (tasks.length > 0 && tasks.every(task => task.state === 'done') && Array.isArray(status.pending) && status.pending.length === 0) {
+    if (status.isWorking !== true && tasks.length > 0 && tasks.every(task => task.state === 'done') && Array.isArray(status.pending) && status.pending.length === 0) {
       const next = card('done', main, main.purpose?.trim() || (main.mark ?? ''))
       if (next !== undefined) done.push(next)
     }

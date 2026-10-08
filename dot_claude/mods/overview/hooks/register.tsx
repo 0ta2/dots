@@ -104,9 +104,8 @@ async function mainsOf($: EngineInterface, home: string, panes: Pane[], labels: 
 
 async function refresh($: EngineInterface) {
   const now = await $.clock.now()
-  const [home, paneText] = await Promise.all([$.env.get('HOME'), herdr($, ['pane', 'list'])])
+  const [home, paneText, agentText] = await Promise.all([$.env.get('HOME'), herdr($, ['pane', 'list']), herdr($, ['agent', 'list'])])
   if (!home || !paneText) return
-  const agentText = await herdr($, ['agent', 'list'])
   const panes = panesOf(paneText)
   const workspaces = [...new Set(panes.map(pane => pane.workspace))]
   const tabTexts = await Promise.all(workspaces.map(workspace => herdr($, ['tab', 'list', '--workspace', workspace])))
@@ -155,7 +154,7 @@ export const register: Register = on => {
   on('session.start', async ($, event, next) => {
     await $.command.register({ name: 'overview', description: 'herdr の全 main をカンバンで表示する' })
     if ((await $.env.get('HERDR_ENV')) === '1' && await read($, isOpen)) {
-      await refresh($)
+      void refresh($)
       startPolling($)
     }
     return next(event)

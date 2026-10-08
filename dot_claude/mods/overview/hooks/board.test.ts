@@ -63,6 +63,11 @@ test('a main whose tasks are all done and has no pending item becomes one done c
   ])
 })
 
+test('a main that started working again is not done yet', () => {
+  const task = { title: '実装を終えた', state: 'done' as const, waitsFor: '', detail: '' }
+  expect(cards([main({ tasks: [task], pending: [], isWorking: true, idleSince: null, updatedAt: now })], [], now).done).toEqual([])
+})
+
 test('a main with both done and doing tasks is not done', () => {
   const done = { title: '終えた', state: 'done' as const, waitsFor: '', detail: '' }
   const doing = { title: '進めている', state: 'doing' as const, waitsFor: '', detail: '' }
