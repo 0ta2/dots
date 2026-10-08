@@ -30,3 +30,10 @@ test('code spans of several backticks and nested fences are left alone', () => {
     { kind: 'heading', level: 2, text: '外' },
   ])
 })
+
+test('references in fences and in code spans across lines stay as written; a heading may end in #', () => {
+  expect(linkRefs(['```sh', 'gh pr view 0ta2/dots#1', '```', 'see 0ta2/dots#2'].join('\n'))).toBe(['```sh', 'gh pr view 0ta2/dots#1', '```', 'see [0ta2/dots#2](https://github.com/0ta2/dots/issues/2)'].join('\n'))
+  expect(linkRefs('`\n0ta2/dots#181\n`')).toBe('`\n0ta2/dots#181\n`')
+  expect(segmentsOf('## C#')).toEqual([{ kind: 'heading', level: 2, text: 'C#' }])
+  expect(segmentsOf('## 見出し ##')).toEqual([{ kind: 'heading', level: 2, text: '見出し' }])
+})

@@ -2,17 +2,23 @@ export type Callout = 'important' | 'warning' | 'note'
 export type Segment = { kind: 'markdown'; text: string } | { kind: 'heading'; level: number; text: string } | { kind: 'callout'; callout: Callout; text: string }
 
 const CALLOUT = /^>\s*\[!(IMPORTANT|WARNING|NOTE)\]\s*$/i
-const HEADING = /^(#{1,3})\s+(.+?)\s*#*\s*$/
+const HEADING = /^(#{1,3})\s+(.+?)(?:\s+#+)?\s*$/
 const REPO_REF = /(?<![\w/.-])([\w.-]+\/[\w.-]+)#(\d+)\b/g
 const DANGER = /(^|[\s;&|(])(rm\s+-\w*[rf]|sudo\b|git\s+(push|reset\s+--hard|clean\s+-\w*f|branch\s+-D|checkout\s+--|restore\b)|gh\s+(pr\s+merge|repo\s+delete|release\s+delete)|chezmoi\s+apply|mise\s+run\s+chezmoi:apply|brew\s+(bundle|uninstall)|kill(all)?\b|chmod\b|chown\b|dd\s+if=|truncate\b)/
 
 export const isDangerous = (command: string): boolean => DANGER.test(command)
 
-const CODE_SPAN = /(?<!`)(`+)(?!`)[^\n]*?(?<!`)\1(?!`)/g
+const CODE_SPAN = /(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)/g
 const link = (text: string) => text.replace(REPO_REF, (all, repo, number) => `[${all}](https://github.com/${repo}/issues/${number})`)
 
-/** `owner/repo#123` becomes a link to it on GitHub, outside inline code of any backtick count. */
-export const linkRefs = (text: string): string => {
+const fenceOf = (line: string): string | undefined => /^\s*(`{3,}|~{3,})/.exec(line)?.[1]
+/** Whether `line` closes a block opened by `fence`: the same character, at least as many, nothing after. */
+const closes = (line: string, fence: string): boolean => {
+  const marker = fenceOf(line)
+  return marker !== undefined && marker[0] === fence[0] && marker.length >= fence.length && line.trim() === marker
+}
+
+const linkOutsideSpans = (text: string): string => {
   let out = ''
   let last = 0
   for (const span of text.matchAll(CODE_SPAN)) {
@@ -20,6 +26,31 @@ export const linkRefs = (text: string): string => {
     last = span.index + span[0].length
   }
   return out + link(text.slice(last))
+}
+
+/** `owner/repo#123` becomes a link to it on GitHub, outside fenced blocks and inline code of any backtick count. */
+export const linkRefs = (text: string): string => {
+  const out: string[] = []
+  let prose: string[] = []
+  let fence: string | undefined
+  const flush = () => {
+    if (prose.length > 0) out.push(linkOutsideSpans(prose.join('\n')))
+    prose = []
+  }
+  for (const line of text.split('\n')) {
+    if (fence !== undefined) {
+      out.push(line)
+      if (closes(line, fence)) fence = undefined
+    } else if (fenceOf(line) !== undefined) {
+      flush()
+      fence = fenceOf(line)
+      out.push(line)
+    } else {
+      prose.push(line)
+    }
+  }
+  flush()
+  return out.join('\n')
 }
 
 export const segmentsOf = (text: string): Segment[] => {
@@ -42,10 +73,10 @@ export const segmentsOf = (text: string): Segment[] => {
       continue
     }
     close()
-    const marker = /^\s*(`{3,}|~{3,})/.exec(line)?.[1]
-    if (marker && fence === undefined) fence = marker
-    else if (marker && fence !== undefined && marker[0] === fence[0] && marker.length >= fence.length && line.trim() === marker) fence = undefined
+    const marker = fenceOf(line)
     const isFenced = fence !== undefined || marker !== undefined
+    if (fence === undefined) fence = marker
+    else if (closes(line, fence)) fence = undefined
     const heading = isFenced ? null : HEADING.exec(line)
     const opened = isFenced ? null : CALLOUT.exec(line)
     if (opened) {
