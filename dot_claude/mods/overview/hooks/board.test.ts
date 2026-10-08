@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { cards, type Main } from './board'
+import { agentStateOf, cards, type Main } from './board'
 
 const now = new Date(2026, 9, 8, 12).valueOf()
 
@@ -72,4 +72,11 @@ test('a main with both done and doing tasks is not done', () => {
 test('reply cards keep blocked agents first and then sort idle mains by oldest wait', () => {
   const idle = (title: string, idleSince: number, tabId: string) => main({ tasks: [], pending: [title], isWorking: false, idleSince, updatedAt: now }, { tabId })
   expect(cards([idle('new', now - 1_000, 'new'), idle('old', now - 5_000, 'old')], [{ workspace: 'harness', tabId: 'blocked', name: 'claude', label: 'I1', task: '承認待ち' }], now).reply.map(card => card.title)).toEqual(['承認待ち', 'old', 'new'])
+})
+
+test('reads the legacy herdr states as the current ones', () => {
+  expect(agentStateOf('waiting')).toBe('blocked')
+  expect(agentStateOf('Busy')).toBe('working')
+  expect(agentStateOf('blocked')).toBe('blocked')
+  expect(agentStateOf(undefined)).toBe('')
 })

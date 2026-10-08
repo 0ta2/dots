@@ -68,3 +68,10 @@ export const cards = (mains: Main[], blocked: Blocked[], now: number): Board => 
   pending.sort((a, b) => (b.elapsedMs ?? -1) - (a.elapsedMs ?? -1))
   return { reply: [...reply, ...pending], working, review, done }
 }
+
+const ALIASES: Readonly<Record<string, string>> = { busy: 'working', running: 'working', waiting: 'blocked', finished: 'done' }
+
+export const agentStateOf = (raw: string | undefined): string => {
+  const state = (raw ?? '').toLowerCase()
+  return Object.hasOwn(ALIASES, state) ? ALIASES[state]! : state
+}

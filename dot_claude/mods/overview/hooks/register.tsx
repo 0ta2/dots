@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import { cards, type Board, type Main, type Status } from './board'
+import { agentStateOf, cards, type Board, type Main, type Status } from './board'
 
 const PANE = 'overview'
 const EMPTY: Board = { reply: [], working: [], review: [], done: [] }
@@ -48,7 +48,7 @@ const agentsOf = (text: string): Agent[] =>
   records(text, 'agents').flatMap(item => {
     const pane = string(item.pane_id)
     const tabId = string(item.tab_id)
-    return pane && tabId ? [{ pane, tabId, name: string(item.agent) ?? '', status: (string(item.agent_status) ?? string(item.status) ?? '').toLowerCase() }] : []
+    return pane && tabId ? [{ pane, tabId, name: string(item.agent) ?? '', status: agentStateOf(string(item.agent_status) ?? string(item.status) ?? string(item.state)) }] : []
   })
 
 const stateOf = (text: string): (Status & { isLead: boolean; updatedAt: number }) | undefined => {
