@@ -766,9 +766,12 @@ test('fix ツールでタスクを完了に直すと、帯の元の概要が変�
   const fixed = await $.tool.call({ tool: 'mcp__imadoko__fix', task: title, state: 'done' } as never)
   expect((fixed as { result?: unknown }).result).toBe(`Corrected: The task "${title}" is done.`)
   expect(await paneRows($)).toContain(`● done  ${title} ▸`)
+  const both = await $.tool.call({ tool: 'mcp__imadoko__fix', task: title, state: 'doing', pending: IMADOKO.pending[0] } as never)
+  expect((both as { result?: unknown }).result).toBe(`Corrected: The task "${title}" is doing.\nCorrected: The pending item "${IMADOKO.pending[0]}" is settled: leave it out.`)
+  await $.tool.call({ tool: 'mcp__imadoko__fix', task: title, state: 'done' } as never)
 
   await runTurn($, clock, '次へ', '進めました', 't2')
-  expect(blockOf(requests.at(-1)?.prompt, 'user_corrections')).toBe(`\n- The task "${title}" is done.\n`)
+  expect(blockOf(requests.at(-1)?.prompt, 'user_corrections')).toBe(`\n- The pending item "${IMADOKO.pending[0]}" is settled: leave it out.\n- The task "${title}" is done.\n`)
 })
 
 test('subagent のターンでは概要を作り直さない', async ($, on) => {
