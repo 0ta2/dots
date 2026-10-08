@@ -45,7 +45,6 @@ export type Sections = {
   status: string
   /** Oldest first: the newest done ones, the one under way, then what comes after. */
   tasks: Task[]
-  decisions: string[]
   pending: string[]
   /** The turn each pending item first showed up after, keyed by its text. */
   pendingTurns?: Record<string, number>
