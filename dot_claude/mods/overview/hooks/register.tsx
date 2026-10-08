@@ -196,7 +196,7 @@ export const register: Register = on => {
               <Box key={`box:${column}:${index}`} flexDirection="column" backgroundColor={paper} paddingX={1} paddingY={1}>
                 <Box flexDirection="row" justifyContent="space-between">
                   <Text bold color="black">{card.title}</Text>
-                  <Button key={`card:${column}:${index}`} plain label="↗" onPress={() => herdr($, ['tab', 'focus', card.tabId])} />
+                  <Button key={`card:${column}:${index}`} plain label="↗" onPress={() => card.url ? $.process.run(['open', card.url], { timeoutMs: 10_000 }).catch(() => undefined) : herdr($, ['tab', 'focus', card.tabId])} />
                 </Box>
                 <Text color="#555555">{`${card.workspace} · ${card.mark} · ${elapsed(card.elapsedMs)}`}</Text>
               </Box>
