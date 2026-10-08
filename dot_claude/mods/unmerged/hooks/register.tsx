@@ -74,9 +74,10 @@ let delegatedTasks = new Map<string, string | undefined>()
 async function select($: EngineInterface, snap: RepoSnapshot, file: FileChange) {
   const mine = ++selection
   const at = { root: snap.root, path: file.path, isUntracked: file.isUntracked }
-  await update($, selected, () => ({ ...at, diff: null }))
+  const isSameFile = (now: typeof at | null | undefined) => !!now && now.root === at.root && now.path === at.path && now.isUntracked === at.isUntracked
+  await update($, selected, now => (isSameFile(now) ? now : { ...at, diff: null }))
   const diff = await diffOf($, snap, file)
-  if (mine === selection) await update($, selected, () => ({ ...at, diff }))
+  if (mine === selection) await update($, selected, now => (isSameFile(now) && now!.diff === diff ? now : { ...at, diff }))
 }
 
 async function unselect($: EngineInterface) {
@@ -97,7 +98,7 @@ async function refresh($: EngineInterface) {
   const snaps = (await Promise.all(list.map(root => snapshot(git, root)))).filter(
     (s): s is RepoSnapshot => !!s,
   )
-  await update($, snapshots, () => snaps)
+  await update($, snapshots, now => (JSON.stringify(now) === JSON.stringify(snaps) ? now : snaps))
   const sel = await read($, selected)
   if (!sel) return
   const snap = snaps.find(s => s.root === sel.root)

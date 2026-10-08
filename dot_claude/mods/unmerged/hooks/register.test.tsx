@@ -1,4 +1,4 @@
-import { expect, test, type TestBody } from 'claude-code/testing'
+import { expect, mock, test, type TestBody } from 'claude-code/testing'
 
 const GIT: Record<string, string> = {
   'rev-parse --show-toplevel': '/r\n',
@@ -45,12 +45,13 @@ function fake(
   git: Record<string, string>,
   env: Record<string, string> = {},
   herdr: (readonly string[])[] = [],
-  spy: { fail?: string; statuses?: (string | undefined)[]; tabs?: string } = {},
+  spy: { fail?: string; statuses?: (string | undefined)[]; tabs?: string; onRun?: (argv: readonly string[]) => Promise<void> } = {},
 ) {
   const contexts: (readonly string[] | undefined)[] = []
   on('session.cwd', () => ({ value: '/w' }))
   on('env.get', (_$, e) => ({ value: e.name in env ? env[e.name] : '/h' }))
-  on('process.run', (_$, e) => {
+  on('process.run', async (_$, e) => {
+    await spy.onRun?.(e.argv)
     if (e.argv[0] === 'herdr') {
       herdr.push(e.argv)
       const verb = `${e.argv[1]} ${e.argv[2]}`
@@ -118,6 +119,27 @@ test('a repo touched by Bash shows up and its file diff opens', async ($, on) =>
   expect(contexts[2]).toBeUndefined()
   expect((await ui.find({ key: 'ask' }))?.props.label).toBe('添付')
 
+  await ui.unmount()
+})
+
+test('polling keeps the open diff on screen while it reloads', async ($, on) => {
+  const clock = mock.clock(on, { now: 0 })
+  const view: { ui?: { find: (query: { text: string }) => Promise<unknown> } } = {}
+  const loading: boolean[] = []
+  fake(on, { ...GIT }, {}, [], {
+    onRun: async argv => {
+      if (view.ui && argv.at(-1) === 'x.ts' && argv.includes('diff')) loading.push((await view.ui.find({ text: '読み込み中…' })) !== undefined)
+    },
+  })
+  await $.tool.call({ tool: 'Bash', command: 'cd /r && git status' })
+  await $.command.run({ command: 'unmerged', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 160 } })
+  const ui = await $.ui.mount({ plugin: 'unmerged', surface: 'terminal', component: 'Pane', requestId: 'unmerged', props: PANE_PROPS })
+  view.ui = ui
+  await ui.press({ key: 'file:/r:tracked:x.ts' })
+  loading.length = 0
+  await clock.advance(5_000)
+  expect(loading).toEqual([false])
+  expect((await ui.find({ type: 'Code' }))?.props.source).toBe('@@ -1 +1 @@\n-old\n+new\n')
   await ui.unmount()
 })
 
