@@ -79,7 +79,7 @@ const key = (workspace: string, tabId: string) => `${workspace}\u0000${tabId}`
 async function mainsOf($: EngineInterface, home: string, panes: Pane[], labels: Map<string, string>, now: number): Promise<Main[]> {
   const live = new Map(panes.map(pane => [pane.pane, pane]))
   const root = `${home}/.local/state/imadoko`
-  const workspaces = (await $.fs.list(root).catch(() => [])).filter(entry => entry.kind === 'directory')
+  const workspaces = (await $.fs.list(root).catch(() => [])).filter(entry => entry.kind === 'dir')
   const candidates = await Promise.all(
     workspaces.map(async workspace =>
       Promise.all(
