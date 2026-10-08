@@ -1530,6 +1530,17 @@ test('保存済みの概要の後に会話が進んでいたら、開いた時�
   expect((await bandRows($))[0]).toBe(`Purpose: ${IMADOKO.purpose}`)
 })
 
+test('保存した訂正は、セッションを開き直しても Haiku への依頼に渡る', async ($, on) => {
+  const clock = mock.clock(on, { now: START })
+  standInForEngine(on, RESUMED, {}, [], undefined, { 'imadoko:sess-1': { sections: { ...IMADOKO, purpose: '古い概要' }, turnKey: turnKey('最初の依頼', '方針を決めました', 1), savedAt: START - 1000, corrections: ['The task "x" is done.'] } })
+  const requests = recordModelCalls(on)
+
+  await startInteractive($)
+  await clock.settle()
+
+  expect(blockOf(requests.at(-1)?.prompt, 'user_corrections')).toBe('\n- The task "x" is done.\n')
+})
+
 test('reload のときに概要がまだ無ければ、その場で解析する', async ($, on) => {
   const clock = mock.clock(on, { now: START })
   standInForEngine(on)

@@ -97,36 +97,41 @@ export const EMPTY: Imadoko = {
 /** A new, empty conversation: the counts start over and the epoch moves on. */
 const KEPT_CORRECTIONS = 20
 
-const corrected = (imadoko: Imadoko, sections: Sections, correction: string): Imadoko => ({
+/** Adds a correction in place of any earlier one about the same thing, which it supersedes. */
+const corrected = (imadoko: Imadoko, sections: Sections, subject: string, correction: string): Imadoko => ({
   ...imadoko,
   sections,
-  corrections: [...(imadoko.corrections ?? []), correction].slice(-KEPT_CORRECTIONS),
+  corrections: [...(imadoko.corrections ?? []).filter(one => !one.startsWith(subject)), correction].slice(-KEPT_CORRECTIONS),
 })
 
-/** The one item whose text is `query` or, failing that, the only one containing it. */
-const pick = (items: readonly string[], query: string): string | undefined => {
+/** The index of the one item whose text is `query` or, failing that, the only one containing it. */
+const pick = (items: readonly string[], query: string): number | undefined => {
   const wanted = query.trim().toLowerCase()
-  const exact = items.find(item => item.toLowerCase() === wanted)
-  if (exact !== undefined) return exact
-  const partial = items.filter(item => item.toLowerCase().includes(wanted))
+  const indexes = (match: (item: string) => boolean) => items.flatMap((item, index) => (match(item.toLowerCase()) ? [index] : []))
+  const exact = indexes(item => item === wanted)
+  if (exact.length > 0) return exact.length === 1 ? exact[0] : undefined
+  const partial = indexes(item => item.includes(wanted))
   return partial.length === 1 ? partial[0] : undefined
 }
 
 /** Sets a task's state as the user says it is, and remembers that for later summaries. */
 export const correctTask = (imadoko: Imadoko, title: string, state: TaskState): Imadoko | string => {
   const sections = imadoko.sections
-  const found = sections === null ? undefined : pick(sections.tasks.map(task => task.title), title)
-  if (sections === null || found === undefined) return `No single task matches "${title}". Tasks: ${(sections?.tasks ?? []).map(task => task.title).join(' / ') || '(none)'}`
-  const tasks = sections.tasks.map(task => (task.title === found ? { ...task, state, ...(state === 'done' && { waitsFor: '' as const, waitsOn: '' }) } : task))
-  return corrected(imadoko, { ...sections, tasks }, `The task "${found}" is ${state}.`)
+  const at = sections === null ? undefined : pick(sections.tasks.map(task => task.title), title)
+  if (sections === null || at === undefined) return `No single task matches "${title}". Tasks: ${(sections?.tasks ?? []).map(task => task.title).join(' / ') || '(none)'}`
+  const found = sections.tasks[at]!.title
+  const tasks = sections.tasks.map((task, index) => (index === at ? { ...task, state, ...(state !== 'waiting' && { waitsFor: '' as const, waitsOn: '' }) } : task))
+  const subject = `The task "${found}" `
+  return corrected(imadoko, { ...sections, tasks }, subject, `${subject}is ${state}.`)
 }
 
 /** Drops a pending item the user says is settled, and keeps it out of later summaries. */
 export const resolvePending = (imadoko: Imadoko, text: string): Imadoko | string => {
   const sections = imadoko.sections
-  const found = sections === null ? undefined : pick(sections.pending, text)
-  if (sections === null || found === undefined) return `No single pending item matches "${text}". Pending: ${(sections?.pending ?? []).join(' / ') || '(none)'}`
-  return corrected(imadoko, { ...sections, pending: sections.pending.filter(item => item !== found) }, `The pending item "${found}" is settled: leave it out.`)
+  const at = sections === null ? undefined : pick(sections.pending, text)
+  if (sections === null || at === undefined) return `No single pending item matches "${text}". Pending: ${(sections?.pending ?? []).join(' / ') || '(none)'}`
+  const subject = `The pending item "${sections.pending[at]}" `
+  return corrected(imadoko, { ...sections, pending: sections.pending.filter((_, index) => index !== at) }, subject, `${subject}is settled: leave it out.`)
 }
 
 export const startOver = (imadoko: Imadoko): Imadoko => ({ ...EMPTY, epoch: imadoko.epoch + 1 })
@@ -598,7 +603,13 @@ export const storedImadokoOf = (value: unknown): StoredImadoko | undefined => {
 
   return sections === undefined
     ? undefined
-    : { sections, turnKey: value.turnKey, savedAt: value.savedAt, usage: usageOf(value.usage) }
+    : {
+        sections,
+        turnKey: value.turnKey,
+        savedAt: value.savedAt,
+        usage: usageOf(value.usage),
+        ...(Array.isArray(value.corrections) && { corrections: value.corrections.filter((one): one is string => typeof one === 'string') }),
+      }
 }
 
 /** Keeps the imadoko summary of the newest turn: a slow reply for an older one is dropped. */

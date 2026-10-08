@@ -239,3 +239,15 @@ test('correctTask と resolvePending は概要を直し、訂正を覚え、当�
   expect(typeof settled === 'string' ? settled : settled.sections?.pending).toEqual(['ブランチ名を決める'])
   expect(typeof resolvePending(base, 'ない')).toBe('string')
 })
+
+test('同じ題名が 2 つなら直さず、待ちの情報は waiting 以外で消し、同じ対象の訂正は新しい方だけ残す', () => {
+  const task = { title: 'PR を出す', state: 'waiting' as const, detail: '', owner: '', waitsOn: 'merge', waitsFor: 'others' as const }
+  const twice = { ...EMPTY, sections: { purpose: 'p', status: 's', tasks: [task, task], decisions: [], pending: [] } }
+  expect(typeof correctTask(twice, 'PR を出す', 'done')).toBe('string')
+  const once = { ...twice, sections: { ...twice.sections, tasks: [task] } }
+  const doing = correctTask(once, 'PR を出す', 'doing')
+  if (typeof doing === 'string') throw new Error(doing)
+  expect(doing.sections?.tasks[0]).toEqual({ ...task, state: 'doing', waitsOn: '', waitsFor: '' })
+  const done = correctTask(doing, 'PR を出す', 'done')
+  expect(typeof done === 'string' ? done : done.corrections).toEqual(['The task "PR を出す" is done.'])
+})

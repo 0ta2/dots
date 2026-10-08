@@ -209,7 +209,7 @@ const summarize = async ($: EngineInterface, locale: Locale, cwd: string) => {
   const request = summaryRequest(current, locale, marksOf(await read($, team), teamWordsFor(locale.language)), await reviewRule($, cwd))
   const turn = current.turns.at(-1)
   const turnNumber = turn?.turn ?? 0
-  const { epoch, sessionId } = current
+  const { epoch, sessionId, corrections } = current
 
   const reply = await $.model.complete({
     model: 'haiku',
@@ -227,15 +227,19 @@ const summarize = async ($: EngineInterface, locale: Locale, cwd: string) => {
   // and a later turn's imadoko summary may have landed first. A call whose imadoko summary is not
   // kept still counts; the next imadoko summary saved carries it.
   let applied: Imadoko | undefined
+  let isOutdated = false
   await update($, imadoko, latest => {
     if (latest.epoch !== epoch) return latest
 
     const counted = addUsage(latest, reply.usage)
-    if (sections === undefined || turnNumber < latest.sectionsTurn) return counted
+    // The user corrected the summary while Haiku answered from before it: ask again.
+    isOutdated = JSON.stringify(latest.corrections) !== JSON.stringify(corrections)
+    if (sections === undefined || isOutdated || turnNumber < latest.sectionsTurn) return counted
     applied = setSections(counted, sections, turnNumber, savedAt)
 
     return applied
   })
+  if (isOutdated) summarizeLater($, locale, cwd)
   if (applied === undefined || sections === undefined) return
   if (sessionId !== null) {
     await $.store.set(storeKey(sessionId), {
@@ -243,6 +247,7 @@ const summarize = async ($: EngineInterface, locale: Locale, cwd: string) => {
       turnKey: turnKeyOf(current),
       savedAt,
       usage: applied.usage,
+      ...(applied.corrections.length > 0 && { corrections: applied.corrections }),
     })
   }
   await writeStatus($, savedAt)
@@ -305,6 +310,7 @@ const openSession = async ($: EngineInterface, locale: Locale, cwd: string) => {
 
       return {
         ...joined,
+        corrections: joined.corrections.length > 0 ? joined.corrections : (stored?.corrections ?? []),
         usage: {
           calls: joined.usage.calls + usage.calls,
           inputTokens: joined.usage.inputTokens + usage.inputTokens,
@@ -318,7 +324,7 @@ const openSession = async ($: EngineInterface, locale: Locale, cwd: string) => {
       sessionId,
       epoch: current.epoch,
       // The calls counted so far go on, whether or not the imadoko summary is up to date.
-      ...(stored === undefined ? {} : { usage: stored.usage }),
+      ...(stored === undefined ? {} : { usage: stored.usage, corrections: stored.corrections ?? [] }),
       ...(isUpToDate ? { sections: stored.sections, sectionsTurn: rebuilt.turns.at(-1)?.turn ?? 0, savedAt: stored.savedAt } : {}),
     }
   })
@@ -347,6 +353,7 @@ const saveKnown = async ($: EngineInterface) => {
     turnKey: turnKeyOf(current),
     savedAt: await $.clock.now(),
     usage: current.usage,
+    ...(current.corrections.length > 0 && { corrections: current.corrections }),
   })
 }
 
@@ -702,6 +709,7 @@ const fix = async ($: EngineInterface, e: unknown): Promise<{ result: string }> 
     return next
   })
   await writeStatus($, await $.clock.now())
+  await saveKnown($)
 
   return { result: outcome }
 }
