@@ -37,3 +37,8 @@ test('references in fences and in code spans across lines stay as written; a hea
   expect(segmentsOf('## C#')).toEqual([{ kind: 'heading', level: 2, text: 'C#' }])
   expect(segmentsOf('## 見出し ##')).toEqual([{ kind: 'heading', level: 2, text: '見出し' }])
 })
+
+test('a reference that is already a link stays as written', () => {
+  const linked = '[0ta2/dots#1](https://github.com/0ta2/dots/pull/1)'
+  expect(linkRefs(`${linked} and 0ta2/dots#2`)).toBe(`${linked} and [0ta2/dots#2](https://github.com/0ta2/dots/issues/2)`)
+})

@@ -8,7 +8,8 @@ const DANGER = /(^|[\s;&|(])(rm\s+-\w*[rf]|sudo\b|git\s+(push|reset\s+--hard|cle
 
 export const isDangerous = (command: string): boolean => DANGER.test(command)
 
-const CODE_SPAN = /(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)/g
+/** What a reference inside stays as written: an inline code span of any backtick count, or a Markdown link. */
+const KEPT = /(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)|\[[^\]\n]*\]\([^)\s]*\)/g
 const link = (text: string) => text.replace(REPO_REF, (all, repo, number) => `[${all}](https://github.com/${repo}/issues/${number})`)
 
 const fenceOf = (line: string): string | undefined => /^\s*(`{3,}|~{3,})/.exec(line)?.[1]
@@ -18,23 +19,23 @@ const closes = (line: string, fence: string): boolean => {
   return marker !== undefined && marker[0] === fence[0] && marker.length >= fence.length && line.trim() === marker
 }
 
-const linkOutsideSpans = (text: string): string => {
+const linkOutsideKept = (text: string): string => {
   let out = ''
   let last = 0
-  for (const span of text.matchAll(CODE_SPAN)) {
+  for (const span of text.matchAll(KEPT)) {
     out += link(text.slice(last, span.index)) + span[0]
     last = span.index + span[0].length
   }
   return out + link(text.slice(last))
 }
 
-/** `owner/repo#123` becomes a link to it on GitHub, outside fenced blocks and inline code of any backtick count. */
+/** `owner/repo#123` becomes a link to it on GitHub, outside fenced blocks, inline code and existing links. */
 export const linkRefs = (text: string): string => {
   const out: string[] = []
   let prose: string[] = []
   let fence: string | undefined
   const flush = () => {
-    if (prose.length > 0) out.push(linkOutsideSpans(prose.join('\n')))
+    if (prose.length > 0) out.push(linkOutsideKept(prose.join('\n')))
     prose = []
   }
   for (const line of text.split('\n')) {
