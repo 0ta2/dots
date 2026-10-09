@@ -25,8 +25,9 @@ for mod in "${mods[@]}"; do
   cp -R "$types" "$work/$mod/.claude-plugin/types"
   ok=1
   claude plugin test "$work/$mod" >"$work/test.log" 2>&1 || { ok=0; echo "  test: 失敗"; grep -E '\(fail\)' "$work/test.log" | sed 's/^/    /'; }
-  claude plugin validate "$work/$mod" >"$work/validate.log" 2>&1 || { ok=0; echo "  validate: 失敗"; sed 's/^/    /' "$work/validate.log" | tail -5; }
-  npx -y -p typescript tsc -p "$work/$mod" --noEmit >"$work/tsc.log" 2>&1 || { ok=0; echo "  tsc: 失敗"; sed "s#$work/$mod/##; s/^/    /" "$work/tsc.log"; }
+  claude plugin validate "$work/$mod" >"$work/validate.log" 2>&1 || { ok=0; echo "  validate: 失敗"; sed 's/^/    /' "$work/validate.log"; }
+  # tsc はカレントからの相対パスでエラーを出すので、mod の中で回して hooks/... の形にする
+  (cd "$work/$mod" && npx -y -p typescript@7.0.2 tsc -p . --noEmit) >"$work/tsc.log" 2>&1 || { ok=0; echo "  tsc: 失敗"; sed 's/^/    /' "$work/tsc.log"; }
   [ $ok -eq 1 ] && echo "  ok" || failed+=("$mod")
   rm -rf "$work"
 done
