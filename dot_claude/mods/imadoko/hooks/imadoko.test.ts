@@ -19,7 +19,7 @@ describe('fallbackSummary は最終回答の最初の本文行を現状の代わ
 
 describe('parseSections は Haiku の返答から概要を取り出す', () => {
   const task = { title: 't', state: 'doing', detail: 'd', owner: '', waitsOn: '', waitsFor: '' }
-  const imadoko = { purpose: 'p', status: 's', tasks: [task], decisions: [], pending: [] }
+  const imadoko = { purpose: 'p', status: 's', tasks: [task], pending: [] }
   const cases: [string, string, unknown][] = [
     ['JSON だけの返答', JSON.stringify(imadoko), imadoko],
     ['前後に文があっても JSON の部分を読む', `Here it is:\n${JSON.stringify(imadoko)}\nDone.`, imadoko],
@@ -73,7 +73,7 @@ describe('localeFor は Claude Code の language 設定から見出しの言語�
 })
 
 describe('storedImadokoOf は保存した概要の使用量の累計を読み、記録を始める前のものは 0 から数える', () => {
-  const sections = { purpose: 'p', status: 's', tasks: [], decisions: [], pending: [] }
+  const sections = { purpose: 'p', status: 's', tasks: [], pending: [] }
   const ZERO = { calls: 0, inputTokens: 0, outputTokens: 0 }
   const kept = { calls: 3, inputTokens: 4_200, outputTokens: 1_300 }
   const cases: [string, unknown, unknown][] = [
@@ -142,7 +142,7 @@ describe('underHistory は再開したセッションの履歴の後ろに、読
       current => completeTurn(startTurn(current, '同じ依頼'), '同じ回答'),
       EMPTY,
     )
-    const sections = { purpose: '保存した目的', status: '保存した現状', tasks: [], decisions: [], pending: [] }
+    const sections = { purpose: '保存した目的', status: '保存した現状', tasks: [], pending: [] }
     const stored = { sections, turnKey: turnKeyOf(history), savedAt: 1, usage: { calls: 0, inputTokens: 0, outputTokens: 0 } }
 
     expect(underHistory(startTurn(EMPTY, '新しい依頼'), history, stored).sections).toEqual(sections)
@@ -222,7 +222,7 @@ describe('rebuild は失敗した操作を作業記録に入れない', () => {
 })
 
 test('setSections は確認待ちの項目ごとに最初に出たターンを覚える', () => {
-  const sections = { purpose: 'p', status: 's', tasks: [], decisions: [], pending: ['a'] }
+  const sections = { purpose: 'p', status: 's', tasks: [], pending: ['a'] }
   const first = setSections(EMPTY, sections, 1, 0)
   const second = setSections(first, { ...sections, pending: ['a', 'b'] }, 2, 0)
   expect(second.sections?.pendingTurns).toEqual({ a: 1, b: 2 })
@@ -230,7 +230,7 @@ test('setSections は確認待ちの項目ごとに最初に出たターンを�
 
 test('correctTask と resolvePending は概要を直し、訂正を覚え、当てはまらなければ理由を返す', () => {
   const task = { title: 'PR を出す', state: 'waiting' as const, detail: '', owner: '', waitsOn: 'merge', waitsFor: 'others' as const }
-  const base = { ...EMPTY, sections: { purpose: 'p', status: 's', tasks: [task, { ...task, title: 'テストを書く' }], decisions: [], pending: ['マージ可否を答える', 'ブランチ名を決める'] } }
+  const base = { ...EMPTY, sections: { purpose: 'p', status: 's', tasks: [task, { ...task, title: 'テストを書く' }], pending: ['マージ可否を答える', 'ブランチ名を決める'] } }
   const done = correctTask(base, 'PR', 'done')
   expect(typeof done === 'string' ? done : done.sections?.tasks[0]).toEqual({ ...task, state: 'done', waitsOn: '', waitsFor: '' })
   expect(typeof done === 'string' ? done : done.corrections).toEqual(['The task "PR を出す" is done.'])
@@ -242,7 +242,7 @@ test('correctTask と resolvePending は概要を直し、訂正を覚え、当�
 
 test('同じ題名が 2 つなら直さず、待ちの情報は waiting 以外で消し、同じ対象の訂正は新しい方だけ残す', () => {
   const task = { title: 'PR を出す', state: 'waiting' as const, detail: '', owner: '', waitsOn: 'merge', waitsFor: 'others' as const }
-  const twice = { ...EMPTY, sections: { purpose: 'p', status: 's', tasks: [task, task], decisions: [], pending: [] } }
+  const twice = { ...EMPTY, sections: { purpose: 'p', status: 's', tasks: [task, task], pending: [] } }
   expect(typeof correctTask(twice, 'PR を出す', 'done')).toBe('string')
   const once = { ...twice, sections: { ...twice.sections, tasks: [task] } }
   const doing = correctTask(once, 'PR を出す', 'doing')
@@ -254,16 +254,16 @@ test('同じ題名が 2 つなら直さず、待ちの情報は waiting 以外�
 
 test('空の指定は当てず、waiting 以外に直すと url も消し、タスクが消えたらその訂正も消える', () => {
   const task = { title: 'テスト', state: 'waiting' as const, detail: '', owner: '', waitsOn: 'CI', waitsFor: 'others' as const, url: 'https://example.com/1' }
-  const base = { ...EMPTY, sections: { purpose: 'p', status: 's', tasks: [task], decisions: [], pending: ['答える'] } }
+  const base = { ...EMPTY, sections: { purpose: 'p', status: 's', tasks: [task], pending: ['答える'] } }
   expect(typeof correctTask(base, '  ', 'done')).toBe('string')
   expect(typeof resolvePending(base, '')).toBe('string')
   const done = correctTask(base, 'テスト', 'done')
   if (typeof done === 'string') throw new Error(done)
   expect(done.sections?.tasks[0]).toEqual({ title: 'テスト', state: 'done', detail: '', owner: '', waitsOn: '', waitsFor: '' })
-  const gone = setSections(done, { purpose: 'p', status: 's', tasks: [], decisions: [], pending: [] }, 2, 0)
+  const gone = setSections(done, { purpose: 'p', status: 's', tasks: [], pending: [] }, 2, 0)
   expect(gone.corrections).toEqual([])
   const settled = resolvePending(base, '答える')
   if (typeof settled === 'string') throw new Error(settled)
-  expect(setSections(settled, { purpose: 'p', status: 's', tasks: [], decisions: [], pending: ['答える'] }, 2, 0).corrections).toEqual(settled.corrections)
-  expect(setSections(settled, { purpose: 'p', status: 's', tasks: [], decisions: [], pending: [] }, 2, 0).corrections).toEqual([])
+  expect(setSections(settled, { purpose: 'p', status: 's', tasks: [], pending: ['答える'] }, 2, 0).corrections).toEqual(settled.corrections)
+  expect(setSections(settled, { purpose: 'p', status: 's', tasks: [], pending: [] }, 2, 0).corrections).toEqual([])
 })

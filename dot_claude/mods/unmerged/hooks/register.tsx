@@ -94,7 +94,7 @@ async function refresh($: EngineInterface) {
     }),
   )
   const delegatedBefore = JSON.stringify([...delegatedTasks])
-  delegatedTasks = new Map(delegated.filter((repo): repo is { root: string; task?: string } => !!repo).map(({ root, task }) => [root, task]))
+  delegatedTasks = new Map(delegated.filter((repo): repo is { root: string; task: string | undefined } => !!repo).map(({ root, task }) => [root, task]))
   const list = [...new Set([...((await read($, repos)) ?? []), ...delegatedTasks.keys()])]
   const snaps = (await Promise.all(list.map(root => snapshot(git, root)))).filter(
     (s): s is RepoSnapshot => !!s,

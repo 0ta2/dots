@@ -29,6 +29,13 @@ description = "chezmoiのstatus確認"
 run = "chezmoi --source={{vars.source}} status"
 
 #
+# Claude Code mods
+#
+[tasks."mods:check"]
+description = "dot_claude/mods の test・validate・tsc を回す (引数で mod を絞れる)"
+run = "bash scripts/mods-check.sh"
+
+#
 # homebrew
 #
 [tasks."brew:sync"]

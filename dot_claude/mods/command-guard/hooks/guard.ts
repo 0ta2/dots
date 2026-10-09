@@ -105,11 +105,12 @@ function branchNames(cmd: string, ctx: Context): { dir: string; name: string }[]
     }
     const deletion = BRANCH_DELETE.exec(seg)
     if (!deletion) return undefined
-    if (!/(?:^|\s)(?:-[dDf]*[dD][dDf]*|--delete)(?=\s|$)/.test(deletion[2])) return undefined
-    if (!/[Df]|--force/.test(deletion[2])) continue
-    if (deletion[1] && !/^(\/|~$|~\/)/.test(deletion[1])) return undefined
-    const target = deletion[1] ? resolve(dir, deletion[1], ctx.home) : dir
-    branches.push(...deletion[3].trim().split(/\s+/).map(name => ({ dir: target, name })))
+    const [, deletionDir, flags = '', names = ''] = deletion
+    if (!/(?:^|\s)(?:-[dDf]*[dD][dDf]*|--delete)(?=\s|$)/.test(flags)) return undefined
+    if (!/[Df]|--force/.test(flags)) continue
+    if (deletionDir && !/^(\/|~$|~\/)/.test(deletionDir)) return undefined
+    const target = deletionDir ? resolve(dir, deletionDir, ctx.home) : dir
+    branches.push(...names.trim().split(/\s+/).map(name => ({ dir: target, name })))
   }
   return branches
 }

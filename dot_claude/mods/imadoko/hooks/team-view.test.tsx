@@ -14,8 +14,7 @@ const SUMMARY = {
   purpose: 'チケットを片付ける',
   status: '実装を待っている',
   tasks: [{ title: 'ログイン画面を直す', state: 'waiting', detail: '', owner: 'I1', waitsOn: '', waitsFor: '' }],
-  decisions: [],
-  pending: [],
+  pending: [] as string[],
 }
 
 const tabsOut = (selfLabel: string) =>
@@ -37,7 +36,7 @@ function standIn(on: On, selfLabel: string, env: Record<string, string>, world: 
   const prompts: string[] = []
   const statuses: (string | undefined)[] = []
   const toasts: string[] = []
-  const runs: string[][] = []
+  const runs: (readonly string[])[] = []
   const writes: { path: string; text: string }[] = []
   mock.env(on, env)
   const clock = mock.clock(on, { now: 1_790_000_000_000 })
@@ -348,7 +347,7 @@ test('a member whose state herdr cannot tell is still read off its screen', asyn
 })
 
 test('pressing Section headings folds and unfolds their bodies', async ($, on) => {
-  const seen = standIn(on, 'main', ENV, { agents: AGENTS, summary: { ...SUMMARY, decisions: ['OAuth を使う'] } })
+  const seen = standIn(on, 'main', ENV, { agents: AGENTS, summary: { ...SUMMARY, pending: ['OAuth を使う'] } })
   await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
   await $.turn.start({ turnId: 't', text: '実装を頼んで' })
   await $.turn.complete({ turnId: 't', answer: '頼みました', durationMs: 1000, isAborted: false, reason: 'answer' })
@@ -364,18 +363,18 @@ test('pressing Section headings folds and unfolds their bodies', async ($, on) =
   expect(await ui.find({ text: /チケットを片付ける/ })).toBeUndefined()
   expect((await ui.find({ key: 'section:purpose' }))?.props.label).toBe('▸')
   await ui.unmount()
-  await press('section:decisions')
+  await press('section:pending')
   ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await ui.find({ text: /- OAuth を使う/ })).toBeUndefined()
-  expect((await ui.find({ key: 'section:decisions' }))?.props.label).toBe('▸')
+  expect((await ui.find({ key: 'section:pending' }))?.props.label).toBe('▸')
   await ui.unmount()
   await press('section:purpose')
-  await press('section:decisions')
+  await press('section:pending')
   ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await ui.find({ text: /チケットを片付ける/ })).toBeDefined()
   expect(await ui.find({ text: /- OAuth を使う/ })).toBeDefined()
   expect((await ui.find({ key: 'section:purpose' }))?.props.label).toBe('▾')
-  expect((await ui.find({ key: 'section:decisions' }))?.props.label).toBe('▾')
+  expect((await ui.find({ key: 'section:pending' }))?.props.label).toBe('▾')
   await ui.unmount()
 })
 

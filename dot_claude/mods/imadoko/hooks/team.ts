@@ -212,12 +212,12 @@ export function parseRecord(text: string): TeamRecord | undefined {
   try {
     const value = JSON.parse(text) as Json
     const task = typeof value.task === 'string' ? str(value.task.trim()) : undefined
-    const role = value.role === 'impl' || value.role === 'review' ? value.role : undefined
+    const role: TeamRecord['role'] = value.role === 'impl' ? 'impl' : value.role === 'review' ? 'review' : undefined
     const kind = typeof value.kind === 'string' && KINDS.includes(value.kind) ? value.kind : undefined
     const pr = value.pr
     const pull = pr && typeof pr === 'object' ? pr as Json : undefined
     const parsedPr = pull && typeof pull.owner === 'string' && typeof pull.repo === 'string' && typeof pull.number === 'number' ? { owner: pull.owner, repo: pull.repo, number: pull.number } : undefined
-    const record = { ...(task && { task }), ...(role && { role }), ...(kind && { kind }), ...(parsedPr && { pr: parsedPr }) }
+    const record: TeamRecord = { ...(task && { task }), ...(role && { role }), ...(kind && { kind }), ...(parsedPr && { pr: parsedPr }) }
     return Object.keys(record).length ? record : undefined
   } catch {
     return undefined

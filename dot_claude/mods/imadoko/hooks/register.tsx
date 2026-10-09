@@ -35,7 +35,7 @@ import {
 } from './imadoko'
 import type { Locale } from './imadoko'
 import { isReviewerOf, parseUnresolved, parseView, pullKey, pullsCreated } from './prs'
-import type { Checks, Merge, PullRef, PullView } from './prs'
+import type { Checks, Merge, PullRef, PullView } from '../types'
 import { HEIGHT, WIDTH, cells } from './sprite'
 import {
   changes,
@@ -839,7 +839,7 @@ export const register: Register = on => {
     if (line !== undefined && ran.deny === undefined && ran.isError !== true) {
       await update($, imadoko, current => recordActivity(current, line))
     }
-    if (isInteractive && e.agentId === undefined && String(e.tool) === 'Bash' && ran.deny === undefined && ran.isError !== true && typeof e.command === 'string') {
+    if (isInteractive && e.agentId === undefined && e.tool === 'Bash' && ran.deny === undefined && ran.isError !== true && typeof e.command === 'string') {
       const output = ran.result as { stdout?: unknown }
       const created = pullsCreated(e.command, typeof output.stdout === 'string' ? output.stdout : '')
       let added = false
