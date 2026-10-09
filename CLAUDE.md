@@ -66,7 +66,7 @@ selene dot_config/nvim/
 - `dot_claude/mods/` の mod を変えた PR は、出す前に `mise run mods:check` を通す。`claude plugin test` /
   `validate` は型を見ないので、`tsc --noEmit` まで回す (`kind === 'directory'` のような型の食い違いが test を素通りした)
 - tsc の型定義はセッションが mod を読み込んだときに `~/.claude/mods/<mod>/.claude-plugin/types/` へ生成され、リポジトリには無い。
-  新しい mod は apply してセッションで一度読み込んでから回す
+  まだ読み込まれていない mod は、読み込み済みの別の mod の型定義を借りて回す (MCP の一覧以外は mod 間で同じ)
 - 新しい mod を足したら `dot_claude/settings.json` の `CLAUDE_CODE_PLUGIN_DIRS` にも足す (足さないと読み込まれない)
 
 ## chezmoi のファイル命名規則
