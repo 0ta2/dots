@@ -105,6 +105,7 @@ dots/
 │   └── starship.toml         # Starship プロンプト設定
 ├── dot_local/bin/            # → ~/.local/bin/ （カスタムスクリプト）
 │   ├── executable_ta                    # カスタムスクリプト
+│   ├── executable_herdr-scheduler       # ~/.config/herdr/scheduler/*.md を launchd に登録し herdr 上の claude で実行
 │   └── executable_dots-sshd-harden.tmpl # sshd hardening (mise run security:sshd-harden から手動実行)
 ├── scripts/codex-config-sync/  # chezmoi 配布対象外 (.chezmoiignore)。mise run sync から呼ぶ
 │   ├── sync.py                     # managed.toml を ~/.codex/config.toml へ tomlkit でマージ

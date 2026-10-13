@@ -1,0 +1,118 @@
+#!/usr/bin/env zsh
+# usage: herdr-scheduler apply | run <name>
+
+set -euo pipefail
+
+conf_dir="$HOME/.config/herdr/scheduler"
+state_dir="$HOME/.local/state/herdr-scheduler"
+log_dir="$HOME/Library/Logs/herdr-scheduler"
+agents_dir="$HOME/Library/LaunchAgents"
+prefix="dev.0ta2.herdr-scheduler"
+
+fm() { sed -n '2,/^---$/p' "$1" | sed -n "s/^$2:[[:space:]]*//p" }
+body() { awk 'n >= 2; /^---$/ { n++ }' "$1" }
+
+calendar() {
+  local hour=$1 minute=$2 weekdays=$3 d
+  if [[ -z "$weekdays" ]]; then
+    print "    <dict><key>Hour</key><integer>$hour</integer><key>Minute</key><integer>$minute</integer></dict>"
+    return
+  fi
+  for d in ${(s:,:)weekdays}; do
+    print "    <dict><key>Weekday</key><integer>$d</integer><key>Hour</key><integer>$hour</integer><key>Minute</key><integer>$minute</integer></dict>"
+  done
+}
+
+plist() {
+  local name=$1 file=$2
+  cat <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>$prefix.$name</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$HOME/.local/bin/herdr-scheduler</string>
+    <string>run</string>
+    <string>$name</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict><key>PATH</key><string>$PATH</string></dict>
+  <key>StartCalendarInterval</key>
+  <array>
+$(calendar "$(fm $file hour)" "$(fm $file minute)" "$(fm $file weekday)")
+  </array>
+  <key>RunAtLoad</key><false/>
+  <key>StandardOutPath</key><string>$log_dir/$name.log</string>
+  <key>StandardErrorPath</key><string>$log_dir/$name.log</string>
+</dict>
+</plist>
+EOF
+}
+
+validate() {
+  local name=$1 file=$2
+  [[ "$name" =~ '^[a-z0-9-]+$' ]] || { print -u2 "$file: name は英小文字・数字・ハイフンのみ"; return 1 }
+  [[ "$(fm $file hour)" =~ '^[0-9]+$' && "$(fm $file minute)" =~ '^[0-9]+$' ]] || { print -u2 "$file: hour / minute が無い"; return 1 }
+  [[ "$(fm $file weekday)" =~ '^([0-7](,[0-7])*)?$' ]] || { print -u2 "$file: weekday は 0-7 のカンマ区切り"; return 1 }
+  [[ -d "$(fm $file cwd)" ]] || { print -u2 "$file: cwd が存在しない"; return 1 }
+}
+
+apply() {
+  local file name target new domain="gui/$UID"
+  local -a names files
+  files=($conf_dir/*.md(N))
+  for file in $files; do validate ${file:t:r} $file; done
+  mkdir -p $agents_dir $log_dir
+
+  for file in $files; do
+    name=${file:t:r}
+    names+=$name
+    target="$agents_dir/$prefix.$name.plist"
+    new=$(plist $name $file)
+    [[ -f $target && "$(<$target)" == "$new" ]] && { print "unchanged $name"; continue }
+    launchctl bootout $domain $target 2>/dev/null || true
+    print -r -- "$new" > $target
+    launchctl bootstrap $domain $target
+    print "applied $name"
+  done
+
+  for target in $agents_dir/$prefix.*.plist(N); do
+    name=${${target:t:r}#$prefix.}
+    (( ${names[(Ie)$name]} )) && continue
+    launchctl bootout $domain $target 2>/dev/null || true
+    rm $target
+    print "removed $name"
+  done
+}
+
+run() {
+  local name=$1 file="$conf_dir/$1.md" lock="$state_dir/$1.lock" ws pane
+  validate $name $file
+  mkdir -p $state_dir
+  # ponytail: kill -9 で lock が残ったら手で rmdir する
+  mkdir $lock 2>/dev/null || { print "skipped $name: 実行中"; return 0 }
+  trap "rmdir $lock" EXIT
+
+  body $file > "$state_dir/$name.prompt.md"
+
+  ws=$(herdr workspace list | jq -r '.result.workspaces[] | select(.label == "scheduler") | .workspace_id' | head -1)
+  if [[ -z "$ws" ]]; then
+    pane=$(herdr workspace create --label scheduler --cwd "$(fm $file cwd)" --no-focus | jq -r '.result.root_pane.pane_id')
+  else
+    pane=$(herdr tab create --workspace $ws --cwd "$(fm $file cwd)" --label $name --no-focus | jq -r '.result.root_pane.pane_id')
+  fi
+
+  herdr pane run $pane "claude \"\$(cat $state_dir/$name.prompt.md)\"" >/dev/null
+  repeat 30 { herdr agent get $pane >/dev/null 2>&1 && break; sleep 1 }
+  herdr agent wait $pane --until working --timeout 60000 >/dev/null 2>&1 || true
+  herdr agent wait $pane --until idle --until blocked --until done --timeout 10800000 >/dev/null
+  print "finished $name ($pane)"
+}
+
+case "${1-}" in
+  apply) apply ;;
+  run) run "${2:?usage: herdr-scheduler run <name>}" ;;
+  *) print -u2 "usage: herdr-scheduler apply | run <name>"; exit 1 ;;
+esac
