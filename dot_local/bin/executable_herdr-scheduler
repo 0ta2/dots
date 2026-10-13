@@ -95,7 +95,7 @@ run() {
   mkdir -p $state_dir
   # ponytail: kill -9 で lock が残ったら手で rmdir する
   mkdir $lock 2>/dev/null || { print "skipped $name: 実行中"; return 0 }
-  trap "rmdir $lock" EXIT
+  trap "rmdir ${(q)lock}" EXIT
 
   body $file > "$state_dir/$name.prompt.md"
 
@@ -106,7 +106,7 @@ run() {
     pane=$(herdr tab create --workspace $ws --cwd "$(fm $file cwd)" --label $name --no-focus | jq -r '.result.root_pane.pane_id')
   fi
 
-  herdr pane run $pane "claude -- \"\$(cat $state_dir/$name.prompt.md)\"" >/dev/null
+  herdr pane run $pane "claude -- \"\$(cat ${(q):-$state_dir/$name.prompt.md})\"" >/dev/null
   repeat 30 { herdr agent get $pane >/dev/null 2>&1 && break; sleep 1 }
   herdr agent wait $pane --until working --timeout 60000 >/dev/null 2>&1 || true
   herdr agent wait $pane --until idle --until blocked --until done --timeout 10800000 >/dev/null
