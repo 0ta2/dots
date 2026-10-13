@@ -111,8 +111,39 @@ run() {
   print "finished $name ($pane)"
 }
 
+usage() {
+  cat <<'EOF'
+usage: herdr-scheduler apply | run <name>
+
+  apply       ~/.config/herdr/scheduler/*.md を launchd に登録する (定義が消えたジョブは解除)
+  run <name>  herdr の scheduler ワークスペースで claude を起動し、終わるまで待つ (launchd が呼ぶ)
+
+ジョブ定義: ~/.config/herdr/scheduler/<name>.md (name は英小文字・数字・ハイフン)
+
+  ---
+  cwd: /Users/USER/work/repo
+  hour: 9
+  minute: 0
+  weekday: 1,2,3,4,5
+  ---
+  司令塔へのプロンプト本文
+
+  hour 0-23 / minute 0-59 / weekday 0-7 のカンマ区切り (0 と 7 が日曜、省略で毎日)
+  値の後ろにコメントは書けない
+
+注意:
+  - 定義を追加・変更・削除したら apply し直す
+  - plist には apply を実行したシェルの PATH を埋め込む。claude / herdr / jq の場所が変わったら apply し直す
+  - herdr が起動していないと何もしない
+  - cwd が claude で未信頼のフォルダだと、信頼確認で止まって終わる。先に一度手動で claude を起動して信頼しておく
+  - 承認待ちで止まったらそこで終わる (タブは残る)
+  - 二重起動防止の lock は ~/.local/state/herdr-scheduler/<name>.lock。強制終了で残ったら rmdir する
+  - ログ: ~/Library/Logs/herdr-scheduler/<name>.log
+EOF
+}
+
 case "${1-}" in
   apply) apply ;;
   run) run "${2:?usage: herdr-scheduler run <name>}" ;;
-  *) print -u2 "usage: herdr-scheduler apply | run <name>"; exit 1 ;;
+  *) usage; exit 1 ;;
 esac
