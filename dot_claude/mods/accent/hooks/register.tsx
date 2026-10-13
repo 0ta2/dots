@@ -24,7 +24,6 @@ const FORMAT = [
 export const register: Register = on => {
   on('prompt.compose', async (_$, e, next) => {
     const composed = await next(e)
-    if (e.surfaces.length === 0) return composed
     return { sections: [...composed.sections, { id: 'accent:format', text: FORMAT, scope: 'session' as const }] }
   })
 
