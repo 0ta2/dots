@@ -15,4 +15,5 @@ dot_config/nvim
 .agents/skills/{{ . }}
 .claude/skills/{{ . }}
 {{   end }}
+.config/herdr/scheduler
 {{ end }}

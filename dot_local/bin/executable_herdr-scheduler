@@ -1,0 +1,151 @@
+#!/usr/bin/env zsh
+# usage: herdr-scheduler apply | run <name>
+
+set -euo pipefail
+
+conf_dir="$HOME/.config/herdr/scheduler"
+state_dir="$HOME/.local/state/herdr-scheduler"
+log_dir="$HOME/Library/Logs/herdr-scheduler"
+agents_dir="$HOME/Library/LaunchAgents"
+prefix="dev.0ta2.herdr-scheduler"
+
+fm() { sed -n '2,/^---$/p' "$1" | sed -n "s/^$2:[[:space:]]*//p" }
+body() { awk 'n >= 2; /^---$/ { n++ }' "$1" }
+
+calendar() {
+  local hour=$1 minute=$2 weekdays=$3 d
+  if [[ -z "$weekdays" ]]; then
+    print "    <dict><key>Hour</key><integer>$hour</integer><key>Minute</key><integer>$minute</integer></dict>"
+    return
+  fi
+  for d in ${(s:,:)weekdays}; do
+    print "    <dict><key>Weekday</key><integer>$d</integer><key>Hour</key><integer>$hour</integer><key>Minute</key><integer>$minute</integer></dict>"
+  done
+}
+
+xml() { local s=${1//&/&amp;}; s=${s//</&lt;}; print -r -- ${s//>/&gt;} }
+
+plist() {
+  local name=$1 file=$2
+  cat <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>$prefix.$name</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$(xml $HOME/.local/bin/herdr-scheduler)</string>
+    <string>run</string>
+    <string>$name</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict><key>PATH</key><string>$(xml $PATH)</string></dict>
+  <key>StartCalendarInterval</key>
+  <array>
+$(calendar "$(fm $file hour)" "$(fm $file minute)" "$(fm $file weekday)")
+  </array>
+  <key>RunAtLoad</key><false/>
+  <key>StandardOutPath</key><string>$(xml $log_dir/$name.log)</string>
+  <key>StandardErrorPath</key><string>$(xml $log_dir/$name.log)</string>
+</dict>
+</plist>
+EOF
+}
+
+validate() {
+  local name=$1 file=$2
+  [[ "$name" =~ '^[a-z0-9-]+$' ]] || { print -u2 "$file: name は英小文字・数字・ハイフンのみ"; return 1 }
+  [[ "$(fm $file hour)" =~ '^([01]?[0-9]|2[0-3])$' && "$(fm $file minute)" =~ '^[0-5]?[0-9]$' ]] || { print -u2 "$file: hour は 0-23、minute は 0-59"; return 1 }
+  [[ "$(fm $file weekday)" =~ '^([0-7](,[0-7])*)?$' ]] || { print -u2 "$file: weekday は 0-7 のカンマ区切り"; return 1 }
+  [[ -d "$(fm $file cwd)" ]] || { print -u2 "$file: cwd が存在しない"; return 1 }
+}
+
+apply() {
+  local file name target new domain="gui/$UID"
+  local -a names files
+  files=($conf_dir/*.md(N))
+  for file in $files; do validate ${file:t:r} $file; done
+  mkdir -p $agents_dir $log_dir
+
+  for file in $files; do
+    name=${file:t:r}
+    names+=$name
+    target="$agents_dir/$prefix.$name.plist"
+    new=$(plist $name $file)
+    [[ -f $target && "$(<$target)" == "$new" ]] && launchctl print $domain/$prefix.$name >/dev/null 2>&1 && { print "unchanged $name"; continue }
+    launchctl bootout $domain $target 2>/dev/null || true
+    print -r -- "$new" > $target
+    launchctl bootstrap $domain $target
+    print "applied $name"
+  done
+
+  for target in $agents_dir/$prefix.*.plist(N); do
+    name=${${target:t:r}#$prefix.}
+    (( ${names[(Ie)$name]} )) && continue
+    launchctl bootout $domain $target 2>/dev/null || true
+    rm $target
+    print "removed $name"
+  done
+}
+
+run() {
+  local name=$1 file="$conf_dir/$1.md" lock="$state_dir/$1.lock" ws pane
+  validate $name $file
+  mkdir -p $state_dir
+  # ponytail: kill -9 で lock が残ったら手で rmdir する
+  mkdir $lock 2>/dev/null || { print "skipped $name: 実行中"; return 0 }
+  trap "rmdir ${(q)lock}" EXIT
+
+  body $file > "$state_dir/$name.prompt.md"
+
+  ws=$(herdr workspace list | jq -r '.result.workspaces[] | select(.label == "scheduler") | .workspace_id' | head -1)
+  if [[ -z "$ws" ]]; then
+    pane=$(herdr workspace create --label scheduler --cwd "$(fm $file cwd)" --no-focus | jq -r '.result.root_pane.pane_id')
+  else
+    pane=$(herdr tab create --workspace $ws --cwd "$(fm $file cwd)" --label $name --no-focus | jq -r '.result.root_pane.pane_id')
+  fi
+
+  herdr pane run $pane "claude -- \"\$(cat ${(q):-$state_dir/$name.prompt.md})\"" >/dev/null
+  repeat 30 { herdr agent get $pane >/dev/null 2>&1 && break; sleep 1 }
+  herdr agent wait $pane --until working --timeout 60000 >/dev/null 2>&1 || true
+  herdr agent wait $pane --until idle --until blocked --until done --timeout 10800000 >/dev/null
+  print "finished $name ($pane)"
+}
+
+usage() {
+  cat <<'EOF'
+usage: herdr-scheduler apply | run <name>
+
+  apply       ~/.config/herdr/scheduler/*.md を launchd に登録する (定義が消えたジョブは解除)
+  run <name>  herdr の scheduler ワークスペースで claude を起動し、終わるまで待つ (launchd が呼ぶ)
+
+ジョブ定義: ~/.config/herdr/scheduler/<name>.md (name は英小文字・数字・ハイフン)
+
+  ---
+  cwd: /Users/USER/work/repo
+  hour: 9
+  minute: 0
+  weekday: 1,2,3,4,5
+  ---
+  司令塔へのプロンプト本文
+
+  hour 0-23 / minute 0-59 / weekday 0-7 のカンマ区切り (0 と 7 が日曜、省略で毎日)
+  値の後ろにコメントは書けない
+
+注意:
+  - 定義を追加・変更・削除したら apply し直す
+  - plist には apply を実行したシェルの PATH を埋め込む。claude / herdr / jq の場所が変わったら apply し直す
+  - herdr が起動していないと何もしない
+  - cwd が claude で未信頼のフォルダだと、信頼確認で止まって終わる。先に一度手動で claude を起動して信頼しておく
+  - 承認待ちで止まったらそこで終わる (タブは残る)
+  - 二重起動防止の lock は ~/.local/state/herdr-scheduler/<name>.lock。強制終了で残ったら rmdir する
+  - ログ: ~/Library/Logs/herdr-scheduler/<name>.log
+EOF
+}
+
+case "${1-}" in
+  apply) apply ;;
+  run) run "${2:?usage: herdr-scheduler run <name>}" ;;
+  *) usage; exit 1 ;;
+esac
