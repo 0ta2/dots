@@ -23,6 +23,8 @@ calendar() {
   done
 }
 
+xml() { local s=${1//&/&amp;}; s=${s//</&lt;}; print -r -- ${s//>/&gt;} }
+
 plist() {
   local name=$1 file=$2
   cat <<EOF
@@ -33,19 +35,19 @@ plist() {
   <key>Label</key><string>$prefix.$name</string>
   <key>ProgramArguments</key>
   <array>
-    <string>$HOME/.local/bin/herdr-scheduler</string>
+    <string>$(xml $HOME/.local/bin/herdr-scheduler)</string>
     <string>run</string>
     <string>$name</string>
   </array>
   <key>EnvironmentVariables</key>
-  <dict><key>PATH</key><string>$PATH</string></dict>
+  <dict><key>PATH</key><string>$(xml $PATH)</string></dict>
   <key>StartCalendarInterval</key>
   <array>
 $(calendar "$(fm $file hour)" "$(fm $file minute)" "$(fm $file weekday)")
   </array>
   <key>RunAtLoad</key><false/>
-  <key>StandardOutPath</key><string>$log_dir/$name.log</string>
-  <key>StandardErrorPath</key><string>$log_dir/$name.log</string>
+  <key>StandardOutPath</key><string>$(xml $log_dir/$name.log)</string>
+  <key>StandardErrorPath</key><string>$(xml $log_dir/$name.log)</string>
 </dict>
 </plist>
 EOF
@@ -71,7 +73,7 @@ apply() {
     names+=$name
     target="$agents_dir/$prefix.$name.plist"
     new=$(plist $name $file)
-    [[ -f $target && "$(<$target)" == "$new" ]] && { print "unchanged $name"; continue }
+    [[ -f $target && "$(<$target)" == "$new" ]] && launchctl print $domain/$prefix.$name >/dev/null 2>&1 && { print "unchanged $name"; continue }
     launchctl bootout $domain $target 2>/dev/null || true
     print -r -- "$new" > $target
     launchctl bootstrap $domain $target
