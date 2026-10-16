@@ -169,7 +169,9 @@ vim.keymap.set("n", "gp", function()
         border = { style = "rounded", text = { top = " " .. vim.fn.fnamemodify(path, ":~:.") .. " " } },
     })
     popup:mount()
-    popup:map("n", "q", function() popup:unmount() end, { nowait = true })
+    popup:map("n", "q", function()
+        popup:unmount()
+    end, { nowait = true })
 end, { desc = "Peek current diff file in float" })
 require("gitlinker").setup()
 
