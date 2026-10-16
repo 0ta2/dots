@@ -1,0 +1,22 @@
+#!/bin/sh
+set -eu
+
+home={{ .chezmoi.homeDir | quote }}
+backup_root="$home/.local/state/chezmoi-backups/herdr-fork"
+backup_dir="$backup_root/$(date -u +%Y%m%dT%H%M%SZ)-$$"
+
+move_target() {
+    relative_path=$1
+    target="$home/$relative_path"
+
+    if [ ! -e "$target" ] && [ ! -L "$target" ]; then
+        return
+    fi
+
+    destination="$backup_dir/$relative_path"
+    mkdir -p "$(dirname "$destination")"
+    mv "$target" "$destination"
+}
+
+move_target .agents/skills/herdr-fork
+move_target .claude/skills/herdr-fork

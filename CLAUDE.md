@@ -75,7 +75,9 @@ selene dot_config/nvim/
 - `executable_` prefix → 実行可能ファイルとしてデプロイ
 - `.tmpl` suffix → Go テンプレートとして処理される
 
-`run_once_`/`run_onchange_` (chezmoi apply に自動フックするスクリプト) は現在未使用。
+`run_once_`/`run_onchange_` (chezmoi apply に自動フックするスクリプト) は通常未使用。
+`run_once_after_migrate-herdr-fork.sh.tmpl` だけは旧 `herdr-fork` の配布済みファイルを
+`~/.local/state/chezmoi-backups/herdr-fork/` へ退避する一度限りの移行で、ネットワーク・sudo は使わない。
 ネットワーク・sudo を伴う処理は `apply` の副作用にせず、`bootstrap.sh`/`mise run install`/
 `mise run update`/`mise run security:sshd-harden` の明示タスクとして持つ方針にしている。
 
