@@ -1,9 +1,6 @@
-std = "neovim"
+std = "neovim+selene-nvim"
 
-[rules]
+[lints]
 mixed_table="allow"
 global_usage = "deny"
 unused_variable = "deny"
-
-[globals]
-MiniIcons

@@ -6,6 +6,7 @@ CLAUDE.md
 Brewfile
 mise.toml
 selene.toml
+selene-nvim.yml
 bootstrap.sh
 scripts
 dot_config/nvim
