@@ -20,8 +20,9 @@ Homebrew・mise を導入した後 `mise run install` (ドットファイル反�
 ## 日常のコマンド
 
 ```bash
-mise run sync    # ドットファイル反映 + Codex設定マージ (副作用なし、何度実行しても収束する)
-mise run update  # brew/mise/skill/uv tool の更新、最後に sync
+mise run chezmoi:pull  # git pull --ff-only で更新
+mise run sync          # pullしてからドットファイルを反映 + Codex設定マージ
+mise run update        # brew/mise/skill/uv tool の更新、最後に sync
 ```
 
 直接 chezmoi コマンドを実行する場合は下記の通り:

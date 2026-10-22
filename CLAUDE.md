@@ -13,6 +13,7 @@
 ```bash
 # chezmoi
 mise run chezmoi:apply     # ドットファイルを適用 (ネットワーク・sudo は行わない)
+mise run chezmoi:pull      # git pull --ff-only で更新
 mise run chezmoi:diff      # 差分確認
 mise run chezmoi:status    # status確認
 mise run chezmoi:add       # ファイルをchezmoi管理下に追加
@@ -26,7 +27,7 @@ mise run mods:check -- imadoko # mod を絞る
 mise run brew:sync         # Brewfileを元にパッケージを同期
 
 # 日常
-mise run sync                 # chezmoi:apply + Codex設定マージ (副作用なし、何度実行しても収束する)
+mise run sync                 # chezmoi:pull + chezmoi:apply + Codex設定マージ
 mise run install               # 初回セットアップ (不足ツール・skill・plugin を導入し、最後に sync)
 mise run update                 # 全ツールの更新 (brew/mise/skill/uv tool)、最後に sync
 mise run security:sshd-harden  # sshd を鍵認証のみに制限 (sudo 必要、手動実行のみ)
@@ -35,8 +36,9 @@ mise run security:sshd-harden  # sshd を鍵認証のみに制限 (sudo 必要�
 ./bootstrap.sh
 ```
 
-責務の分離: `apply` はドットファイル反映のみ (ネットワーク・ツール導入・sudo なし)。`sync` は
-apply と Codex 設定マージのみで、何度実行しても同じ結果に収束する。`install`/`update` は
+責務の分離: `apply` はドットファイル反映のみ (ネットワーク・ツール導入・sudo なし)。`pull` は
+`git pull --ff-only` で dots を更新する。`sync` は `pull`、`apply`、Codex 設定マージを順に行う。
+`install`/`update` は
 それぞれの用途のツール導入を行い、最後に `sync` を呼ぶ。`bootstrap.sh` は mise が無い初回だけの
 入口で、Homebrew と mise を用意したら `mise run install` に処理を渡す。
 
