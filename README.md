@@ -20,14 +20,10 @@ Homebrew・mise を導入した後 `mise run install` (ドットファイル反�
 ## 日常のコマンド
 
 ```bash
-mise run chezmoi:update  # git pull --ff-only で安全に更新してから反映
-mise run sync            # dotsを安全に更新・反映 + Codex設定マージ
-mise run update  # brew/mise/skill/uv tool の更新、最後に sync
+mise run chezmoi:pull  # git pull --ff-only で更新
+mise run sync          # pullしてからドットファイルを反映 + Codex設定マージ
+mise run update        # brew/mise/skill/uv tool の更新、最後に sync
 ```
-
-`chezmoi update` は `--autostash --rebase` を使うため、このリポジトリでは使わない。
-`mise run chezmoi:update` は未コミット変更・Git 操作途中・upstream 未設定・fast-forward
-できない分岐では反映前に停止し、stash・reset・強制操作は行わない。
 
 直接 chezmoi コマンドを実行する場合は下記の通り:
 
