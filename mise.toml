@@ -20,6 +20,13 @@ run = "chezmoi --source={{vars.source}} chattr template"
 description = "chezmoiの反映"
 run = "chezmoi --source={{vars.source}} apply"
 
+[tasks."chezmoi:update"]
+description = "dotsを安全にfast-forward更新してからchezmoiを反映"
+run = [
+    "bash scripts/chezmoi-update.sh {{vars.source}}",
+    "mise run chezmoi:apply",
+]
+
 [tasks."chezmoi:diff"]
 description = "chezmoiの差分確認"
 run = "chezmoi --source={{vars.source}} diff"
@@ -46,9 +53,9 @@ run = [
 
 
 [tasks."sync"]
-description = "ドットファイル反映 + Codex設定マージ (副作用なし、何度実行しても収束する)"
+description = "dotsを安全に更新・反映 + Codex設定マージ"
 run = [
-    "mise run chezmoi:apply",
+    "mise run chezmoi:update",
     "{{vars.source}}/scripts/codex-config-sync/sync.py",
 ]
 
