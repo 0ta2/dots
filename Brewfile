@@ -19,6 +19,7 @@ cask "zed"
 # application
 cask "chatgpt-atlas"
 cask "google-chrome"
+cask "google-drive"
 cask "azooKey"
 cask "1password"
 cask "heptabase"
