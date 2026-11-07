@@ -34,6 +34,7 @@ cask "claude"
 cask "codex-app"
 cask "codexbar"
 cask "tailscale-app"
+cask "capsomnia"
 
 # terminal
 brew "starship"
