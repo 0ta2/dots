@@ -15,7 +15,7 @@ argument-hint: "[--light|--deep|--event] [--unattended] [--no-notify] <質問>"
 | --- | --- | --- |
 | 探索エージェント (初回ラウンド) | 8体 | 20体 |
 | 追加ラウンド | なし | 最大1回 (最大8体) |
-| サブエージェントのモデル | Claude: haiku / Codex: `gpt-5.6-luna` (`max`) | Claude: sonnet / Codex: `gpt-5.6-luna` (`max`) |
+| サブエージェントのモデル | Claude: haiku / Codex: `gpt-6-luna` (`max`) | Claude: sonnet / Codex: `gpt-6-luna` (`max`) |
 | 1体あたり検索 / ページ取得 | 最大 6 / 8 | 最大 6 / 8 |
 
 「もう1ラウンドあれば良くなる」と感じてもキャップ内で統合する。
@@ -65,7 +65,7 @@ argument-hint: "[--light|--deep|--event] [--unattended] [--no-notify] <質問>"
 
 利用中ツールの並列エージェント機能を、初回ラウンドの全担当分だけ**1回の操作で並列起動**する。
 ツールの同時起動上限で受け付けられない場合のみ、上限内の複数バッチに分けて起動する。
-Claude Code はキャップ表のモデルを使う。Codex は各起動で `model: gpt-5.6-luna` と
+Claude Code はキャップ表のモデルを使う。Codex は各起動で `model: gpt-6-luna` と
 `reasoning_effort: max` を明示指定する。起動 API がこの組み合わせを受け付けない環境では、
 既定値や別モデルへ黙ってフォールバックせず、探索前に中断して理由を報告する。各エージェントへの
 プロンプトはこのテンプレートを使う:
