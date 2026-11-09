@@ -1,0 +1,97 @@
+<!-- deep-research レポート用 HTML テンプレート。
+     {{PLACEHOLDER}} を実行中のエージェントが直接置換して output/deep-research/ に書き出す。
+     自己完結 (外部 CSS/JS/フォント禁止)。章立ては SKILL.md の必須セクションと一致させる。 -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{TITLE}}</title>
+<style>
+  :root {
+    --ink: #1a1f2b; --sub: #5a6272; --line: #d8dce4; --bg: #ffffff;
+    --accent: #0f4c81; --accent-bg: #eef3f9; --warn-bg: #fdf3f0; --warn-line: #c0522f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e6e9ef; --sub: #9aa3b2; --line: #333a46; --bg: #14171d;
+      --accent: #6ea8d8; --accent-bg: #1c2634; --warn-bg: #2b1f1b; --warn-line: #d07a5a;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+    color: var(--ink); background: var(--bg);
+    line-height: 1.8; font-size: 15px;
+    max-width: 860px; margin: 0 auto; padding: 48px 32px 96px;
+  }
+  header { border-bottom: 3px solid var(--accent); padding-bottom: 20px; margin-bottom: 32px; }
+  header .kicker { color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+  header h1 { font-size: 26px; line-height: 1.4; margin-top: 8px; }
+  header .meta { color: var(--sub); font-size: 13px; margin-top: 12px; }
+  h2 {
+    font-size: 19px; margin: 44px 0 16px; padding-left: 12px;
+    border-left: 4px solid var(--accent);
+  }
+  h3 { font-size: 16px; margin: 28px 0 10px; }
+  p, li { margin-bottom: 10px; }
+  ul, ol { padding-left: 24px; margin-bottom: 16px; }
+  a { color: var(--accent); }
+  .exec-summary {
+    background: var(--accent-bg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 20px 24px; margin-bottom: 8px;
+  }
+  .exec-summary h2 { margin: 0 0 12px; border: none; padding: 0; }
+  .risk {
+    background: var(--warn-bg); border-left: 4px solid var(--warn-line);
+    border-radius: 0 8px 8px 0; padding: 16px 20px; margin: 16px 0;
+  }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 14px; display: block; overflow-x: auto; }
+  th, td { border: 1px solid var(--line); padding: 8px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--accent-bg); }
+  .sources { font-size: 13px; color: var(--sub); }
+  .sources li { margin-bottom: 6px; }
+  .confidence { font-size: 12px; color: var(--sub); }
+  footer { margin-top: 64px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--sub); font-size: 12px; }
+  @media print { body { padding: 0; font-size: 12px; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="kicker">{{KICKER}}</div><!-- 例: DEEP RESEARCH / EVENT ANALYSIS -->
+  <h1>{{TITLE}}</h1>
+  <div class="meta">作成: {{DATE}} ／ モード: {{MODE}} ／ これは投資助言ではなく判断材料の整理である (該当時のみ表示)</div>
+</header>
+
+<section class="exec-summary">
+  <h2>エグゼクティブサマリー</h2>
+  {{EXEC_SUMMARY}}<!-- 3〜8行。質問への直接の答え。結論を先に -->
+</section>
+
+<section>
+  <h2>根拠</h2>
+  {{FINDINGS}}<!-- 論点ごとに h3 で区切る。本文中に出典リンクを付ける。表・箇条書き可 -->
+</section>
+
+<section>
+  <h2>反証・リスク</h2>
+  <div class="risk">
+  {{RISKS}}<!-- 結論が崩れる条件・否定材料。空にしない。書けなければ調査不足 -->
+  </div>
+</section>
+
+<section>
+  <h2>未調査の穴</h2>
+  {{GAPS}}<!-- キャップで踏み込めなかった論点・失敗エージェントの担当分。無ければ「なし」 -->
+</section>
+
+<section>
+  <h2>出典一覧</h2>
+  <ol class="sources">
+  {{SOURCES}}<!-- <li><a href="URL">タイトル</a> — 鮮度・信頼度の注記</li> -->
+  </ol>
+</section>
+
+<footer>deep-research (harness) ／ 生成: {{DATE}} ／ 出典の鮮度と一次情報かどうかは本文の確度注記を参照</footer>
+</body>
+</html>
