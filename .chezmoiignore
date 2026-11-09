@@ -12,7 +12,7 @@ scripts
 dot_config/nvim
 
 {{ if ne .chezmoi.username "0ta2" }}
-{{   range list "brainstorming" "change-review" "clean-commits" "commit" "executing-plans" "pr" "source-primer" "systematic-debugging" "writing-plans" }}
+{{   range list "brainstorming" "change-review" "clean-commits" "commit" "deep-research" "executing-plans" "pr" "source-primer" "systematic-debugging" "writing-plans" }}
 .agents/skills/{{ . }}
 .claude/skills/{{ . }}
 {{   end }}
