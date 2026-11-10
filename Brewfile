@@ -19,7 +19,6 @@ cask "zed"
 # application
 cask "chatgpt-atlas"
 cask "google-chrome"
-cask "thebrowsercompany-dia"
 cask "google-drive"
 cask "azooKey"
 cask "1password"

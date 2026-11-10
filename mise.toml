@@ -69,10 +69,11 @@ run = [
 ]
 
 [tasks."update"]
-description = "全ツールの更新 (brew/mise/skill/uv tool)、最後に sync"
+description = "全ツールの更新 (brew/gh拡張/mise/skill/uv tool)、最後に sync"
 run = [
     "brew update",
     "brew upgrade",
+    "gh extension upgrade --all",
     "mise upgrade",
     "mise run skill:update",
     "uv tool upgrade --all",
