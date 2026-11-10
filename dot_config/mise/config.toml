@@ -33,6 +33,7 @@ node = "latest"
 "npm:@fsouza/prettierd" = "latest"
 "npm:@openai/codex" = "latest"
 "npm:chrome-devtools-mcp" = "latest" # Chrome を DevTools MCP で操作する
+"npm:@playwright/mcp" = "latest" # 専用ブラウザを Playwright MCP で操作する（X など）
 # npm backend の週間ダウンロード数制限を下回るため、明示的に許可する
 "npm:@ticktick/ticktick-cli" = { version = "latest", allow_low_downloads = true }
 
