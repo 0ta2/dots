@@ -1,3 +1,6 @@
 # MacOS
 .DS_Store
 /.tokensave/
+
+# Playwright MCP がプロジェクトごとに生成する作業ディレクトリ
+.playwright-mcp/
