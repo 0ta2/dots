@@ -1,5 +1,2 @@
 # serena MCP がプロジェクトごとに生成する作業ディレクトリ
 .serena/
-
-# Playwright MCP がプロジェクトごとに生成する作業ディレクトリ
-.playwright-mcp/
