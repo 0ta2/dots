@@ -2,7 +2,7 @@
 # sync.py はここに列挙したキーだけを上書きし、それ以外 (projects/notice/tui/marketplaces/notify
 # などの Codex Desktop/CLI が書き込む state) には触れない。
 
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 personality = "pragmatic"
 model_verbosity = "low"
 model_reasoning_effort = "high"
