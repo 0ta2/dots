@@ -8,6 +8,7 @@
     "heptabase@heptabase-cli-skills": true,
     "lua-lsp@claude-plugins-official": true,
     "ponytail@ponytail": true,
+    "pstack@cursor-plugins": true,
     "pyright-lsp@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
     "typescript-lsp@claude-plugins-official": true
@@ -17,6 +18,12 @@
     "CLAUDE_CODE_PLUGIN_DIRS": "~/.claude/mods/command-guard:~/.claude/mods/unmerged:~/.claude/mods/imadoko:~/.claude/mods/overview:~/.claude/mods/accent"
   },
   "extraKnownMarketplaces": {
+    "cursor-plugins": {
+      "source": {
+        "repo": "cursor/plugins",
+        "source": "github"
+      }
+    },
     "heptabase-cli-skills": {
       "source": {
         "repo": "heptameta/heptabase-cli-skills",
